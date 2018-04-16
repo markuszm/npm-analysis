@@ -11,8 +11,8 @@ func CreateTables(db *sql.DB) error {
 		name VARCHAR(255) NOT NULL PRIMARY KEY,
 		version VARCHAR(255),
 		description TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-		homepage VARCHAR(255),
-		main VARCHAR(255),
+		homepage TEXT,
+		main TEXT,
 		npmVersion VARCHAR(255),
 		nodeVersion VARCHAR(255)		
 	);
@@ -24,6 +24,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_keywords := `
 	CREATE TABLE IF NOT EXISTS keywords(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		package VARCHAR(255),
 		FOREIGN KEY(package) REFERENCES packages(name)
@@ -36,6 +37,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_license := `
 	CREATE TABLE IF NOT EXISTS license(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		type VARCHAR(255),
 		url VARCHAR(255),
 		package VARCHAR(255),
@@ -49,6 +51,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_npmUser := `
 	CREATE TABLE IF NOT EXISTS npmUser(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		email VARCHAR(255),
 		package VARCHAR(255),
@@ -62,6 +65,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_authors := `
 	CREATE TABLE IF NOT EXISTS authors(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		email VARCHAR(255),
 		url VARCHAR(255),
@@ -76,6 +80,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_contributors := `
 	CREATE TABLE IF NOT EXISTS contributors(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		email VARCHAR(255),
 		url VARCHAR(255),
@@ -90,6 +95,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_maintainers := `
 	CREATE TABLE IF NOT EXISTS maintainers(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		email VARCHAR(255),
 		url VARCHAR(255),
@@ -104,7 +110,8 @@ func CreateTables(db *sql.DB) error {
 
 	create_files := `
 	CREATE TABLE IF NOT EXISTS files(
-		name VARCHAR(255),
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+		name TEXT,
 		package VARCHAR(255),
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
@@ -118,8 +125,9 @@ func CreateTables(db *sql.DB) error {
 
 	create_repository := `
 	CREATE TABLE IF NOT EXISTS repository(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		type VARCHAR(255),
-		url VARCHAR(255),
+		url TEXT,
 		package VARCHAR(255),
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
@@ -132,7 +140,7 @@ func CreateTables(db *sql.DB) error {
 	create_scripts := `
 	CREATE TABLE IF NOT EXISTS scripts(
 		name VARCHAR(255),
-		command VARCHAR(255),
+		command TEXT,
 		package VARCHAR(255),
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
@@ -144,8 +152,9 @@ func CreateTables(db *sql.DB) error {
 
 	create_bin := `
 	CREATE TABLE IF NOT EXISTS bin(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
-		path VARCHAR(255),
+		path TEXT,
 		package VARCHAR(255),
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
@@ -157,7 +166,8 @@ func CreateTables(db *sql.DB) error {
 
 	create_man := `
 	CREATE TABLE IF NOT EXISTS man(
-		name VARCHAR(255),
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+		name TEXT,
 		package VARCHAR(255),
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
@@ -169,6 +179,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_dependencies := `
 	CREATE TABLE IF NOT EXISTS dependencies(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
 		package VARCHAR(255),
@@ -182,6 +193,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_devDependencies := `
 	CREATE TABLE IF NOT EXISTS devDependencies(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
 		package VARCHAR(255),
@@ -195,6 +207,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_peerDependencies := `
 	CREATE TABLE IF NOT EXISTS peerDependencies(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
 		package VARCHAR(255),
@@ -208,6 +221,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_bundledDependencies := `
 	CREATE TABLE IF NOT EXISTS bundledDependencies(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
 		package VARCHAR(255),
@@ -221,6 +235,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_optionalDependencies := `
 	CREATE TABLE IF NOT EXISTS optionalDependencies(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
 		package VARCHAR(255),
@@ -234,6 +249,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_engines := `
 	CREATE TABLE IF NOT EXISTS engines(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
 		package VARCHAR(255),
@@ -247,6 +263,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_os := `
 	CREATE TABLE IF NOT EXISTS os(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		package VARCHAR(255),
 		FOREIGN KEY(package) REFERENCES packages(name)
@@ -259,6 +276,7 @@ func CreateTables(db *sql.DB) error {
 
 	create_cpu := `
 	CREATE TABLE IF NOT EXISTS cpu(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		package VARCHAR(255),
 		FOREIGN KEY(package) REFERENCES packages(name)

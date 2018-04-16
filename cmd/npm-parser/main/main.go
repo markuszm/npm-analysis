@@ -34,7 +34,7 @@ func main() {
 	flag.Parse()
 
 	if *dbFlag == "mysql" {
-		db = initializeDB(&database.Mysql{}, "root:npm-analysis@/npm")
+		db = initializeDB(&database.Mysql{}, "root:npm-analysis@/npm?collation=utf8mb4_unicode_ci")
 	}
 
 	if *dbFlag == "sqlite" {
@@ -78,13 +78,11 @@ func storePackageValue(value []byte, db *sql.DB) (string, error) {
 	jsonErr := json.Unmarshal(pkgVal, &pkg)
 	storeErr := database.StorePackage(db, pkg)
 	if storeErr != nil {
-		return pkg.Name, storeErr
-	}
-	if jsonErr != nil {
-		return pkg.Name, jsonErr
+		log.Fatal(pkg.Name, storeErr)
+		return pkg.Name, errors.Wrap(storeErr, jsonErr.Error())
 	}
 
-	return pkg.Name, nil
+	return pkg.Name, jsonErr
 }
 
 func initializeDB(databaseInitializer database.Database, settings string) *sql.DB {
