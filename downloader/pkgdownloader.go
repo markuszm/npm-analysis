@@ -31,6 +31,8 @@ func DownloadPackage(downloadPath, url string) {
 
 	file, createFileErr := os.Create(filePath)
 
+	defer file.Close()
+
 	if createFileErr != nil {
 		log.Fatal(errors.Wrapf(createFileErr, "Error downloading package: %s", url))
 	}
