@@ -2,30 +2,19 @@ package database
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 )
-
-func InitDB(filepath string) (*sql.DB, error) {
-	db, openError := sql.Open("sqlite3", filepath)
-	if openError != nil {
-		return nil, errors.Wrap(openError, "Error opening database")
-	}
-	return db, nil
-}
 
 func CreateTables(db *sql.DB) error {
 	create_packages := `
 	CREATE TABLE IF NOT EXISTS packages(
-		id TEXT NOT NULL PRIMARY KEY,
-		name TEXT,
-		version TEXT,
-		description TEXT,
-		homepage TEXT,
-		license TEXT, 
-		main TEXT,
-		_npmVersion TEXT,
-		_nodeVersion TEXT		
+		name VARCHAR(255) NOT NULL PRIMARY KEY,
+		version VARCHAR(255),
+		description TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+		homepage VARCHAR(255),
+		main VARCHAR(255),
+		npmVersion VARCHAR(255),
+		nodeVersion VARCHAR(255)		
 	);
 	`
 	_, execErr := db.Exec(create_packages)
@@ -35,9 +24,9 @@ func CreateTables(db *sql.DB) error {
 
 	create_keywords := `
 	CREATE TABLE IF NOT EXISTS keywords(
-		name TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_keywords)
@@ -45,12 +34,25 @@ func CreateTables(db *sql.DB) error {
 		return errors.Wrap(execErr, "Error creating keywords table")
 	}
 
+	create_license := `
+	CREATE TABLE IF NOT EXISTS license(
+		type VARCHAR(255),
+		url VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
+	);
+	`
+	_, execErr = db.Exec(create_license)
+	if execErr != nil {
+		return errors.Wrap(execErr, "Error creating license table")
+	}
+
 	create_npmUser := `
 	CREATE TABLE IF NOT EXISTS npmUser(
-		name TEXT,
-		email TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		email VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_npmUser)
@@ -60,11 +62,11 @@ func CreateTables(db *sql.DB) error {
 
 	create_authors := `
 	CREATE TABLE IF NOT EXISTS authors(
-		name TEXT,
-		email TEXT,
-		url TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		email VARCHAR(255),
+		url VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_authors)
@@ -74,11 +76,11 @@ func CreateTables(db *sql.DB) error {
 
 	create_contributors := `
 	CREATE TABLE IF NOT EXISTS contributors(
-		name TEXT,
-		email TEXT,
-		url TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		email VARCHAR(255),
+		url VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_contributors)
@@ -88,11 +90,11 @@ func CreateTables(db *sql.DB) error {
 
 	create_maintainers := `
 	CREATE TABLE IF NOT EXISTS maintainers(
-		name TEXT,
-		email TEXT,
-		url TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		email VARCHAR(255),
+		url VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_maintainers)
@@ -102,9 +104,9 @@ func CreateTables(db *sql.DB) error {
 
 	create_files := `
 	CREATE TABLE IF NOT EXISTS files(
-		name TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_files)
@@ -116,10 +118,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_repository := `
 	CREATE TABLE IF NOT EXISTS repository(
-		type TEXT,
-		url TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		type VARCHAR(255),
+		url VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_repository)
@@ -129,10 +131,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_scripts := `
 	CREATE TABLE IF NOT EXISTS scripts(
-		name TEXT,
-		command TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		command VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_scripts)
@@ -142,10 +144,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_bin := `
 	CREATE TABLE IF NOT EXISTS bin(
-		name TEXT,
-		path TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		path VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_bin)
@@ -155,9 +157,9 @@ func CreateTables(db *sql.DB) error {
 
 	create_man := `
 	CREATE TABLE IF NOT EXISTS man(
-		name TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_man)
@@ -167,10 +169,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_dependencies := `
 	CREATE TABLE IF NOT EXISTS dependencies(
-		name TEXT,
-		version TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		version VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_dependencies)
@@ -180,10 +182,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_devDependencies := `
 	CREATE TABLE IF NOT EXISTS devDependencies(
-		name TEXT,
-		version TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		version VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_devDependencies)
@@ -193,10 +195,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_peerDependencies := `
 	CREATE TABLE IF NOT EXISTS peerDependencies(
-		name TEXT,
-		version TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		version VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_peerDependencies)
@@ -206,10 +208,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_bundledDependencies := `
 	CREATE TABLE IF NOT EXISTS bundledDependencies(
-		name TEXT,
-		version TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		version VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_bundledDependencies)
@@ -219,10 +221,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_optionalDependencies := `
 	CREATE TABLE IF NOT EXISTS optionalDependencies(
-		name TEXT,
-		version TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		version VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_optionalDependencies)
@@ -232,10 +234,10 @@ func CreateTables(db *sql.DB) error {
 
 	create_engines := `
 	CREATE TABLE IF NOT EXISTS engines(
-		name TEXT,
-		version TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		version VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_engines)
@@ -245,9 +247,9 @@ func CreateTables(db *sql.DB) error {
 
 	create_os := `
 	CREATE TABLE IF NOT EXISTS os(
-		name TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_os)
@@ -257,9 +259,9 @@ func CreateTables(db *sql.DB) error {
 
 	create_cpu := `
 	CREATE TABLE IF NOT EXISTS cpu(
-		name TEXT,
-		package TEXT,
-		FOREIGN KEY(package) REFERENCES packages(id)
+		name VARCHAR(255),
+		package VARCHAR(255),
+		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
 	_, execErr = db.Exec(create_cpu)
