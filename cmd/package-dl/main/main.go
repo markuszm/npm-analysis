@@ -6,13 +6,17 @@ import (
 	"net/http"
 	"log"
 	"fmt"
+	"os"
+	urlParser "net/url"
+	"path"
+	"io"
 )
 
 const PATH_TO_NPM_JSON = "/home/markus/npm-analysis/npm_download.json"
 
-var downloadSize int64 = 0
+const DOWNLOAD_PATH = "/media/markus/Seagate Expansion Drive/NPM"
 
-const workerNumber = 100
+const workerNumber = 10
 
 func main() {
 	data, readErr := ioutil.ReadFile(PATH_TO_NPM_JSON)
@@ -21,18 +25,13 @@ func main() {
 		panic("Read error")
 	}
 
-	contentLengthCh := make(chan int64, 10000)
-
-	finishedSum := make(chan bool)
 	finishedWorker := make(chan bool)
 
 	jobs := make(chan string, 10000)
 
 	for w := 1; w <= workerNumber; w++ {
-		go worker(w, jobs, contentLengthCh, finishedWorker)
+		go worker(w, jobs, finishedWorker)
 	}
-
-	go addContentSize(contentLengthCh, finishedSum)
 
 	jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		tarballValue, _, _, parseErr := jsonparser.Get(value, "tarball")
@@ -50,34 +49,47 @@ func main() {
 		<-finishedWorker
 	}
 
-	close(contentLengthCh)
-
-	<-finishedSum
-
-	println(downloadSize)
+	fmt.Println("Finished Downloading")
 }
 
-func worker(id int, jobs chan string, contentLengthCh chan int64, finished chan bool) {
+func worker(id int, jobs chan string, finished chan bool) {
 	for j := range jobs {
-		contentLength := getContentLength(j)
-		contentLengthCh <- contentLength
+		downloadPackage(j)
 		fmt.Println("worker", id, "finished job", j)
 	}
 	finished <- true
 }
 
-func getContentLength(url string) int64 {
-	resp, requestErr := http.Head(url)
+func downloadPackage(url string) {
+	parsedUrl, parseErr := urlParser.Parse(url)
+
+	if parseErr != nil {
+		log.Fatal(parseErr)
+	}
+
+	fileName := path.Base(parsedUrl.Path)
+	filePath := path.Join(DOWNLOAD_PATH, fileName)
+	if _, err := os.Stat(filePath); err == nil {
+		// path exists already - skip
+		return
+	}
+	resp, requestErr := http.Get(url)
 	if requestErr != nil {
 		log.Fatal(requestErr)
 	}
-	contentLength := resp.ContentLength
-	return contentLength
-}
 
-func addContentSize(contentSizeCh chan int64, finished chan bool) {
-	for contentSize := range contentSizeCh {
-		downloadSize += contentSize
+	defer resp.Body.Close()
+
+	file, createFileErr := os.Create(filePath)
+
+	if createFileErr != nil {
+		log.Fatal("No write access to download path")
 	}
-	finished <- true
+
+	_, copyErr := io.Copy(file, resp.Body)
+
+	if copyErr != nil {
+		log.Fatal(copyErr)
+	}
+
 }
