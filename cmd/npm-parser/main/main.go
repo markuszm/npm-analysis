@@ -24,17 +24,23 @@ const ERROR_PATH = "/home/markus/npm-analysis/errors.txt"
 
 const workerNumber = 100
 
+const MYSQL_USER = "root"
+
+const MYSQL_PW = "npm-analysis"
+
 var db *sql.DB
 
 var errorStr strings.Builder
 
 func main() {
-	dbFlag := flag.String("db", "sqlite", "name of db to use")
+	dbFlag := flag.String("db", "", "name of db to use")
 
 	flag.Parse()
 
 	if *dbFlag == "mysql" {
-		db = initializeDB(&database.Mysql{}, "root:npm-analysis@/npm?collation=utf8mb4_unicode_ci")
+		db = initializeDB(
+			&database.Mysql{},
+			fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_unicode_ci", MYSQL_USER, MYSQL_PW))
 	}
 
 	if *dbFlag == "sqlite" {
@@ -76,10 +82,10 @@ func storePackageValue(value []byte, db *sql.DB) (string, error) {
 	pkgVal, _, _, _ := jsonparser.Get(value, "value")
 	var pkg model.Package
 	jsonErr := json.Unmarshal(pkgVal, &pkg)
+
 	storeErr := database.StorePackage(db, pkg)
 	if storeErr != nil {
-		log.Fatal(pkg.Name, storeErr)
-		return pkg.Name, errors.Wrap(storeErr, jsonErr.Error())
+		log.Fatal(pkg.Name, " ", storeErr, string(value))
 	}
 
 	return pkg.Name, jsonErr
@@ -100,13 +106,8 @@ func initializeDB(databaseInitializer database.Database, settings string) *sql.D
 
 func worker(id int, jobs chan []byte, finished chan bool) {
 	for j := range jobs {
-		name, storeErr := storePackageValue(j, db)
-		if storeErr != nil {
-			fmt.Printf("%s - %s \n", storeErr, string(j))
-			errorStr.WriteString(fmt.Sprintf("%s - %s \n", storeErr, string(j)))
-			continue
-		}
-		fmt.Println("worker", id, "finished job", name)
+		name, _ := storePackageValue(j, db)
+		log.Println("worker", id, "finished job", name)
 	}
 	finished <- true
 }

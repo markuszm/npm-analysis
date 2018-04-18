@@ -12,7 +12,7 @@ const PATH_TO_NPM_JSON = "/home/markus/npm-analysis/npm_download.json"
 
 const DOWNLOAD_PATH = "/media/markus/Seagate Expansion Drive/NPM"
 
-const workerNumber = 10
+const workerNumber = 5
 
 func main() {
 	data, readErr := ioutil.ReadFile(PATH_TO_NPM_JSON)
@@ -52,6 +52,7 @@ func worker(id int, jobs chan string, finished chan bool) {
 	for j := range jobs {
 		err := downloader.DownloadPackage(DOWNLOAD_PATH, j)
 		if err != nil {
+			log.Println(err)
 			jobs <- j
 			continue
 		}

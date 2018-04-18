@@ -6,9 +6,9 @@ import (
 )
 
 func CreateTables(db *sql.DB) error {
-	create_packages := `
+	createPackages := `
 	CREATE TABLE IF NOT EXISTS packages(
-		name VARCHAR(255) NOT NULL PRIMARY KEY,
+		name VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL PRIMARY KEY,
 		version VARCHAR(255),
 		description TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
 		homepage TEXT,
@@ -17,274 +17,288 @@ func CreateTables(db *sql.DB) error {
 		nodeVersion VARCHAR(255)		
 	);
 	`
-	_, execErr := db.Exec(create_packages)
+	_, execErr := db.Exec(createPackages)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating package table")
 	}
 
-	create_keywords := `
+	createKeywords := `
 	CREATE TABLE IF NOT EXISTS keywords(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_keywords)
+	_, execErr = db.Exec(createKeywords)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating keywords table")
 	}
 
-	create_license := `
+	createLicense := `
 	CREATE TABLE IF NOT EXISTS license(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		type VARCHAR(255),
 		url VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_license)
+	_, execErr = db.Exec(createLicense)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating license table")
 	}
 
-	create_npmUser := `
+	createNpmUser := `
 	CREATE TABLE IF NOT EXISTS npmUser(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		email VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_npmUser)
+	_, execErr = db.Exec(createNpmUser)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating npmUser table")
 	}
 
-	create_authors := `
+	createAuthors := `
 	CREATE TABLE IF NOT EXISTS authors(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		email VARCHAR(255),
 		url VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_authors)
+	_, execErr = db.Exec(createAuthors)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating authors table")
 	}
 
-	create_contributors := `
+	createContributors := `
 	CREATE TABLE IF NOT EXISTS contributors(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		email VARCHAR(255),
 		url VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_contributors)
+	_, execErr = db.Exec(createContributors)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating contributors table")
 	}
 
-	create_maintainers := `
+	createMaintainers := `
 	CREATE TABLE IF NOT EXISTS maintainers(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		email VARCHAR(255),
 		url VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_maintainers)
+	_, execErr = db.Exec(createMaintainers)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating maintainers table")
 	}
 
-	create_files := `
+	createFiles := `
 	CREATE TABLE IF NOT EXISTS files(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name TEXT,
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_files)
+	_, execErr = db.Exec(createFiles)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating files table")
 	}
 
 	// TODO: add directories table if necessary
 
-	create_repository := `
+	createRepository := `
 	CREATE TABLE IF NOT EXISTS repository(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		type VARCHAR(255),
 		url TEXT,
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_repository)
+	_, execErr = db.Exec(createRepository)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating repository table")
 	}
 
-	create_scripts := `
+	createScripts := `
 	CREATE TABLE IF NOT EXISTS scripts(
 		name VARCHAR(255),
 		command TEXT,
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_scripts)
+	_, execErr = db.Exec(createScripts)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating scripts table")
 	}
 
-	create_bin := `
+	createBin := `
 	CREATE TABLE IF NOT EXISTS bin(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		path TEXT,
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_bin)
+	_, execErr = db.Exec(createBin)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating bin table")
 	}
 
-	create_man := `
+	createMan := `
 	CREATE TABLE IF NOT EXISTS man(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name TEXT,
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_man)
+	_, execErr = db.Exec(createMan)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating man table")
 	}
 
-	create_dependencies := `
+	createDependencies := `
 	CREATE TABLE IF NOT EXISTS dependencies(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_dependencies)
+	_, execErr = db.Exec(createDependencies)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating dependencies table")
 	}
 
-	create_devDependencies := `
+	createDevDependencies := `
 	CREATE TABLE IF NOT EXISTS devDependencies(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_devDependencies)
+	_, execErr = db.Exec(createDevDependencies)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating devDependencies table")
 	}
 
-	create_peerDependencies := `
+	createPeerDependencies := `
 	CREATE TABLE IF NOT EXISTS peerDependencies(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_peerDependencies)
+	_, execErr = db.Exec(createPeerDependencies)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating peerDependencies table")
 	}
 
-	create_bundledDependencies := `
+	createBundledDependencies := `
 	CREATE TABLE IF NOT EXISTS bundledDependencies(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_bundledDependencies)
+	_, execErr = db.Exec(createBundledDependencies)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating bundledDependencies table")
 	}
 
-	create_optionalDependencies := `
+	createOptionalDependencies := `
 	CREATE TABLE IF NOT EXISTS optionalDependencies(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_optionalDependencies)
+	_, execErr = db.Exec(createOptionalDependencies)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating optionalDependencies table")
 	}
 
-	create_engines := `
+	createEngines := `
 	CREATE TABLE IF NOT EXISTS engines(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		version VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_engines)
+	_, execErr = db.Exec(createEngines)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating engines table")
 	}
 
-	create_os := `
+	createOs := `
 	CREATE TABLE IF NOT EXISTS os(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_os)
+	_, execErr = db.Exec(createOs)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating os table")
 	}
 
-	create_cpu := `
+	createCpu := `
 	CREATE TABLE IF NOT EXISTS cpu(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
-		package VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`
-	_, execErr = db.Exec(create_cpu)
+	_, execErr = db.Exec(createCpu)
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating cpu table")
+	}
+
+	createDist := `
+	CREATE TABLE IF NOT EXISTS dist(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+		shasum VARCHAR(255),
+		tarball TEXT,
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
+		FOREIGN KEY(package) REFERENCES packages(name)
+	);
+	`
+	_, execErr = db.Exec(createDist)
+	if execErr != nil {
+		return errors.Wrap(execErr, "Error creating dist table")
 	}
 
 	// TODO: add publishConfig table if necessary
