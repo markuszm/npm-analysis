@@ -1,30 +1,29 @@
 package downloader
 
 import (
-	"log"
 	"github.com/pkg/errors"
-	"path"
-	"os"
-	"net/http"
 	"io"
-	"strings"
+	"net/http"
 	"net/url"
+	"os"
+	"path"
+	"strings"
 )
 
-func DownloadPackage(downloadPath, url string) {
+func DownloadPackage(downloadPath, url string) error {
 	fileName, fileNameErr := GeneratePackageFileName(url)
 	if fileNameErr != nil {
-		log.Fatal(errors.Wrapf(fileNameErr, "Error downloading package: %s", url))
+		return errors.Wrapf(fileNameErr, "Error generating package filename: %s", url)
 	}
 
 	filePath := path.Join(downloadPath, fileName)
 	if _, err := os.Stat(filePath); err == nil {
 		// path exists already - skip
-		return
+		return nil
 	}
 	resp, requestErr := http.Get(url)
 	if requestErr != nil {
-		log.Fatal(errors.Wrapf(requestErr, "Error downloading package: %s", url))
+		return errors.Wrapf(requestErr, "Error downloading package: %s", url)
 	}
 
 	defer resp.Body.Close()
@@ -34,15 +33,16 @@ func DownloadPackage(downloadPath, url string) {
 	defer file.Close()
 
 	if createFileErr != nil {
-		log.Fatal(errors.Wrapf(createFileErr, "Error downloading package: %s", url))
+		return errors.Wrapf(createFileErr, "Error downloading package: %s", url)
 	}
 
 	_, copyErr := io.Copy(file, resp.Body)
 
 	if copyErr != nil {
-		log.Fatal(errors.Wrapf(copyErr, "Error downloading package: %s", url))
+		return errors.Wrapf(copyErr, "Error downloading package: %s", url)
 	}
 
+	return nil
 }
 
 func GeneratePackageFileName(downloadUrl string) (string, error) {
@@ -60,4 +60,3 @@ func GeneratePackageFileName(downloadUrl string) (string, error) {
 	}
 	return fileName, nil
 }
-

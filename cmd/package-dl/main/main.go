@@ -1,10 +1,10 @@
 package main
 
 import (
-	"io/ioutil"
-	"github.com/buger/jsonparser"
-	"log"
 	"fmt"
+	"github.com/buger/jsonparser"
+	"io/ioutil"
+	"log"
 	"npm-analysis/downloader"
 )
 
@@ -50,9 +50,12 @@ func main() {
 
 func worker(id int, jobs chan string, finished chan bool) {
 	for j := range jobs {
-		downloader.DownloadPackage(DOWNLOAD_PATH, j)
+		err := downloader.DownloadPackage(DOWNLOAD_PATH, j)
+		if err != nil {
+			jobs <- j
+			continue
+		}
 		fmt.Println("worker", id, "finished job", j)
 	}
 	finished <- true
 }
-
