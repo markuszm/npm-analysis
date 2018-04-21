@@ -1,11 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"log"
 	"npm-analysis/downloader"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 )
 
 const PATH_TO_NPM_JSON = "/home/markus/npm-analysis/npm_download.json"
@@ -15,40 +18,67 @@ const DOWNLOAD_PATH = "/media/markus/Seagate Expansion Drive/NPM"
 const workerNumber = 5
 
 func main() {
-	data, readErr := ioutil.ReadFile(PATH_TO_NPM_JSON)
+	files, readErr := ioutil.ReadFile(PATH_TO_NPM_JSON)
 
 	if readErr != nil {
 		panic("Read error")
 	}
 
-	finishedWorker := make(chan bool)
+	workerWait := sync.WaitGroup{}
 
-	jobs := make(chan string, 10000)
+	stop := make(chan bool, 1)
 
+	jobs := make(chan string)
+
+	// gracefully stop downloads
+	var gracefulStop = make(chan os.Signal)
+	signal.Notify(gracefulStop, syscall.SIGTERM)
+	signal.Notify(gracefulStop, syscall.SIGINT)
+	go func() {
+		<-gracefulStop
+		log.Println("sigtem received")
+		stop <- true
+	}()
+
+	// start workers
 	for w := 1; w <= workerNumber; w++ {
-		go worker(w, jobs, finishedWorker)
+		workerWait.Add(1)
+		go worker(w, jobs, &workerWait)
 	}
 
-	jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-		tarballValue, _, _, parseErr := jsonparser.Get(value, "tarball")
-		if parseErr != nil {
-			log.Fatal(parseErr)
-		}
+	go extractTarballs(files, jobs, stop)
 
-		url := string(tarballValue)
-		jobs <- url
-	})
+	// wait for workers to finish
+	workerWait.Wait()
 
-	close(jobs)
-
-	for r := 1; r <= workerNumber; r++ {
-		<-finishedWorker
-	}
-
-	fmt.Println("Finished Downloading")
+	log.Println("Finished Downloading")
 }
 
-func worker(id int, jobs chan string, finished chan bool) {
+func extractTarballs(data []byte, jobs chan string, stop chan bool) {
+	stopReceived := false
+	jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+		select {
+		case <-stop:
+			stopReceived = true
+			return
+		default:
+			if stopReceived {
+				return
+			}
+			tarballValue, _, _, parseErr := jsonparser.Get(value, "tarball")
+			if parseErr != nil {
+				log.Fatal(parseErr)
+			}
+
+			url := string(tarballValue)
+			jobs <- url
+		}
+	})
+	close(jobs)
+	log.Println("closed jobs")
+}
+
+func worker(id int, jobs chan string, workerWait *sync.WaitGroup) {
 	for j := range jobs {
 		err := downloader.DownloadPackage(DOWNLOAD_PATH, j)
 		if err != nil {
@@ -56,7 +86,8 @@ func worker(id int, jobs chan string, finished chan bool) {
 			jobs <- j
 			continue
 		}
-		fmt.Println("worker", id, "finished job", j)
+		log.Println("worker", id, "finished job", j)
 	}
-	finished <- true
+	workerWait.Done()
+	log.Println("send finished worker ", id)
 }
