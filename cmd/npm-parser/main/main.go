@@ -14,6 +14,7 @@ import (
 	"npm-analysis/database/model"
 	"os"
 	"strings"
+	"sync"
 )
 
 const PATH_TO_NPM_JSON = "/home/markus/npm-analysis/npm-all.json"
@@ -34,17 +35,25 @@ var errorStr strings.Builder
 
 func main() {
 	dbFlag := flag.String("db", "", "name of db to use")
+	createFlag := flag.Bool("create", false, "create db scheme")
 
 	flag.Parse()
 
 	if *dbFlag == "mysql" {
 		db = initializeDB(
 			&database.Mysql{},
-			fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_unicode_ci", MYSQL_USER, MYSQL_PW))
+			fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
 	}
 
 	if *dbFlag == "sqlite" {
 		db = initializeDB(&database.Sqlite{}, DATABASE_PATH)
+	}
+
+	if *createFlag {
+		dbErr := createSchema(db)
+		if dbErr != nil {
+			log.Fatal(dbErr)
+		}
 	}
 
 	data, readErr := ioutil.ReadFile(PATH_TO_NPM_JSON)
@@ -55,23 +64,27 @@ func main() {
 
 	errorStr = strings.Builder{}
 
-	finishedWorker := make(chan bool)
+	workerWait := sync.WaitGroup{}
 
-	jobs := make(chan []byte, 10000)
+	jobs := make(chan []byte, 100)
 
 	for w := 1; w <= workerNumber; w++ {
-		go worker(w, jobs, finishedWorker)
+		workerWait.Add(1)
+		go worker(w, jobs, &errorStr, &workerWait)
 	}
 
+	count := 0
+
 	jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
+		count += 1
 		jobs <- value
 	}, "rows")
 
 	close(jobs)
 
-	for r := 1; r <= workerNumber; r++ {
-		<-finishedWorker
-	}
+	workerWait.Wait()
+
+	log.Println(count)
 
 	errFile, _ := os.Create(ERROR_PATH)
 	defer errFile.Close()
@@ -96,18 +109,20 @@ func initializeDB(databaseInitializer database.Database, settings string) *sql.D
 	if databaseInitErr != nil {
 		log.Fatal(databaseInitErr)
 	}
-	tableCreationErr := database.CreateTables(db)
-	if tableCreationErr != nil {
-		log.Fatal(tableCreationErr)
-	}
-
 	return db
 }
 
-func worker(id int, jobs chan []byte, finished chan bool) {
+func createSchema(db *sql.DB) error {
+	return database.CreateTables(db)
+}
+
+func worker(id int, jobs chan []byte, errorsStr *strings.Builder, workerWait *sync.WaitGroup) {
 	for j := range jobs {
-		name, _ := storePackageValue(j, db)
+		name, err := storePackageValue(j, db)
 		log.Println("worker", id, "finished job", name)
+		if err != nil {
+			errorsStr.WriteString(err.Error())
+		}
 	}
-	finished <- true
+	workerWait.Done()
 }

@@ -9,7 +9,7 @@ func StorePackage(db *sql.DB, pkg model.Package) error {
 	pkgName := pkg.Name
 
 	queryInsertPackage := `
-	REPLACE INTO packages(
+	INSERT INTO packages(
 		name,
 		version,
 		description,
@@ -18,6 +18,7 @@ func StorePackage(db *sql.DB, pkg model.Package) error {
 		npmVersion,
 		nodeVersion
 	) values(?, ?, ?, ?, ?, ?, ?)
+	ON DUPLICATE KEY UPDATE name = ?;
 	`
 
 	queryInsertDependencies := `
@@ -47,7 +48,7 @@ func StorePackage(db *sql.DB, pkg model.Package) error {
 
 	main := handleMainField(pkg)
 
-	_, execErr := tx.Exec(queryInsertPackage, pkg.Name, pkg.Version, pkg.Description, pkg.Homepage, main, pkg.NpmVersion, pkg.NodeVersion)
+	_, execErr := tx.Exec(queryInsertPackage, pkg.Name, pkg.Version, pkg.Description, pkg.Homepage, main, pkg.NpmVersion, pkg.NodeVersion, pkg.Name)
 	if execErr != nil {
 		return execErr
 	}
