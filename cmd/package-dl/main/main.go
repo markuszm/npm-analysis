@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"log"
 	"npm-analysis/downloader"
@@ -9,13 +8,15 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/buger/jsonparser"
 )
 
 const PATH_TO_NPM_JSON = "/home/markus/npm-analysis/npm_download.json"
 
 const DOWNLOAD_PATH = "/media/markus/Seagate Expansion Drive/NPM"
 
-const workerNumber = 5
+const workerNumber = 10
 
 func main() {
 	files, readErr := ioutil.ReadFile(PATH_TO_NPM_JSON)

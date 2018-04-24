@@ -13,3 +13,12 @@ services:
       - ./npmMysql:/var/lib/mysql
     ports:
       - 3306:3306
+
+  graph:
+    image: neo4j:3.3
+    restart: always
+    ports:
+      - 7474:7474
+      - 7687:7687
+    volumes:
+      - ./neo4j/data:/data
