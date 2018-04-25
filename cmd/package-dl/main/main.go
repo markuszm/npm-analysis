@@ -10,9 +10,10 @@ import (
 	"syscall"
 
 	"github.com/buger/jsonparser"
+	"npm-analysis/database/model"
 )
 
-const PATH_TO_NPM_JSON = "/home/markus/npm-analysis/npm_download.json"
+const PATH_TO_NPM_JSON = "/home/markus/npm-analysis/npm_download_shasum.json"
 
 const DOWNLOAD_PATH = "/media/markus/Seagate Expansion Drive/NPM"
 
@@ -29,7 +30,7 @@ func main() {
 
 	stop := make(chan bool, 1)
 
-	jobs := make(chan string)
+	jobs := make(chan model.Dist)
 
 	// gracefully stop downloads
 	var gracefulStop = make(chan os.Signal)
@@ -55,7 +56,7 @@ func main() {
 	log.Println("Finished Downloading")
 }
 
-func extractTarballs(data []byte, jobs chan string, stop chan bool) {
+func extractTarballs(data []byte, jobs chan model.Dist, stop chan bool) {
 	stopReceived := false
 	jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		select {
@@ -71,19 +72,27 @@ func extractTarballs(data []byte, jobs chan string, stop chan bool) {
 				log.Fatal(parseErr)
 			}
 
+			checksumValue, _, _, parseErr := jsonparser.Get(value, "shasum")
+			if parseErr != nil {
+				log.Fatal(parseErr)
+			}
+
 			url := string(tarballValue)
-			jobs <- url
+			checksum := string(checksumValue)
+			pkg := model.Dist{Url: url, Shasum: checksum}
+			jobs <- pkg
 		}
 	})
 	close(jobs)
 	log.Println("closed jobs")
 }
 
-func worker(id int, jobs chan string, workerWait *sync.WaitGroup) {
+func worker(id int, jobs chan model.Dist, workerWait *sync.WaitGroup) {
 	for j := range jobs {
 		err := downloader.DownloadPackage(DOWNLOAD_PATH, j)
 		if err != nil {
 			log.Println(err)
+			// this only works when there are more than 1 worker
 			jobs <- j
 			continue
 		}
