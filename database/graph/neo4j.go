@@ -31,11 +31,15 @@ func (d *Neo4JDatabase) InitDB(url string) error {
 }
 
 func (d *Neo4JDatabase) Exec(query string, args map[string]interface{}) (int64, error) {
-	result, err := d.conn.ExecNeo(query, args)
-	if err != nil {
-		return -1, nil
+	result, execErr := d.conn.ExecNeo(query, args)
+	if execErr != nil {
+		return -1, execErr
 	}
-	return result.RowsAffected()
+	rowsAffected, metaDataErr := result.RowsAffected()
+	if metaDataErr != nil {
+		return 0, nil
+	}
+	return rowsAffected, nil
 }
 
 func (d *Neo4JDatabase) ExecPipeline(queries []string, args ...map[string]interface{}) ([]int64, error) {
