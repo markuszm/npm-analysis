@@ -28,6 +28,8 @@ func main() {
 		log.Fatal(databaseInitErr)
 	}
 
+	InitGraphDatabase()
+
 	count := 0
 
 	workerWait := sync.WaitGroup{}
@@ -54,6 +56,18 @@ func main() {
 	log.Println(count)
 
 	workerWait.Wait()
+}
+
+func InitGraphDatabase() {
+	neo4JDatabase := graph.NewNeo4JDatabase()
+	initErr := neo4JDatabase.InitDB(NEO4J_URL)
+	if initErr != nil {
+		log.Fatal(initErr)
+	}
+
+	graph.Init(neo4JDatabase)
+
+	neo4JDatabase.Close()
 }
 
 func worker(workerId int, jobs chan model.Dependency, workerWait *sync.WaitGroup) {

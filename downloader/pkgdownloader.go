@@ -21,6 +21,7 @@ func DownloadPackage(downloadPath string, pkg model.Dist) error {
 		return errors.Wrapf(fileNameErr, "Error generating package filename: %s", pkgUrl)
 	}
 
+	// todo: create nested folders
 	packageFilePath := path.Join(downloadPath, packageFileName)
 	scopedFilePath := path.Join(downloadPath, scopedFileName)
 	if _, err := os.Stat(scopedFilePath); err == nil {
