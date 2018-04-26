@@ -47,7 +47,7 @@ func DownloadPackage(downloadPath string, pkg model.Dist) error {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized {
 		return errors.New("Not Found")
 	}
 
