@@ -18,9 +18,13 @@ const MYSQL_PW = "npm-analysis"
 
 const workerNumber = 100
 
+var depType string
+
 func main() {
-	depType := flag.String("type", "dependencies", "specify which type of dependency to insert")
+	depTypeFlag := flag.String("type", "dependencies", "specify which type of dependency to insert")
 	flag.Parse()
+
+	depType = *depTypeFlag
 
 	mysqlInitializer := &database.Mysql{}
 	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
@@ -41,7 +45,7 @@ func main() {
 		go worker(w, jobs, &workerWait)
 	}
 
-	dependencies, retrieveErr := database.GetDependencies(mysql, *depType)
+	dependencies, retrieveErr := database.GetDependencies(mysql, depType)
 
 	if retrieveErr != nil {
 		log.Fatal(retrieveErr)
@@ -78,7 +82,19 @@ func worker(workerId int, jobs chan model.Dependency, workerWait *sync.WaitGroup
 	}
 
 	for j := range jobs {
-		insertErr := graph.InsertDependency(neo4JDatabase, j)
+		var insertErr error
+		switch depType {
+		case "dependencies":
+			insertErr = graph.InsertDependency(neo4JDatabase, j)
+		case "bundledDependencies":
+			insertErr = graph.InsertBundledDependency(neo4JDatabase, j)
+		case "devDependencies":
+			insertErr = graph.InsertDevDependency(neo4JDatabase, j)
+		case "optionalDependencies":
+			insertErr = graph.InsertOptionalDependency(neo4JDatabase, j)
+		case "peerDependencies":
+			insertErr = graph.InsertPeerDependency(neo4JDatabase, j)
+		}
 		if insertErr != nil {
 			log.Println("ERROR:", insertErr, "with job", j)
 			// could access failure code from neo4j with .(messages.FailureMessage).Metadata["code"]
