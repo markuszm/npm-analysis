@@ -16,6 +16,11 @@ import (
 
 func DownloadPackage(downloadPath string, pkg model.Dist) error {
 	pkgUrl := pkg.Url
+
+	if !strings.Contains(pkg.Url, "registry.npmjs.org") {
+		return errors.New("Not Found")
+	}
+
 	packageFileName, scopedFileName, fileNameErr := GeneratePackageFileName(pkgUrl)
 	if fileNameErr != nil {
 		return errors.Wrapf(fileNameErr, "Error generating package filename: %s", pkgUrl)
