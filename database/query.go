@@ -8,9 +8,9 @@ import (
 	"npm-analysis/database/model"
 )
 
-func FindPackage(db *sql.DB, packageName string) (model.Package, error) {
-	var pkg model.Package
-	rows, err := db.Query("select * from packages where name = ?", packageName)
+func FindPackage(db *sql.DB, packageName string) (string, error) {
+	pkg := ""
+	rows, err := db.Query("select name from packages where name = ?", packageName)
 	if err != nil {
 		return pkg, err
 	}

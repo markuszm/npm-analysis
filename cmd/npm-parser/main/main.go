@@ -34,7 +34,7 @@ var db *sql.DB
 var errorStr strings.Builder
 
 func main() {
-	dbFlag := flag.String("db", "", "name of db to use")
+	dbFlag := flag.String("db", "mysql", "name of db to use")
 	createFlag := flag.Bool("create", false, "create db scheme")
 
 	flag.Parse()

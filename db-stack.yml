@@ -22,3 +22,6 @@ services:
       - 7687:7687
     volumes:
       - ./neo4j/data:/data
+    environment:
+      - NEO4J_dbms_memory_pagecache_size=4G
+      - NEO4J_dbms.memory.heap.max_size=12G
