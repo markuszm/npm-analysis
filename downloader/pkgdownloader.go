@@ -21,9 +21,13 @@ func DownloadPackage(downloadPath string, pkg model.Dist) error {
 		return errors.Wrapf(fileNameErr, "Error generating package filename: %s", pkgUrl)
 	}
 
-	// todo: create nested folders
-	packageFilePath := path.Join(downloadPath, packageFileName)
-	scopedFilePath := path.Join(downloadPath, scopedFileName)
+	nestedDir, mkDirErr := CreateNestedFolders(scopedFileName, downloadPath)
+	if mkDirErr != nil {
+		return errors.Wrapf(mkDirErr, "Could not create nested folders for %s", pkgUrl)
+	}
+
+	packageFilePath := path.Join(nestedDir, packageFileName)
+	scopedFilePath := path.Join(nestedDir, scopedFileName)
 	if _, err := os.Stat(scopedFilePath); err == nil {
 		// path exists already - but check integrity
 		// rename to package file name (because we change the name to a scoped name)
@@ -42,6 +46,10 @@ func DownloadPackage(downloadPath string, pkg model.Dist) error {
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return errors.New("Not Found")
+	}
 
 	file, createFileErr := os.Create(packageFilePath)
 
@@ -95,6 +103,21 @@ func VerifyIntegrity(shasum, filePath string) error {
 	}
 
 	return nil
+}
+
+func CreateNestedFolders(fileName, downloadPath string) (string, error) {
+	firstLetter := string(fileName[0])
+	secondLetter := ""
+	if len(fileName) > 1 {
+		secondLetter = string(fileName[1])
+	}
+
+	nestedDir := path.Join(downloadPath, firstLetter, secondLetter)
+	mkDirErr := os.MkdirAll(nestedDir, os.ModePerm)
+	if mkDirErr != nil {
+		return "", mkDirErr
+	}
+	return nestedDir, nil
 }
 
 func GeneratePackageFileName(downloadUrl string) (string, string, error) {
