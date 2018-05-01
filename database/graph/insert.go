@@ -14,16 +14,19 @@ func Init(database Database) error {
 	return nil
 }
 
+func InsertPackage(database Database, name string) error {
+	_, insertErr := database.Exec(`
+		MERGE (p:Package {name: {p1}})`, map[string]interface{}{"p1": name})
+	return insertErr
+}
+
 func InsertDependency(neo4JDatabase Database, dep model.Dependency) error {
 	_, insertErr := neo4JDatabase.Exec(`
 					MERGE (p1:Package {name: {p1}}) 
 					MERGE (p2:Package {name: {p2}})
 					MERGE (p1)-[:DEPEND {version: {version}}]->(p2)`,
 		map[string]interface{}{"p1": dep.PkgName, "p2": dep.Name, "version": dep.Version})
-	if insertErr != nil {
-		return insertErr
-	}
-	return nil
+	return insertErr
 }
 
 func InsertDevDependency(neo4JDatabase Database, dep model.Dependency) error {
@@ -32,10 +35,8 @@ func InsertDevDependency(neo4JDatabase Database, dep model.Dependency) error {
 					MERGE (p2:Package {name: {p2}})
 					MERGE (p1)-[:DEPEND_DEV {version: {version}}]->(p2)`,
 		map[string]interface{}{"p1": dep.PkgName, "p2": dep.Name, "version": dep.Version})
-	if insertErr != nil {
-		return insertErr
-	}
-	return nil
+	return insertErr
+
 }
 
 func InsertBundledDependency(neo4JDatabase Database, dep model.Dependency) error {
@@ -44,10 +45,8 @@ func InsertBundledDependency(neo4JDatabase Database, dep model.Dependency) error
 					MERGE (p2:Package {name: {p2}})
 					MERGE (p1)-[:DEPEND_BUNDLED {version: {version}}]->(p2)`,
 		map[string]interface{}{"p1": dep.PkgName, "p2": dep.Name, "version": dep.Version})
-	if insertErr != nil {
-		return insertErr
-	}
-	return nil
+	return insertErr
+
 }
 
 func InsertOptionalDependency(neo4JDatabase Database, dep model.Dependency) error {
@@ -56,10 +55,8 @@ func InsertOptionalDependency(neo4JDatabase Database, dep model.Dependency) erro
 					MERGE (p2:Package {name: {p2}})
 					MERGE (p1)-[:DEPEND_OPTIONAL {version: {version}}]->(p2)`,
 		map[string]interface{}{"p1": dep.PkgName, "p2": dep.Name, "version": dep.Version})
-	if insertErr != nil {
-		return insertErr
-	}
-	return nil
+	return insertErr
+
 }
 
 func InsertPeerDependency(neo4JDatabase Database, dep model.Dependency) error {
@@ -68,8 +65,5 @@ func InsertPeerDependency(neo4JDatabase Database, dep model.Dependency) error {
 					MERGE (p2:Package {name: {p2}})
 					MERGE (p1)-[:DEPEND_PEER {version: {version}}]->(p2)`,
 		map[string]interface{}{"p1": dep.PkgName, "p2": dep.Name, "version": dep.Version})
-	if insertErr != nil {
-		return insertErr
-	}
-	return nil
+	return insertErr
 }
