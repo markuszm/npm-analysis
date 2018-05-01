@@ -12,3 +12,7 @@
 *.out
 
 .idea
+
+# Docker volume folders
+neo4j
+npmMysql
