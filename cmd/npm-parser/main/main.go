@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"log"
 	"npm-analysis/database"
+	"npm-analysis/database/insert"
 	"npm-analysis/database/model"
 	"os"
 	"strings"
@@ -33,9 +34,14 @@ var db *sql.DB
 
 var errorStr strings.Builder
 
+var insertType string
+
+var typeMapping = sync.Map{}
+
 func main() {
 	dbFlag := flag.String("db", "mysql", "name of db to use")
 	createFlag := flag.Bool("create", false, "create db scheme")
+	flag.StringVar(&insertType, "insert", "package", "what value to insert")
 
 	flag.Parse()
 
@@ -86,17 +92,41 @@ func main() {
 
 	log.Println(count)
 
+	//typeMapping.Range(func(key, value interface{}) bool {
+	//	log.Println(key, "count: ", value)
+	//	return true
+	//})
+
 	errFile, _ := os.Create(ERROR_PATH)
 	defer errFile.Close()
 	io.Copy(errFile, strings.NewReader(errorStr.String()))
 }
 
-func storePackageValue(value []byte, db *sql.DB) (string, error) {
+func storePackageValues(value []byte, db *sql.DB) (string, error) {
 	pkgVal, _, _, _ := jsonparser.Get(value, "value")
 	var pkg model.Package
 	jsonErr := json.Unmarshal(pkgVal, &pkg)
 
-	storeErr := database.StorePackage(db, pkg)
+	//t := reflect.TypeOf(pkg.Maintainers)
+	//if val, ok := typeMapping.Load(t); !ok {
+	//	typeMapping.Store(t, 1)
+	//} else {
+	//	typeMapping.Store(t, val.(int)+1)
+	//}
+
+	var storeErr error
+
+	switch insertType {
+	case "package":
+		storeErr = insert.StorePackage(db, pkg)
+	case "dependencies":
+		storeErr = insert.StoreDependencies(db, pkg)
+	case "authors":
+		storeErr = insert.StoreAuthor(db, pkg)
+	case "maintainers":
+		storeErr = insert.StoreMaintainers(db, pkg)
+	}
+
 	if storeErr != nil {
 		log.Fatal(pkg.Name, " ", storeErr, string(value))
 	}
@@ -118,7 +148,7 @@ func createSchema(db *sql.DB) error {
 
 func worker(id int, jobs chan []byte, errorsStr *strings.Builder, workerWait *sync.WaitGroup) {
 	for j := range jobs {
-		name, err := storePackageValue(j, db)
+		name, err := storePackageValues(j, db)
 		log.Println("worker", id, "finished job", name)
 		if err != nil {
 			errorsStr.WriteString(err.Error())

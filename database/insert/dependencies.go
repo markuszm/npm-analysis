@@ -1,25 +1,12 @@
-package database
+package insert
 
 import (
 	"database/sql"
 	"npm-analysis/database/model"
 )
 
-func StorePackage(db *sql.DB, pkg model.Package) error {
+func StoreDependencies(db *sql.DB, pkg model.Package) error {
 	pkgName := pkg.Name
-
-	queryInsertPackage := `
-	INSERT INTO packages(
-		name,
-		version,
-		description,
-		homepage,
-		main,
-		npmVersion,
-		nodeVersion
-	) values(?, ?, ?, ?, ?, ?, ?)
-	ON DUPLICATE KEY UPDATE name = ?;
-	`
 
 	queryInsertDependencies := `
 		INSERT INTO dependencies(name, version, package) values(?,?,?)
@@ -37,20 +24,9 @@ func StorePackage(db *sql.DB, pkg model.Package) error {
 		INSERT INTO optionalDependencies(name, version, package) values(?,?,?)
 	`
 
-	queryInsertDist := `
-		INSERT INTO dist(shasum, tarball, package) VALUES (?,?,?)
-	`
-
 	tx, txErr := db.Begin()
 	if txErr != nil {
 		return txErr
-	}
-
-	main := handleMainField(pkg)
-
-	_, execErr := tx.Exec(queryInsertPackage, pkg.Name, pkg.Version, pkg.Description, pkg.Homepage, main, pkg.NpmVersion, pkg.NodeVersion, pkg.Name)
-	if execErr != nil {
-		return execErr
 	}
 
 	insertDepStmt, insertErr := insertDependencies(tx, queryInsertDependencies, pkgName, pkg.Dependencies)
@@ -83,11 +59,6 @@ func StorePackage(db *sql.DB, pkg model.Package) error {
 	}
 	defer insertOptDepStmt.Close()
 
-	_, execErr = tx.Exec(queryInsertDist, pkg.Distribution.Shasum, pkg.Distribution.Tarball, pkgName)
-	if execErr != nil {
-		return execErr
-	}
-
 	commitErr := tx.Commit()
 	if commitErr != nil {
 		return commitErr
@@ -109,25 +80,4 @@ func insertDependencies(tx *sql.Tx, query, pkgName string, deps map[string]strin
 		}
 	}
 	return insertDepStmt, nil
-}
-
-func handleMainField(pkg model.Package) interface{} {
-	main := pkg.Main
-	switch main.(type) {
-	case string:
-		main = main.(string)
-	case []interface{}:
-		str := ""
-		for _, v := range main.([]interface{}) {
-			str += v.(string) + ","
-		}
-		main = str
-	case map[string]interface{}:
-		str := ""
-		for k, v := range main.(map[string]interface{}) {
-			str += "Key: " + k + " Value: " + v.(string) + " , "
-		}
-		main = str
-	}
-	return main
 }
