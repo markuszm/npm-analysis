@@ -7,7 +7,28 @@ func Init(database Database) error {
 	if err != nil {
 		return err
 	}
+
+	_, err = database.Exec("CREATE CONSTRAINT ON (a:Author) ASSERT a.name IS UNIQUE", nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = database.Exec("CREATE CONSTRAINT ON (m:Maintainer) ASSERT m.name IS UNIQUE", nil)
+	if err != nil {
+		return err
+	}
+
 	_, err = database.Exec("CREATE INDEX ON :Package(name)", nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = database.Exec("CREATE INDEX ON :Maintainer(name)", nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = database.Exec("CREATE INDEX ON :Author(name)", nil)
 	if err != nil {
 		return err
 	}
@@ -17,6 +38,28 @@ func Init(database Database) error {
 func InsertPackage(database Database, name string) error {
 	_, insertErr := database.Exec(`
 		MERGE (p:Package {name: {p1}})`, map[string]interface{}{"p1": name})
+	return insertErr
+}
+
+func InsertAuthorRelation(database Database, person model.Person, pkgName string) error {
+	if person.Name == "" {
+		return nil
+	}
+	_, insertErr := database.Exec(`
+		MERGE (a:Author {name: {name}})
+		MERGE (p:Package {name: {p}})
+		MERGE (a)-[:CREATED]->(p)`, map[string]interface{}{"name": person.Name, "email": person.Email, "url": person.Url, "p": pkgName})
+	return insertErr
+}
+
+func InsertMaintainerRelation(database Database, person model.Person, pkgName string) error {
+	if person.Name == "" {
+		return nil
+	}
+	_, insertErr := database.Exec(`
+		MERGE (m:Maintainer {name: {name}})
+		MERGE (p:Package {name: {p}})
+		MERGE (m)-[:CREATED]->(p)`, map[string]interface{}{"name": person.Name, "email": person.Email, "url": person.Url, "p": pkgName})
 	return insertErr
 }
 

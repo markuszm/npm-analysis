@@ -84,3 +84,77 @@ func GetPackages(db *sql.DB) ([]string, error) {
 	}
 	return packages, nil
 }
+
+type Person struct {
+	Name, Email, Url, PackageName string
+}
+
+func GetAuthors(db *sql.DB) ([]Person, error) {
+	var authors []Person
+
+	rows, err := db.Query("select * from authors")
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to query dependencies")
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			id                        int
+			name, email, url, pkgName string
+		)
+		err := rows.Scan(&id, &name, &email, &url, &pkgName)
+		if err != nil {
+			return authors, errors.Wrap(err, "Could not get info from row")
+		}
+
+		author := Person{
+			Name:        name,
+			Email:       email,
+			Url:         url,
+			PackageName: pkgName,
+		}
+
+		authors = append(authors, author)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return authors, nil
+}
+
+func GetMaintainers(db *sql.DB) ([]Person, error) {
+	var maintainers []Person
+
+	rows, err := db.Query("select * from maintainers")
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to query dependencies")
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			id                        int
+			name, email, url, pkgName string
+		)
+		err := rows.Scan(&id, &name, &email, &url, &pkgName)
+		if err != nil {
+			return maintainers, errors.Wrap(err, "Could not get info from row")
+		}
+
+		author := Person{
+			Name:        name,
+			Email:       email,
+			Url:         url,
+			PackageName: pkgName,
+		}
+
+		maintainers = append(maintainers, author)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return maintainers, nil
+}
