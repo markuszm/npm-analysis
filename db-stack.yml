@@ -1,8 +1,6 @@
-# Use root/example as user/password credentials
 version: '3.1'
 
 services:
-
   db:
     image: mysql
     restart: always
@@ -24,6 +22,17 @@ services:
       - ./neo4j/data:/data
       - ./neo4j/plugins:/plugins
     environment:
-      - NEO4J_dbms_memory_heap_initialSize=8G
-      - NEO4J_dbms_memory_heap_maxSize=8G
+      - NEO4J_dbms_memory_heap_initialSize=4G
+      - NEO4J_dbms_memory_heap_maxSize=4G
       - NEO4J_dbms_security_procedures_unrestricted=algo.*,apoc.\\\*
+
+  mongodb:
+    image: mongo:3.6
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: npm
+      MONGO_INITDB_ROOT_PASSWORD: npm123
+    volumes:
+      - ./mongo/data:/data/db

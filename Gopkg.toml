@@ -48,3 +48,11 @@
 [[constraint]]
   name = "github.com/johnnadratowski/golang-neo4j-bolt-driver"
   version = "0.1.0"
+
+[[constraint]]
+  name = "github.com/mongodb/mongo-go-driver"
+  version = "0.0.4"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"
