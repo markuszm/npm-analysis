@@ -2,7 +2,7 @@ package insert
 
 import (
 	"database/sql"
-	"npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/database/model"
 )
 
 func StorePackage(db *sql.DB, pkg model.Package) error {

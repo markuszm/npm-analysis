@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"log"
-	"npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/database/model"
 )
 
 func FindPackage(db *sql.DB, packageName string) (string, error) {

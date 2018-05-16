@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/database/model"
 	"os"
 	"path"
 	"strings"

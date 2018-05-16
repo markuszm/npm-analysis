@@ -3,7 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"log"
-	"npm-analysis/downloader"
+	"github.com/markuszm/npm-analysis/downloader"
 	"os"
 	"os/signal"
 	"sync"
@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"github.com/buger/jsonparser"
 	"io"
-	"npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/database/model"
 	"path"
 	"strings"
 )

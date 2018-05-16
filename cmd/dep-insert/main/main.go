@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"npm-analysis/database"
-	"npm-analysis/database/graph"
-	"npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/database"
+	"github.com/markuszm/npm-analysis/database/graph"
+	"github.com/markuszm/npm-analysis/database/model"
 	"sync"
 )
 

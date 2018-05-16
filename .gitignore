@@ -16,7 +16,7 @@
 # Docker volume folders
 neo4j
 npmMysql
-mongo
+mongod
 
 *.tar.gz
 neo4j*.zip

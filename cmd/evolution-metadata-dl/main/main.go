@@ -10,7 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"npm-analysis/database"
+	"github.com/markuszm/npm-analysis/database"
 	"strings"
 	"sync"
 )

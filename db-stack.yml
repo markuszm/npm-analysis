@@ -35,4 +35,4 @@ services:
       MONGO_INITDB_ROOT_USERNAME: npm
       MONGO_INITDB_ROOT_PASSWORD: npm123
     volumes:
-      - ./mongo/data:/data/db
+      - ./mongod/data:/data/db
