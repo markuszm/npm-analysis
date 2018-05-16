@@ -1,25 +1,18 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
-	"context"
 	"fmt"
-	"github.com/mongodb/mongo-go-driver/bson"
-	"github.com/mongodb/mongo-go-driver/mongo"
-	"io/ioutil"
-	"log"
-	"net/http"
 	"github.com/markuszm/npm-analysis/database"
-	"strings"
+	"github.com/markuszm/npm-analysis/database/evolution"
+	"log"
 	"sync"
 )
-
-const npmUrl = "https://registry.npmjs.com/"
 
 const MYSQL_USER = "root"
 
 const MYSQL_PW = "npm-analysis"
+
+const MONGOURL = "mongodb://npm:npm123@localhost:27017"
 
 const workerNumber = 25
 
@@ -60,81 +53,37 @@ func main() {
 }
 
 func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
-	mongodb, err := mongo.NewClient("mongodb://npm:npm123@localhost:27017")
-	mongodb.Connect(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer mongodb.Disconnect(context.Background())
+	mongoDB := evolution.NewMongoDB(MONGOURL, "npm", "packages")
+	mongoDB.Connect()
+	defer mongoDB.Disconnect()
 
-	log.Printf("logged in mongo workerId %v", workerId)
-
-	metadataDB := mongodb.Database("npm").Collection("packages")
+	log.Printf("logged in mongo - workerId %v", workerId)
 
 	for pkg := range jobs {
-		pkgName := pkg
-		if strings.Contains(pkg, "/") {
-			pkgName = strings.Replace(pkg, "/", "%2f", -1)
-		}
-
-		result := metadataDB.FindOne(context.Background(), bson.NewDocument(
-			bson.EC.String("key", pkg),
-		))
-
-		err = result.Decode(nil)
-		if err == nil {
+		if val, err := mongoDB.FindOneSimple("key", pkg); val != "" && err == nil {
 			log.Printf("Package %v already exists", pkg)
 			continue
 		}
 
-		url := npmUrl + pkgName
-
-		doc, err := getMetadataFromNpm(url)
+		doc, err := evolution.GetMetadataFromNpm(pkg)
 		if err != nil {
 			log.Printf("ERROR: %v", err)
 			jobs <- pkg
 		}
 
-		var b bytes.Buffer
-		gz := gzip.NewWriter(&b)
-		if _, err := gz.Write([]byte(doc)); err != nil {
-			log.Fatal(err)
-		}
-		if err := gz.Flush(); err != nil {
-			log.Fatal(err)
-		}
-		if err := gz.Close(); err != nil {
-			log.Fatal(err)
-		}
-
-		data := b.String()
-
-		_, err = metadataDB.InsertOne(context.Background(), bson.NewDocument(
-			bson.EC.String("key", pkg),
-			bson.EC.String("value", data),
-		))
+		data, err := evolution.Compress(doc)
 		if err != nil {
-			log.Fatalf("ERROR: inserting %v into mongo with %s", pkgName, err)
+			log.Fatalf(err.Error())
+		}
+
+		mongoDB.InsertOneSimple(pkg, data)
+		if err != nil {
+			log.Fatalf("ERROR: inserting %v into mongo with %s", pkg, err)
 		}
 
 		log.Printf("Inserted package metadata of %v worker: %v", pkg, workerId)
-
 	}
 
 	workerWait.Done()
 	log.Println("send finished worker ", workerId)
-}
-
-func getMetadataFromNpm(url string) (string, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	doc := string(bytes)
-	return doc, err
 }
