@@ -56,8 +56,9 @@ func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 	mongoDB := evolution.NewMongoDB(MONGOURL, "npm", "packages")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
-
 	log.Printf("logged in mongo - workerId %v", workerId)
+
+	ensureIndex(mongoDB)
 
 	for pkg := range jobs {
 		if val, err := mongoDB.FindOneSimple("key", pkg); val != "" && err == nil {
@@ -86,4 +87,12 @@ func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 
 	workerWait.Done()
 	log.Println("send finished worker ", workerId)
+}
+
+func ensureIndex(mongoDB *evolution.MongoDB) {
+	indexResp, err := mongoDB.EnsureSingleIndex("key")
+	if err != nil {
+		log.Fatalf("Index cannot be created with ERROR: %v", err)
+	}
+	log.Printf("Index created %v", indexResp)
 }

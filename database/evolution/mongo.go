@@ -31,6 +31,13 @@ func (m *MongoDB) Disconnect() {
 	m.client.Disconnect(context.Background())
 }
 
+func (m *MongoDB) EnsureSingleIndex(key string) (string, error) {
+	return m.activeCollection.Indexes().CreateOne(context.Background(),
+		mongo.IndexModel{
+			Keys: bson.NewDocument(
+				bson.EC.Int32(key, 1))})
+}
+
 func (m *MongoDB) FindOneSimple(key, value string) (string, error) {
 	result := m.activeCollection.FindOne(context.Background(), bson.NewDocument(
 		bson.EC.String(key, value),
