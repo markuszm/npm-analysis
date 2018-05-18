@@ -56,10 +56,51 @@ func (m *MongoDB) FindOneSimple(key, value string) (string, error) {
 	return element.Value().StringValue(), nil
 }
 
+func (m *MongoDB) FindAll() ([]Document, error) {
+	var result []Document
+	cursor, err := m.activeCollection.Find(context.Background(), bson.NewDocument())
+	if err != nil {
+		return result, err
+	}
+	for cursor.Next(context.Background()) {
+		val, err := m.decodeValue(cursor)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, val)
+	}
+	return result, nil
+}
+
+func (m *MongoDB) decodeValue(cur mongo.Cursor) (Document, error) {
+	val := bson.NewDocument()
+
+	err := cur.Decode(val)
+	if err != nil {
+		return Document{}, err
+	}
+	element, err := val.Lookup("value")
+	if err != nil {
+		return Document{}, err
+	}
+	value := element.Value().StringValue()
+
+	element, err = val.Lookup("key")
+	if err != nil {
+		return Document{}, err
+	}
+	key := element.Value().StringValue()
+	return Document{Key: key, Value: value}, nil
+}
+
 func (m *MongoDB) InsertOneSimple(key, value string) error {
 	_, err := m.activeCollection.InsertOne(context.Background(), bson.NewDocument(
 		bson.EC.String("key", key),
 		bson.EC.String("value", value),
 	))
 	return err
+}
+
+type Document struct {
+	Key, Value string
 }

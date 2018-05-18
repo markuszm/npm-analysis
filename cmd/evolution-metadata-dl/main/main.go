@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/evolution"
+	"github.com/markuszm/npm-analysis/util"
 	"log"
 	"sync"
 )
@@ -72,7 +73,7 @@ func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 			jobs <- pkg
 		}
 
-		data, err := evolution.Compress(doc)
+		data, err := util.Compress(doc)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
