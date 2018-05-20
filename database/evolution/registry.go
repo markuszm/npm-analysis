@@ -1,8 +1,8 @@
 package evolution
 
 import (
-	"net/http"
 	"io/ioutil"
+	"net/http"
 	"strings"
 )
 
@@ -31,4 +31,3 @@ func GetMetadataFromNpm(pkg string) (string, error) {
 func transformScopedName(pkg string) string {
 	return strings.Replace(pkg, "/", "%2f", -1)
 }
-

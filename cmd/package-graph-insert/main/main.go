@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/graph"
 	"github.com/markuszm/npm-analysis/database/model"
+	"log"
 	"sync"
 )
 

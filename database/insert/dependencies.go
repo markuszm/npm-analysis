@@ -17,9 +17,10 @@ func StoreDependencies(db *sql.DB, pkg model.Package) error {
 	queryInsertPeerDependencies := `
 		INSERT INTO peerDependencies(name, version, package) values(?,?,?)
 	`
-	queryInsertBundledDependencies := `
-		INSERT INTO bundledDependencies(name, version, package) values(?,?,?)
-	`
+	//queryInsertBundledDependencies := `
+	//	INSERT INTO bundledDependencies(name, version, package) values(?,?,?)
+	//`
+
 	queryInsertOptionalDependencies := `
 		INSERT INTO optionalDependencies(name, version, package) values(?,?,?)
 	`
@@ -47,11 +48,11 @@ func StoreDependencies(db *sql.DB, pkg model.Package) error {
 	}
 	defer insertPeerDepStmt.Close()
 
-	insertBundledDepStmt, insertErr := insertDependencies(tx, queryInsertBundledDependencies, pkgName, pkg.BundledDependencies)
-	if insertErr != nil {
-		return insertErr
-	}
-	defer insertBundledDepStmt.Close()
+	//insertBundledDepStmt, insertErr := insertDependencies(tx, queryInsertBundledDependencies, pkgName, pkg.BundledDependencies)
+	//if insertErr != nil {
+	//	return insertErr
+	//}
+	//defer insertBundledDepStmt.Close()
 
 	insertOptDepStmt, insertErr := insertDependencies(tx, queryInsertOptionalDependencies, pkgName, pkg.OptionalDependencies)
 	if insertErr != nil {

@@ -3,9 +3,9 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"github.com/markuszm/npm-analysis/database/model"
 	"github.com/pkg/errors"
 	"log"
-	"github.com/markuszm/npm-analysis/database/model"
 )
 
 func FindPackage(db *sql.DB, packageName string) (string, error) {

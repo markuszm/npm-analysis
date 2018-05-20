@@ -3,12 +3,12 @@ package downloader
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"github.com/markuszm/npm-analysis/database/model"
 	"github.com/pkg/errors"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"github.com/markuszm/npm-analysis/database/model"
 	"os"
 	"path"
 	"strings"

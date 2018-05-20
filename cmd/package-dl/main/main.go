@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/markuszm/npm-analysis/downloader"
 	"io/ioutil"
 	"log"
-	"github.com/markuszm/npm-analysis/downloader"
 	"os"
 	"os/signal"
 	"sync"
@@ -11,8 +11,8 @@ import (
 
 	"fmt"
 	"github.com/buger/jsonparser"
-	"io"
 	"github.com/markuszm/npm-analysis/database/model"
+	"io"
 	"path"
 	"strings"
 )
