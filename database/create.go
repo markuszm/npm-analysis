@@ -305,3 +305,23 @@ func CreateTables(db *sql.DB) error {
 
 	return nil
 }
+
+func CreateLicenseTable(db *sql.DB) error {
+	createLicense := `
+	CREATE TABLE IF NOT EXISTS licenseVersion(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
+		version TEXT,
+		releaseTime TIMESTAMP, 
+		license TEXT,
+		FOREIGN KEY(package) REFERENCES packages(name)
+	);
+	`
+
+	_, err := db.Exec(createLicense)
+	if err != nil {
+		return errors.Wrap(err, "Error creating licenseVersion table")
+	}
+
+	return nil
+}
