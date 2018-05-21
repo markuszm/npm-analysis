@@ -307,7 +307,7 @@ func CreateTables(db *sql.DB) error {
 }
 
 func CreateLicenseTable(db *sql.DB) error {
-	createLicense := `
+	query := `
 	CREATE TABLE IF NOT EXISTS licenseVersion(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
@@ -318,9 +318,30 @@ func CreateLicenseTable(db *sql.DB) error {
 	);
 	`
 
-	_, err := db.Exec(createLicense)
+	_, err := db.Exec(query)
 	if err != nil {
 		return errors.Wrap(err, "Error creating licenseVersion table")
+	}
+
+	return nil
+}
+
+func CreateMaintainersTable(db *sql.DB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS maintainersVersion(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+		name VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
+		changeType VARCHAR(255),
+		version TEXT,
+		releaseTime TIMESTAMP, 
+		FOREIGN KEY(package) REFERENCES packages(name)
+	);
+	`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		return errors.Wrap(err, "Error creating maintainersVersion table")
 	}
 
 	return nil

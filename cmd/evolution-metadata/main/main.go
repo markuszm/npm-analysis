@@ -30,10 +30,13 @@ var typeMapping = sync.Map{}
 
 var DEBUG bool
 
+var insertType string
+
 var db *sql.DB
 
 func main() {
 	flag.BoolVar(&DEBUG, "debug", false, "DEBUG output")
+	flag.StringVar(&insertType, "insert", "license", "type to insert")
 	flag.Parse()
 
 	mysqlInitializer := &database.Mysql{}
@@ -41,9 +44,16 @@ func main() {
 	if databaseInitErr != nil {
 		log.Fatal(databaseInitErr)
 	}
-	err := database.CreateLicenseTable(mysql)
-	if err != nil {
-		log.Fatal(err)
+
+	var createError error
+	switch insertType {
+	case "license":
+		createError = database.CreateLicenseTable(mysql)
+	case "maintainers":
+		createError = database.CreateMaintainersTable(mysql)
+	}
+	if createError != nil {
+		log.Fatal(createError)
 	}
 
 	db = mysql
@@ -131,31 +141,53 @@ func processDocument(doc evolution.Document) int {
 		createTypeMapping(metadata)
 	}
 
-	var versions []insert.License
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatalf("document process error, %v with error %v", metadata, r)
+		}
+	}()
 
+	var insertError error
+	switch insertType {
+	case "license":
+		insertError = insertLicenses(metadata)
+	case "maintainers":
+		insertError = insertMaintainers(metadata)
+	}
+
+	if insertError != nil {
+		log.Fatalf("ERROR: inserting into database with %v", insertError)
+	}
+
+	return len(metadata.Versions)
+}
+
+func insertLicenses(metadata model.Metadata) error {
+	var licenses []insert.License
 	for version, data := range metadata.Versions {
 		license := evolution.ProcessLicense(data)
 		if license == "" {
 			license = evolution.ProcessLicenses(data)
 		}
 		timeForVersion := evolution.ParseTime(metadata, data.Version)
-		versions = append(versions, insert.License{PkgName: data.Name, License: license, Version: version, Time: timeForVersion})
+		licenses = append(licenses, insert.License{PkgName: data.Name, License: license, Version: version, Time: timeForVersion})
 	}
+	err := insert.StoreLicenseWithVersion(db, licenses)
+	return err
+}
 
-	err = insert.StoreLicenseWithVersion(db, versions)
+func insertMaintainers(metadata model.Metadata) error {
+	_, err := evolution.ProcessMaintainers(metadata)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("ERROR: Processing maintainers package: %v with error: %v", metadata.Name, err)
 	}
-
-	return len(metadata.Versions)
+	// TODO: insert change list into database
+	return nil
 }
 
 func createTypeMapping(metadata model.Metadata) {
-	for k, val := range metadata.Time {
-		t := reflect.TypeOf(val)
-		if t.String() != "string" {
-			log.Print(k, val)
-		}
+	for _, val := range metadata.Versions {
+		t := reflect.TypeOf(val.Maintainers)
 		if val, ok := typeMapping.Load(t); !ok {
 			typeMapping.Store(t, 1)
 		} else {

@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/blang/semver"
+  packages = ["."]
+  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
+  version = "v3.5.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/buger/jsonparser"
   packages = ["."]
@@ -97,6 +103,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "209241b6ddca2e867a0555b03c7d9c0e497d9317cd59b615540b5db992b7ecd9"
+  inputs-digest = "204ab238b43916a941996d44a09361fc2ef2e5648d7f7c2990024395ebd9be8e"
   solver-name = "gps-cdcl"
   solver-version = 1
