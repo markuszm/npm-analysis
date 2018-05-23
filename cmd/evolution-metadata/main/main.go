@@ -51,8 +51,11 @@ func main() {
 	case "license":
 		createError = database.CreateLicenseTable(mysql)
 	case "maintainers":
-		createError = database.CreateMaintainersTable(mysql)
+		createError = database.CreateMaintainerChangeTable(mysql)
+	case "dependencies":
+		createError = database.CreateDependencyChangeTable(mysql)
 	}
+
 	if createError != nil {
 		log.Fatal(createError)
 	}
@@ -153,7 +156,9 @@ func processDocument(doc database.Document) int {
 	case "license":
 		insertError = insertLicenses(metadata)
 	case "maintainers":
-		insertError = insertMaintainers(metadata)
+		insertError = insertMaintainersChanges(metadata)
+	case "dependencies":
+		insertError = insertDependencyChanges(metadata)
 	}
 
 	if insertError != nil {
@@ -177,26 +182,41 @@ func insertLicenses(metadata model.Metadata) error {
 	return err
 }
 
-func insertMaintainers(metadata model.Metadata) error {
+func insertMaintainersChanges(metadata model.Metadata) error {
 	maintainerChanges, err := evolution.ProcessMaintainersTimeSorted(metadata)
 	if err != nil {
-		log.Fatalf("ERROR: Processing maintainers package: %v with error: %v", metadata.Name, err)
+		log.Fatalf("ERROR: Processing maintainers in package: %v with error: %v", metadata.Name, err)
 	}
 	err = insert.StoreMaintainerChange(db, maintainerChanges)
 	if err != nil {
-		log.Fatalf("ERROR: inserting maintainer changes on package %v with error: %v", metadata.Name, err)
+		log.Fatalf("ERROR: inserting maintainer changes of package %v with error: %v", metadata.Name, err)
+	}
+	return nil
+}
+
+func insertDependencyChanges(metadata model.Metadata) error {
+	dependencyChanges, err := evolution.ProcessDependencies(metadata)
+	if err != nil {
+		log.Fatalf("ERROR: Processing dependencies in package: %v with error: %v", metadata.Name, err)
+	}
+	err = insert.StoreDependencyChanges(db, dependencyChanges)
+	if err != nil {
+		log.Fatalf("ERROR: inserting dependency changes of package %v with error: %v", metadata.Name, err)
 	}
 	return nil
 }
 
 func createTypeMapping(metadata model.Metadata) {
 	for _, val := range metadata.Versions {
-		t := reflect.TypeOf(val.Maintainers)
-		if val, ok := typeMapping.Load(t); !ok {
-			typeMapping.Store(t, 1)
-		} else {
-			typeMapping.Store(t, val.(int)+1)
+		for _, v := range val.Dependencies {
+			t := reflect.TypeOf(v)
+			if val, ok := typeMapping.Load(t); !ok {
+				typeMapping.Store(t, 1)
+			} else {
+				typeMapping.Store(t, val.(int)+1)
+			}
 		}
+
 	}
 }
 

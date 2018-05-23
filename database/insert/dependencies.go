@@ -2,6 +2,7 @@ package insert
 
 import (
 	"database/sql"
+	"github.com/markuszm/npm-analysis/evolution"
 	"github.com/markuszm/npm-analysis/model"
 )
 
@@ -81,4 +82,35 @@ func insertDependencies(tx *sql.Tx, query, pkgName string, deps map[string]strin
 		}
 	}
 	return insertDepStmt, nil
+}
+
+func StoreDependencyChanges(db *sql.DB, changes []evolution.DependencyChange) error {
+	tx, txErr := db.Begin()
+	if txErr != nil {
+		return txErr
+	}
+
+	queryInsertMaintainer := `
+		INSERT INTO dependencyChanges(dependency, depVersion, depVersionPrev, package, changeType, version,releaseTime) values(?,?,?,?,?,?,?)
+	`
+
+	insertStmt, prepareErr := tx.Prepare(queryInsertMaintainer)
+	if prepareErr != nil {
+		return prepareErr
+	}
+	defer insertStmt.Close()
+
+	for _, c := range changes {
+		_, insertErr := insertStmt.Exec(c.DependencyName, c.DependencyVersion, c.DependencyVersionPrev, c.PackageName, c.ChangeType, c.PackageVersion, c.ReleaseTime)
+		if insertErr != nil {
+			return insertErr
+		}
+	}
+
+	commitErr := tx.Commit()
+	if commitErr != nil {
+		return commitErr
+	}
+
+	return nil
 }
