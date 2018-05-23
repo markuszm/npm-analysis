@@ -177,11 +177,14 @@ func insertLicenses(metadata model.Metadata) error {
 }
 
 func insertMaintainers(metadata model.Metadata) error {
-	_, err := evolution.ProcessMaintainers(metadata)
+	maintainerChanges, err := evolution.ProcessMaintainers(metadata)
 	if err != nil {
 		log.Fatalf("ERROR: Processing maintainers package: %v with error: %v", metadata.Name, err)
 	}
-	// TODO: insert change list into database
+	err = insert.StoreMaintainerChange(db, maintainerChanges)
+	if err != nil {
+		log.Fatalf("ERROR: inserting maintainer changes on package %v with error: %v", metadata.Name, err)
+	}
 	return nil
 }
 

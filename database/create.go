@@ -328,7 +328,7 @@ func CreateLicenseTable(db *sql.DB) error {
 
 func CreateMaintainersTable(db *sql.DB) error {
 	query := `
-	CREATE TABLE IF NOT EXISTS maintainersVersion(
+	CREATE TABLE IF NOT EXISTS maintainerChanges(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
 		name VARCHAR(255),
 		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
