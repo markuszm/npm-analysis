@@ -6,14 +6,15 @@ import (
 	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
-	"github.com/markuszm/npm-analysis/database/evolution"
 	"github.com/markuszm/npm-analysis/database/insert"
-	"github.com/markuszm/npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/evolution"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/util"
 	"io/ioutil"
 	"log"
 	"os"
 	"reflect"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -58,7 +59,7 @@ func main() {
 
 	db = mysql
 
-	mongoDB := evolution.NewMongoDB(MONGOURL, "npm", "packages")
+	mongoDB := database.NewMongoDB(MONGOURL, "npm", "packages")
 
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
@@ -78,7 +79,7 @@ func main() {
 
 	workerWait := sync.WaitGroup{}
 
-	jobs := make(chan evolution.Document, 100)
+	jobs := make(chan database.Document, 100)
 
 	results := make(chan int, workerNumber)
 
@@ -109,7 +110,7 @@ func main() {
 	log.Printf("%v Versions", sumVersions)
 }
 
-func worker(id int, jobs chan evolution.Document, resultChan chan int, workerWait *sync.WaitGroup) {
+func worker(id int, jobs chan database.Document, resultChan chan int, workerWait *sync.WaitGroup) {
 	versions := 0
 	for j := range jobs {
 		versions += processDocument(j)
@@ -118,7 +119,7 @@ func worker(id int, jobs chan evolution.Document, resultChan chan int, workerWai
 	workerWait.Done()
 }
 
-func processDocument(doc evolution.Document) int {
+func processDocument(doc database.Document) int {
 	val, err := util.Decompress(doc.Value)
 	if err != nil {
 		log.Fatalf("ERROR: Decompressing: %v", err)
@@ -143,7 +144,7 @@ func processDocument(doc evolution.Document) int {
 
 	defer func() {
 		if r := recover(); r != nil {
-			log.Fatalf("document process error, %v with error %v", metadata, r)
+			log.Fatalf("document process error, %v \n with error %v \n Stack: %v", val, r, string(debug.Stack()))
 		}
 	}()
 
@@ -169,7 +170,7 @@ func insertLicenses(metadata model.Metadata) error {
 		if license == "" {
 			license = evolution.ProcessLicenses(data)
 		}
-		timeForVersion := evolution.ParseTime(metadata, data.Version)
+		timeForVersion := evolution.GetTimeForVersion(metadata, data.Version)
 		licenses = append(licenses, insert.License{PkgName: data.Name, License: license, Version: version, Time: timeForVersion})
 	}
 	err := insert.StoreLicenseWithVersion(db, licenses)
@@ -177,7 +178,7 @@ func insertLicenses(metadata model.Metadata) error {
 }
 
 func insertMaintainers(metadata model.Metadata) error {
-	maintainerChanges, err := evolution.ProcessMaintainers(metadata)
+	maintainerChanges, err := evolution.ProcessMaintainersTimeSorted(metadata)
 	if err != nil {
 		log.Fatalf("ERROR: Processing maintainers package: %v with error: %v", metadata.Name, err)
 	}

@@ -3,7 +3,7 @@ package evolution
 import (
 	"encoding/json"
 	"github.com/blang/semver"
-	"github.com/markuszm/npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/model"
 	"io/ioutil"
 	"testing"
 )
@@ -40,7 +40,15 @@ func TestVersionParsing(t *testing.T) {
 	}
 }
 
-func TestMaintainerRegex(t *testing.T) {
+func TestMaintainerRegexFull(t *testing.T) {
+	sampleMaintainer := "rreverser"
+	person := parseSingleMaintainerStr(sampleMaintainer)
+	if person.Name != "rreverser" {
+		t.Errorf("expected rreverser but got %v", person.Name)
+	}
+}
+
+func TestMaintainerRegexOnlyName(t *testing.T) {
 	sampleMaintainer := "Aadit M Shah (https://aaditmshah.github.io/) <aaditmshah@fastmail.fm>"
 	person := parseSingleMaintainerStr(sampleMaintainer)
 	if person.Name != "Aadit M Shah" {
@@ -59,7 +67,7 @@ func TestMaintainerChangeList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	changes, err := ProcessMaintainers(testPackage)
+	changes, err := ProcessMaintainersTimeSorted(testPackage)
 	if err != nil {
 		t.Fatal(err)
 	}

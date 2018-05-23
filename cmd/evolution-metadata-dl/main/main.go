@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
-	"github.com/markuszm/npm-analysis/database/evolution"
+	"github.com/markuszm/npm-analysis/evolution"
 	"github.com/markuszm/npm-analysis/util"
 	"log"
 	"sync"
@@ -54,7 +54,7 @@ func main() {
 }
 
 func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
-	mongoDB := evolution.NewMongoDB(MONGOURL, "npm", "packages")
+	mongoDB := database.NewMongoDB(MONGOURL, "npm", "packages")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 	log.Printf("logged in mongo - workerId %v", workerId)
@@ -90,7 +90,7 @@ func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 	log.Println("send finished worker ", workerId)
 }
 
-func ensureIndex(mongoDB *evolution.MongoDB) {
+func ensureIndex(mongoDB *database.MongoDB) {
 	indexResp, err := mongoDB.EnsureSingleIndex("key")
 	if err != nil {
 		log.Fatalf("Index cannot be created with ERROR: %v", err)

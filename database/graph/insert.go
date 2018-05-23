@@ -1,6 +1,6 @@
 package graph
 
-import "github.com/markuszm/npm-analysis/database/model"
+import "github.com/markuszm/npm-analysis/model"
 
 func Init(database Database) error {
 	_, err := database.Exec("CREATE CONSTRAINT ON (p:Package) ASSERT p.name IS UNIQUE", nil)

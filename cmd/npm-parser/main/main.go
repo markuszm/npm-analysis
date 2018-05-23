@@ -8,7 +8,7 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/insert"
-	"github.com/markuszm/npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/graph"
-	"github.com/markuszm/npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/model"
 	"log"
 	"sync"
 )

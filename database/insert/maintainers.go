@@ -2,8 +2,8 @@ package insert
 
 import (
 	"database/sql"
-	"github.com/markuszm/npm-analysis/database/evolution"
-	"github.com/markuszm/npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/evolution"
+	"github.com/markuszm/npm-analysis/model"
 )
 
 func StoreMaintainers(db *sql.DB, pkg model.Package) error {

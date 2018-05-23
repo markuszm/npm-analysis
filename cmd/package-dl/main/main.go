@@ -11,7 +11,7 @@ import (
 
 	"fmt"
 	"github.com/buger/jsonparser"
-	"github.com/markuszm/npm-analysis/database/model"
+	"github.com/markuszm/npm-analysis/model"
 	"io"
 	"path"
 	"strings"
