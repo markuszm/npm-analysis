@@ -1,29 +1,15 @@
 package evolution
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/blang/semver"
-	"github.com/markuszm/npm-analysis/model"
-	"io/ioutil"
 	"testing"
 )
-
-const lodashTestJsonPath = "./testfiles/lodash-all.json"
-const expressTestJsonPath = "./testfiles/express-all.json"
 
 // TODO: move tests to respective testfile
 
 func TestLicenseParsing(t *testing.T) {
-	bytes, err := ioutil.ReadFile(lodashTestJsonPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var testPackage model.Metadata
-	err = json.Unmarshal(bytes, &testPackage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testPackage := MustReadMetadataFromTestFile(lodashTestJsonPath, t)
 
 	for _, v := range testPackage.Versions {
 		license := ProcessLicense(v)
@@ -61,15 +47,7 @@ func TestMaintainerRegexOnlyName(t *testing.T) {
 }
 
 func TestRegressionMaintainerChange(t *testing.T) {
-	bytes, err := ioutil.ReadFile(lodashTestJsonPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var testPackage model.Metadata
-	err = json.Unmarshal(bytes, &testPackage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testPackage := MustReadMetadataFromTestFile(lodashTestJsonPath, t)
 
 	regressionString := `[{lodash jdalton 2012-04-23 16:37:12.603 +0000 UTC ADDED 0.1.0} {lodash mathias 2013-09-23 05:57:42.595 +0000 UTC ADDED 2.1.0} {lodash phated 2013-09-23 05:57:42.595 +0000 UTC ADDED 2.1.0} {lodash kitcambridge 2013-09-23 05:57:42.595 +0000 UTC ADDED 2.1.0} {lodash d10 2015-01-30 09:33:51.621 +0000 UTC ADDED 3.0.1} {lodash kitcambridge 2016-01-12 23:13:20.539 +0000 UTC REMOVED 4.0.0} {lodash d10 2016-01-12 23:13:20.539 +0000 UTC REMOVED 4.0.0} {lodash jridgewell 2016-02-16 07:10:16.856 +0000 UTC ADDED 4.4.0} {lodash jridgewell 2016-05-02 15:01:02.189 +0000 UTC REMOVED 4.11.2} {lodash phated 2016-10-31 06:49:14.797 +0000 UTC REMOVED 4.16.5}]`
 
@@ -87,15 +65,7 @@ func TestRegressionMaintainerChange(t *testing.T) {
 }
 
 func TestDependencyChangeList(t *testing.T) {
-	bytes, err := ioutil.ReadFile(expressTestJsonPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var testPackage model.Metadata
-	err = json.Unmarshal(bytes, &testPackage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testPackage := MustReadMetadataFromTestFile(expressTestJsonPath, t)
 
 	changes, err := ProcessDependencies(testPackage)
 	if err != nil {

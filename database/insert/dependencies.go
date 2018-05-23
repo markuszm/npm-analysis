@@ -90,11 +90,11 @@ func StoreDependencyChanges(db *sql.DB, changes []evolution.DependencyChange) er
 		return txErr
 	}
 
-	queryInsertMaintainer := `
+	queryInsert := `
 		INSERT INTO dependencyChanges(dependency, depVersion, depVersionPrev, package, changeType, version,releaseTime) values(?,?,?,?,?,?,?)
 	`
 
-	insertStmt, prepareErr := tx.Prepare(queryInsertMaintainer)
+	insertStmt, prepareErr := tx.Prepare(queryInsert)
 	if prepareErr != nil {
 		return prepareErr
 	}

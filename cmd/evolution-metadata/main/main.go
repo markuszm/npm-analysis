@@ -37,13 +37,18 @@ var db *sql.DB
 
 func main() {
 	flag.BoolVar(&DEBUG, "debug", false, "DEBUG output")
-	flag.StringVar(&insertType, "insert", "license", "type to insert")
+	flag.StringVar(&insertType, "insert", "", "type to insert")
 	flag.Parse()
 
 	mysqlInitializer := &database.Mysql{}
 	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
 	if databaseInitErr != nil {
 		log.Fatal(databaseInitErr)
+	}
+
+	if insertType == "" {
+		log.Print("WARNING: No insert type selected")
+		log.Print("Options are: license, maintainers, dependencies, version")
 	}
 
 	var createError error
@@ -54,6 +59,8 @@ func main() {
 		createError = database.CreateMaintainerChangeTable(mysql)
 	case "dependencies":
 		createError = database.CreateDependencyChangeTable(mysql)
+	case "version":
+		createError = database.CreateVersionChangeTable(mysql)
 	}
 
 	if createError != nil {
@@ -159,6 +166,8 @@ func processDocument(doc database.Document) int {
 		insertError = insertMaintainersChanges(metadata)
 	case "dependencies":
 		insertError = insertDependencyChanges(metadata)
+	case "version":
+		insertError = insertVersionChanges(metadata)
 	}
 
 	if insertError != nil {
@@ -202,6 +211,18 @@ func insertDependencyChanges(metadata model.Metadata) error {
 	err = insert.StoreDependencyChanges(db, dependencyChanges)
 	if err != nil {
 		log.Fatalf("ERROR: inserting dependency changes of package %v with error: %v", metadata.Name, err)
+	}
+	return nil
+}
+
+func insertVersionChanges(metadata model.Metadata) error {
+	versionChanges, err := evolution.ProcessVersions(metadata)
+	if err != nil {
+		log.Fatalf("ERROR: Processing versions in package: %v with error: %v", metadata.Name, err)
+	}
+	err = insert.StoreVersionChanges(db, versionChanges)
+	if err != nil {
+		log.Fatalf("ERROR: inserting version changes of package %v with error: %v", metadata.Name, err)
 	}
 	return nil
 }

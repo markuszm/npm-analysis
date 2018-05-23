@@ -68,3 +68,24 @@ func CreateDependencyChangeTable(db *sql.DB) error {
 
 	return nil
 }
+
+func CreateVersionChangeTable(db *sql.DB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS versionChanges(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
+		version VARCHAR(255),
+		versionPrev VARCHAR(255),
+		versionDiff VARCHAR(255),
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
+		releaseTime TIMESTAMP, 
+		FOREIGN KEY(package) REFERENCES packages(name)
+	);	
+	`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		return errors.Wrap(err, "Error creating versionChange table")
+	}
+
+	return nil
+}
