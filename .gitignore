@@ -14,9 +14,4 @@
 .idea
 
 # Docker volume folders
-neo4j
-npmMysql
-mongod
-
-*.tar.gz
-neo4j*.zip
+db-data
