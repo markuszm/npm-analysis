@@ -27,7 +27,7 @@ func ProcessDependencies(metadata model.Metadata) ([]DependencyChange, error) {
 	}
 	semver.Sort(semvers)
 
-	for _, s := range semvers {
+	for i, s := range semvers {
 		pkgVer := s.String()
 		pkgData := versions[pkgVer]
 		dependencies := pkgData.Dependencies
@@ -37,6 +37,11 @@ func ProcessDependencies(metadata model.Metadata) ([]DependencyChange, error) {
 
 			// dependency added
 			if dependenciesSet[d] == "" {
+				changeType := "ADDED"
+				// if first existing version then changeType is initial instead
+				if i == 0 {
+					changeType = "INITIAL"
+				}
 				dependencyChange := DependencyChange{
 					PackageName:           metadata.Name,
 					PackageVersion:        pkgVer,
@@ -44,7 +49,7 @@ func ProcessDependencies(metadata model.Metadata) ([]DependencyChange, error) {
 					DependencyVersion:     parsedVer,
 					DependencyVersionPrev: "",
 					ReleaseTime:           GetTimeForVersion(metadata, pkgVer),
-					ChangeType:            "ADDED",
+					ChangeType:            changeType,
 				}
 				changeList = append(changeList, dependencyChange)
 				seenDependencies[d] = true

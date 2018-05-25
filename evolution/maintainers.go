@@ -27,19 +27,23 @@ func ProcessMaintainersSemVerSorted(metadata model.Metadata) ([]MaintainerChange
 	}
 	semver.Sort(semvers)
 
-	for _, v := range semvers {
+	for i, v := range semvers {
 		vStr := v.String()
 		pkgData := versions[vStr]
 		maintainers := ParseMaintainers(pkgData.Maintainers)
 		seenMaintainers := make(map[string]bool, 0)
 		for _, m := range maintainers {
 			if !maintainersSet[m.Name] {
+				changeType := "ADDED"
+				if i == 0 {
+					changeType = "INITIAL"
+				}
 				maintainersSet[m.Name] = true
 				maintainerChange := MaintainerChange{
 					PackageName: metadata.Name,
 					Name:        m.Name,
 					ReleaseTime: GetTimeForVersion(metadata, vStr),
-					ChangeType:  "ADDED",
+					ChangeType:  changeType,
 					Version:     vStr,
 				}
 				changeList = append(changeList, maintainerChange)
@@ -85,14 +89,18 @@ func ProcessMaintainersTimeSorted(metadata model.Metadata) ([]MaintainerChange, 
 		seenMaintainers := make(map[string]bool, 0)
 		for _, m := range maintainers {
 			if !maintainersSet[m.Name] {
-				maintainersSet[m.Name] = true
+				changeType := "ADDED"
+				if len(maintainersSet) == 0 {
+					changeType = "INITIAL"
+				}
 				maintainerChange := MaintainerChange{
 					PackageName: metadata.Name,
 					Name:        m.Name,
 					ReleaseTime: GetTimeForVersion(metadata, vStr),
-					ChangeType:  "ADDED",
+					ChangeType:  changeType,
 					Version:     vStr,
 				}
+				maintainersSet[m.Name] = true
 				changeList = append(changeList, maintainerChange)
 				seenMaintainers[m.Name] = true
 			} else {

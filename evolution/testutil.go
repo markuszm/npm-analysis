@@ -9,6 +9,7 @@ import (
 
 const lodashTestJsonPath = "./testfiles/lodash-all.json"
 const expressTestJsonPath = "./testfiles/express-all.json"
+const devCliTestJsonPath = "./testfiles/@anycli-dev-cli.json"
 
 func MustReadMetadataFromTestFile(testFilePath string, t *testing.T) model.Metadata {
 	bytes, err := ioutil.ReadFile(testFilePath)
