@@ -25,6 +25,28 @@ func CreateLicenseTable(db *sql.DB) error {
 	return nil
 }
 
+func CreateLicenseChangeTable(db *sql.DB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS licenseChange(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
+		version TEXT,
+		licenseFROM TEXT,
+		licenseTO TEXT,
+		changeString TEXT,
+		releaseTime TIMESTAMP, 
+		FOREIGN KEY(package) REFERENCES packages(name)
+	);
+	`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		return errors.Wrap(err, "Error creating licenseVersion table")
+	}
+
+	return nil
+}
+
 func CreateMaintainerChangeTable(db *sql.DB) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS maintainerChanges(

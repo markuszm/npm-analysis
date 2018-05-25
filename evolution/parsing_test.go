@@ -22,6 +22,19 @@ func TestLicenseParsing(t *testing.T) {
 	}
 }
 
+func TestLicenseChanges(t *testing.T) {
+	testPackage := MustReadMetadataFromTestFile(lodashTestJsonPath, t)
+
+	changes, err := ProcessLicenseChanges(testPackage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changes) != 0 {
+		t.Log(changes)
+		t.Errorf("Expected zero license changes for lodash")
+	}
+}
+
 func TestVersionParsing(t *testing.T) {
 	testVersion := "4.0.0-feature-remove-unsave-lifecycles-5d227cb7"
 	v := semver.MustParse(testVersion)

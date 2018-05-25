@@ -1,6 +1,55 @@
 package evolution
 
-import "github.com/markuszm/npm-analysis/model"
+import (
+	"fmt"
+	"github.com/blang/semver"
+	"github.com/markuszm/npm-analysis/model"
+	"time"
+)
+
+type LicenseChange struct {
+	PackageName, Version                 string
+	LicenseFrom, LicenseTo, ChangeString string
+	ReleaseTime                          time.Time
+}
+
+func ProcessLicenseChanges(metadata model.Metadata) ([]LicenseChange, error) {
+	var changeList []LicenseChange
+	previousLicense := ""
+	versions := metadata.Versions
+	var semvers semver.Versions
+	for _, v := range versions {
+		semverParsed := semver.MustParse(v.Version)
+		semvers = append(semvers, semverParsed)
+	}
+	semver.Sort(semvers)
+
+	for i, v := range semvers {
+		vStr := v.String()
+		pkgData := versions[vStr]
+		license := ProcessLicense(pkgData)
+		if license == "" {
+			license = ProcessLicenses(pkgData)
+		}
+		if previousLicense != license {
+			if i == 0 {
+				previousLicense = license
+				continue
+			}
+			maintainerChange := LicenseChange{
+				PackageName:  metadata.Name,
+				ReleaseTime:  GetTimeForVersion(metadata, vStr),
+				LicenseFrom:  previousLicense,
+				LicenseTo:    license,
+				ChangeString: fmt.Sprintf("%v->%v", previousLicense, license),
+				Version:      vStr,
+			}
+			changeList = append(changeList, maintainerChange)
+			previousLicense = license
+		}
+	}
+	return changeList, nil
+}
 
 func ProcessLicense(version model.PackageLegacy) string {
 	licenseStr := ""

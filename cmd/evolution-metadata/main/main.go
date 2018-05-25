@@ -55,6 +55,8 @@ func main() {
 	switch insertType {
 	case "license":
 		createError = database.CreateLicenseTable(mysql)
+	case "licenseChange":
+		createError = database.CreateLicenseChangeTable(mysql)
 	case "maintainers":
 		createError = database.CreateMaintainerChangeTable(mysql)
 	case "dependencies":
@@ -162,6 +164,8 @@ func processDocument(doc database.Document) int {
 	switch insertType {
 	case "license":
 		insertError = insertLicenses(metadata)
+	case "licenseChange":
+		insertError = insertLicenseChanges(metadata)
 	case "maintainers":
 		insertError = insertMaintainersChanges(metadata)
 	case "dependencies":
@@ -189,6 +193,18 @@ func insertLicenses(metadata model.Metadata) error {
 	}
 	err := insert.StoreLicenseWithVersion(db, licenses)
 	return err
+}
+
+func insertLicenseChanges(metadata model.Metadata) error {
+	licenseChanges, err := evolution.ProcessLicenseChanges(metadata)
+	if err != nil {
+		log.Fatalf("ERROR: Processing licences in package: %v with error: %v", metadata.Name, err)
+	}
+	err = insert.StoreLicenceChanges(db, licenseChanges)
+	if err != nil {
+		log.Fatalf("ERROR: inserting licence changes of package %v with error: %v", metadata.Name, err)
+	}
+	return nil
 }
 
 func insertMaintainersChanges(metadata model.Metadata) error {
