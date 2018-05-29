@@ -52,7 +52,7 @@ func main() {
 
 	if insertType == "" {
 		log.Print("WARNING: No insert type selected")
-		log.Print("Options are: license, maintainers, dependencies, version")
+		log.Print("Options are: license, licenseChange, maintainers, dependencies, version")
 	}
 
 	var createError error
@@ -67,6 +67,8 @@ func main() {
 		createError = database.CreateDependencyChangeTable(mysql)
 	case "version":
 		createError = database.CreateVersionChangeTable(mysql)
+	default:
+		log.Print("WARNING: Wrong insert type - no changes")
 	}
 
 	if createError != nil {

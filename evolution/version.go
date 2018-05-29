@@ -70,16 +70,16 @@ func SemverDiff(a semver.Version, b semver.Version) string {
 		return "prerelease"
 	}
 
-	// edge case jump from prerelease to next major
-	if a.Major != b.Major || (len(a.Pre) > 1 && len(b.Pre) == 0) {
+	// also considers jump from prerelease to full release
+	if a.Major != b.Major || (len(a.Pre) > 0 && len(b.Pre) == 0 && b.Minor == 0 && b.Patch == 0) {
 		return "major"
 	}
 
-	if a.Minor != b.Minor {
+	if a.Minor != b.Minor || (len(a.Pre) > 0 && len(b.Pre) == 0 && b.Patch == 0) {
 		return "minor"
 	}
 
-	if a.Patch != b.Patch {
+	if a.Patch != b.Patch || (len(a.Pre) > 0 && len(b.Pre) == 0) {
 		return "patch"
 	}
 

@@ -16,7 +16,11 @@ func TestSemverDiff(t *testing.T) {
 		{"0.0.1-foo", "0.0.1-foo.bar", "prerelease"},
 		{"0.10.0", "1.0.0-rc.1", "prerelease"},
 		{"1.0.0-rc.3", "1.0.0", "major"},
+		{"1.8.6-beta", "1.8.6", "patch"},
+		{"1.8.0-beta", "1.8.0", "minor"},
+		{"1.1.2-beta.0", "1.1.2", "patch"},
 		{"0.0.1", "0.0.1+foo.bar", "build"},
+		{"0.0.1+foo.bar", "0.0.1", "build"},
 		{"0.0.1", "0.0.1", "equal"},
 		{"0.0.2", "0.0.1", "downgrade"},
 	}
