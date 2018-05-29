@@ -15,7 +15,7 @@ type VersionChange struct {
 	ReleaseTime time.Time
 }
 
-func ProcessVersions(metadata model.Metadata) ([]VersionChange, error) {
+func ProcessVersions(metadata model.Metadata, timeCutoff time.Time) ([]VersionChange, error) {
 	var changes []VersionChange
 
 	versions := metadata.Versions
@@ -36,12 +36,19 @@ func ProcessVersions(metadata model.Metadata) ([]VersionChange, error) {
 			diff = SemverDiff(semver.MustParse(lastVersion), s)
 		}
 		v := s.String()
+
+		releaseTime := GetTimeForVersion(metadata, v)
+
+		if releaseTime.After(timeCutoff) {
+			continue
+		}
+
 		change := VersionChange{
 			PackageName: metadata.Name,
 			Version:     v,
 			VersionPrev: lastVersion,
 			VersionDiff: diff,
-			ReleaseTime: GetTimeForVersion(metadata, v),
+			ReleaseTime: releaseTime,
 		}
 		changes = append(changes, change)
 		lastVersion = v

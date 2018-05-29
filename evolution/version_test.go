@@ -35,7 +35,7 @@ func TestSemverDiff(t *testing.T) {
 func TestProcessVersions(t *testing.T) {
 	testPackage := MustReadMetadataFromTestFile(lodashTestJsonPath, t)
 
-	changes, err := ProcessVersions(testPackage)
+	changes, err := ProcessVersions(testPackage, timeCutoff)
 	if err != nil {
 		t.Fatal(err)
 	}

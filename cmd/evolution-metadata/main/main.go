@@ -27,6 +27,10 @@ const MYSQL_USER = "root"
 
 const MYSQL_PW = "npm-analysis"
 
+// time cutoff because other dependency data was downloaded at different time
+// other data was downloaded at Fr 13 Apr 2018 13∶38
+var timeCutoff = time.Unix(1523626680, 0)
+
 var typeMapping = sync.Map{}
 
 var DEBUG bool
@@ -184,19 +188,24 @@ func processDocument(doc database.Document) int {
 func insertLicenses(metadata model.Metadata) error {
 	var licenses []insert.License
 	for version, data := range metadata.Versions {
+		releaseTime := evolution.GetTimeForVersion(metadata, data.Version)
+		if releaseTime.After(timeCutoff) {
+			continue
+		}
+
 		license := evolution.ProcessLicense(data)
 		if license == "" {
 			license = evolution.ProcessLicenses(data)
 		}
-		timeForVersion := evolution.GetTimeForVersion(metadata, data.Version)
-		licenses = append(licenses, insert.License{PkgName: data.Name, License: license, Version: version, Time: timeForVersion})
+
+		licenses = append(licenses, insert.License{PkgName: data.Name, License: license, Version: version, Time: releaseTime})
 	}
 	err := insert.StoreLicenseWithVersion(db, licenses)
 	return err
 }
 
 func insertLicenseChanges(metadata model.Metadata) error {
-	licenseChanges, err := evolution.ProcessLicenseChanges(metadata)
+	licenseChanges, err := evolution.ProcessLicenseChanges(metadata, timeCutoff)
 	if err != nil {
 		log.Fatalf("ERROR: Processing licences in package: %v with error: %v", metadata.Name, err)
 	}
@@ -208,7 +217,7 @@ func insertLicenseChanges(metadata model.Metadata) error {
 }
 
 func insertMaintainersChanges(metadata model.Metadata) error {
-	maintainerChanges, err := evolution.ProcessMaintainersTimeSorted(metadata)
+	maintainerChanges, err := evolution.ProcessMaintainersTimeSorted(metadata, timeCutoff)
 	if err != nil {
 		log.Fatalf("ERROR: Processing maintainers in package: %v with error: %v", metadata.Name, err)
 	}
@@ -220,7 +229,7 @@ func insertMaintainersChanges(metadata model.Metadata) error {
 }
 
 func insertDependencyChanges(metadata model.Metadata) error {
-	dependencyChanges, err := evolution.ProcessDependencies(metadata)
+	dependencyChanges, err := evolution.ProcessDependencies(metadata, timeCutoff)
 	if err != nil {
 		log.Fatalf("ERROR: Processing dependencies in package: %v with error: %v", metadata.Name, err)
 	}
@@ -232,7 +241,7 @@ func insertDependencyChanges(metadata model.Metadata) error {
 }
 
 func insertVersionChanges(metadata model.Metadata) error {
-	versionChanges, err := evolution.ProcessVersions(metadata)
+	versionChanges, err := evolution.ProcessVersions(metadata, timeCutoff)
 	if err != nil {
 		log.Fatalf("ERROR: Processing versions in package: %v with error: %v", metadata.Name, err)
 	}

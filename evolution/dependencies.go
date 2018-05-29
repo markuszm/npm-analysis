@@ -16,7 +16,7 @@ type DependencyChange struct {
 	ChangeType            string
 }
 
-func ProcessDependencies(metadata model.Metadata) ([]DependencyChange, error) {
+func ProcessDependencies(metadata model.Metadata, timeCutoff time.Time) ([]DependencyChange, error) {
 	var changeList []DependencyChange
 	dependenciesSet := make(map[string]string)
 	versions := metadata.Versions
@@ -32,6 +32,12 @@ func ProcessDependencies(metadata model.Metadata) ([]DependencyChange, error) {
 		pkgData := versions[pkgVer]
 		dependencies := pkgData.Dependencies
 		seenDependencies := make(map[string]bool, 0)
+		releaseTime := GetTimeForVersion(metadata, pkgVer)
+
+		if releaseTime.After(timeCutoff) {
+			continue
+		}
+
 		for d, v := range dependencies {
 			parsedVer := ParseVersion(v)
 
@@ -48,7 +54,7 @@ func ProcessDependencies(metadata model.Metadata) ([]DependencyChange, error) {
 					DependencyName:        d,
 					DependencyVersion:     parsedVer,
 					DependencyVersionPrev: "",
-					ReleaseTime:           GetTimeForVersion(metadata, pkgVer),
+					ReleaseTime:           releaseTime,
 					ChangeType:            changeType,
 				}
 				changeList = append(changeList, dependencyChange)
@@ -64,7 +70,7 @@ func ProcessDependencies(metadata model.Metadata) ([]DependencyChange, error) {
 						DependencyName:        d,
 						DependencyVersion:     parsedVer,
 						DependencyVersionPrev: oldVersion,
-						ReleaseTime:           GetTimeForVersion(metadata, pkgVer),
+						ReleaseTime:           releaseTime,
 						ChangeType:            "UPDATED",
 					}
 					changeList = append(changeList, dependencyChange)
@@ -86,7 +92,7 @@ func ProcessDependencies(metadata model.Metadata) ([]DependencyChange, error) {
 					DependencyName:        d,
 					DependencyVersion:     v,
 					DependencyVersionPrev: v,
-					ReleaseTime:           GetTimeForVersion(metadata, pkgVer),
+					ReleaseTime:           releaseTime,
 					ChangeType:            "REMOVED",
 				}
 				changeList = append(changeList, dependencyChange)

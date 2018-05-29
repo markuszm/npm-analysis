@@ -25,7 +25,7 @@ func TestLicenseParsing(t *testing.T) {
 func TestLicenseChanges(t *testing.T) {
 	testPackage := MustReadMetadataFromTestFile(lodashTestJsonPath, t)
 
-	changes, err := ProcessLicenseChanges(testPackage)
+	changes, err := ProcessLicenseChanges(testPackage, timeCutoff)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestRegressionMaintainerChange(t *testing.T) {
 
 	regressionString := `[{lodash jdalton 2012-04-23 16:37:12.603 +0000 UTC INITIAL 0.1.0} {lodash mathias 2013-09-23 05:57:42.595 +0000 UTC ADDED 2.1.0} {lodash phated 2013-09-23 05:57:42.595 +0000 UTC ADDED 2.1.0} {lodash kitcambridge 2013-09-23 05:57:42.595 +0000 UTC ADDED 2.1.0} {lodash d10 2015-01-30 09:33:51.621 +0000 UTC ADDED 3.0.1} {lodash kitcambridge 2016-01-12 23:13:20.539 +0000 UTC REMOVED 4.0.0} {lodash d10 2016-01-12 23:13:20.539 +0000 UTC REMOVED 4.0.0} {lodash jridgewell 2016-02-16 07:10:16.856 +0000 UTC ADDED 4.4.0} {lodash jridgewell 2016-05-02 15:01:02.189 +0000 UTC REMOVED 4.11.2} {lodash phated 2016-10-31 06:49:14.797 +0000 UTC REMOVED 4.16.5}]`
 
-	changes, err := ProcessMaintainersTimeSorted(testPackage)
+	changes, err := ProcessMaintainersTimeSorted(testPackage, timeCutoff)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestRegressionMaintainerChange(t *testing.T) {
 func TestDependencyChangeList(t *testing.T) {
 	testPackage := MustReadMetadataFromTestFile(expressTestJsonPath, t)
 
-	changes, err := ProcessDependencies(testPackage)
+	changes, err := ProcessDependencies(testPackage, timeCutoff)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestDependencyChangeList(t *testing.T) {
 func TestDependencyChangeListInitial(t *testing.T) {
 	testPackage := MustReadMetadataFromTestFile(devCliTestJsonPath, t)
 
-	changes, err := ProcessDependencies(testPackage)
+	changes, err := ProcessDependencies(testPackage, timeCutoff)
 	if err != nil {
 		t.Fatal(err)
 	}

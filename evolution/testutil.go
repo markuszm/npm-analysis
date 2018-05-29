@@ -5,11 +5,14 @@ import (
 	"github.com/markuszm/npm-analysis/model"
 	"io/ioutil"
 	"testing"
+	"time"
 )
 
 const lodashTestJsonPath = "./testfiles/lodash-all.json"
 const expressTestJsonPath = "./testfiles/express-all.json"
 const devCliTestJsonPath = "./testfiles/@anycli-dev-cli.json"
+
+var timeCutoff = time.Unix(1523626680, 0)
 
 func MustReadMetadataFromTestFile(testFilePath string, t *testing.T) model.Metadata {
 	bytes, err := ioutil.ReadFile(testFilePath)

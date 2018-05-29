@@ -13,7 +13,7 @@ type LicenseChange struct {
 	ReleaseTime                          time.Time
 }
 
-func ProcessLicenseChanges(metadata model.Metadata) ([]LicenseChange, error) {
+func ProcessLicenseChanges(metadata model.Metadata, timeCutoff time.Time) ([]LicenseChange, error) {
 	var changeList []LicenseChange
 	previousLicense := ""
 	versions := metadata.Versions
@@ -27,6 +27,13 @@ func ProcessLicenseChanges(metadata model.Metadata) ([]LicenseChange, error) {
 	for i, v := range semvers {
 		vStr := v.String()
 		pkgData := versions[vStr]
+
+		releaseTime := GetTimeForVersion(metadata, vStr)
+
+		if releaseTime.After(timeCutoff) {
+			continue
+		}
+
 		license := ProcessLicense(pkgData)
 		if license == "" {
 			license = ProcessLicenses(pkgData)
@@ -38,7 +45,7 @@ func ProcessLicenseChanges(metadata model.Metadata) ([]LicenseChange, error) {
 			}
 			maintainerChange := LicenseChange{
 				PackageName:  metadata.Name,
-				ReleaseTime:  GetTimeForVersion(metadata, vStr),
+				ReleaseTime:  releaseTime,
 				LicenseFrom:  previousLicense,
 				LicenseTo:    license,
 				ChangeString: fmt.Sprintf("%v->%v", previousLicense, license),

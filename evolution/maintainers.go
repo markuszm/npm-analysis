@@ -16,7 +16,7 @@ type MaintainerChange struct {
 	Version     string
 }
 
-func ProcessMaintainersSemVerSorted(metadata model.Metadata) ([]MaintainerChange, error) {
+func ProcessMaintainersSemVerSorted(metadata model.Metadata, timeCutoff time.Time) ([]MaintainerChange, error) {
 	var changeList []MaintainerChange
 	maintainersSet := make(map[string]bool)
 	versions := metadata.Versions
@@ -32,6 +32,12 @@ func ProcessMaintainersSemVerSorted(metadata model.Metadata) ([]MaintainerChange
 		pkgData := versions[vStr]
 		maintainers := ParseMaintainers(pkgData.Maintainers)
 		seenMaintainers := make(map[string]bool, 0)
+		releaseTime := GetTimeForVersion(metadata, vStr)
+
+		if releaseTime.After(timeCutoff) {
+			continue
+		}
+
 		for _, m := range maintainers {
 			if !maintainersSet[m.Name] {
 				changeType := "ADDED"
@@ -42,7 +48,7 @@ func ProcessMaintainersSemVerSorted(metadata model.Metadata) ([]MaintainerChange
 				maintainerChange := MaintainerChange{
 					PackageName: metadata.Name,
 					Name:        m.Name,
-					ReleaseTime: GetTimeForVersion(metadata, vStr),
+					ReleaseTime: releaseTime,
 					ChangeType:  changeType,
 					Version:     vStr,
 				}
@@ -62,7 +68,7 @@ func ProcessMaintainersSemVerSorted(metadata model.Metadata) ([]MaintainerChange
 				maintainerChange := MaintainerChange{
 					PackageName: metadata.Name,
 					Name:        m,
-					ReleaseTime: GetTimeForVersion(metadata, vStr),
+					ReleaseTime: releaseTime,
 					ChangeType:  "REMOVED",
 					Version:     vStr,
 				}
@@ -73,7 +79,7 @@ func ProcessMaintainersSemVerSorted(metadata model.Metadata) ([]MaintainerChange
 	return changeList, nil
 }
 
-func ProcessMaintainersTimeSorted(metadata model.Metadata) ([]MaintainerChange, error) {
+func ProcessMaintainersTimeSorted(metadata model.Metadata, timeCutoff time.Time) ([]MaintainerChange, error) {
 	var changeList []MaintainerChange
 	maintainersSet := make(map[string]bool)
 	versions := metadata.Versions
@@ -87,6 +93,12 @@ func ProcessMaintainersTimeSorted(metadata model.Metadata) ([]MaintainerChange, 
 		}
 		maintainers := ParseMaintainers(pkgData.Maintainers)
 		seenMaintainers := make(map[string]bool, 0)
+
+		releaseTime := GetTimeForVersion(metadata, vStr)
+		if releaseTime.After(timeCutoff) {
+			continue
+		}
+
 		for _, m := range maintainers {
 			if !maintainersSet[m.Name] {
 				changeType := "ADDED"
@@ -96,7 +108,7 @@ func ProcessMaintainersTimeSorted(metadata model.Metadata) ([]MaintainerChange, 
 				maintainerChange := MaintainerChange{
 					PackageName: metadata.Name,
 					Name:        m.Name,
-					ReleaseTime: GetTimeForVersion(metadata, vStr),
+					ReleaseTime: releaseTime,
 					ChangeType:  changeType,
 					Version:     vStr,
 				}
@@ -117,7 +129,7 @@ func ProcessMaintainersTimeSorted(metadata model.Metadata) ([]MaintainerChange, 
 				maintainerChange := MaintainerChange{
 					PackageName: metadata.Name,
 					Name:        m,
-					ReleaseTime: GetTimeForVersion(metadata, vStr),
+					ReleaseTime: releaseTime,
 					ChangeType:  "REMOVED",
 					Version:     vStr,
 				}
