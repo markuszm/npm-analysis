@@ -15,7 +15,7 @@ const MYSQL_PW = "npm-analysis"
 const MONGOURL = "mongodb://npm:npm123@localhost:27017"
 
 // NPM is rate-limiting so don't go over 8 workers here
-const workerNumber = 8
+const workerNumber = 5
 
 func main() {
 	mysqlInitializer := &database.Mysql{}
