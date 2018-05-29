@@ -27,7 +27,3 @@ func GetMetadataFromNpm(pkg string) (string, error) {
 	doc := string(bytes)
 	return doc, err
 }
-
-func transformScopedName(pkg string) string {
-	return strings.Replace(pkg, "/", "%2f", -1)
-}
