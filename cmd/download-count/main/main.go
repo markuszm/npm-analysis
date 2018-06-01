@@ -69,6 +69,7 @@ func main() {
 func worker(id int, jobs chan database.Document, workerWait *sync.WaitGroup) {
 	for j := range jobs {
 		processDocument(j)
+
 	}
 	workerWait.Done()
 }
@@ -85,7 +86,7 @@ func processDocument(doc database.Document) {
 		log.Fatalf("ERROR: Unmarshalling: %v", err)
 	}
 
-	popularity := evolution.CalculatePopularity(downloadCount)
+	popularity := evolution.CalculatePopularity(doc.Key, downloadCount)
 
 	err = insert.StorePopularity(popularity, db)
 	if err != nil {

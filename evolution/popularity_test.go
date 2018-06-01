@@ -5,6 +5,6 @@ import "testing"
 func TestCalculatePopularity(t *testing.T) {
 	downloadCounts := MustReadDownloadCountsFromTestFile(lodashDownloadCountsPath, t)
 
-	popularity := CalculatePopularity(downloadCounts)
+	popularity := CalculatePopularity("lodash", downloadCounts)
 	t.Log(popularity)
 }

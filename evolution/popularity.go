@@ -4,7 +4,7 @@ import (
 	"github.com/markuszm/npm-analysis/model"
 )
 
-func CalculatePopularity(downloadCounts DownloadCountResponse) model.Popularity {
+func CalculatePopularity(pkgName string, downloadCounts DownloadCountResponse) model.Popularity {
 
 	overallDownloads := 0
 	overallDays := 0
@@ -41,14 +41,14 @@ func CalculatePopularity(downloadCounts DownloadCountResponse) model.Popularity 
 		}
 	}
 
-	overall := float64(overallDownloads) / float64(overallDays)
-	year2015 := float64(year2015Downloads) / float64(year2015Days)
-	year2016 := float64(year2016Downloads) / float64(year2016Days)
-	year2017 := float64(year2017Downloads) / float64(year2017Days)
-	year2018 := float64(year2018Downloads) / float64(year2018Days)
+	overall := avgOverDays(overallDownloads, overallDays)
+	year2015 := avgOverDays(year2015Downloads, year2015Days)
+	year2016 := avgOverDays(year2016Downloads, year2016Days)
+	year2017 := avgOverDays(year2017Downloads, year2017Days)
+	year2018 := avgOverDays(year2018Downloads, year2018Days)
 
 	return model.Popularity{
-		PackageName: downloadCounts.Package,
+		PackageName: pkgName,
 		Overall:     overall,
 		Year2015:    year2015,
 		Year2016:    year2016,
@@ -56,4 +56,11 @@ func CalculatePopularity(downloadCounts DownloadCountResponse) model.Popularity 
 		Year2018:    year2018,
 	}
 
+}
+
+func avgOverDays(downloads int, days int) float64 {
+	if days == 0 {
+		return 0.0
+	}
+	return float64(downloads) / float64(days)
 }

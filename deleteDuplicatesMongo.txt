@@ -1,1 +1,2 @@
+// Source: https://weknowinc.com/blog/how-remove-duplicates-in-mongodb
 db.downloads.aggregate([{"$group": {_id: {key: "$key"}, dups: { $addToSet: "$_id" } , count: { $sum : 1 }}}, { "$match": {count: { "$gt": 1 } } }], {allowDiskUse:true}).forEach(function(doc) { doc.dups.shift(); db.downloads.remove({ _id: {$in: doc.dups} }); })

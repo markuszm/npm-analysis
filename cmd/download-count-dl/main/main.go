@@ -31,8 +31,6 @@ func main() {
 		log.Fatal(databaseInitErr)
 	}
 
-	count := 0
-
 	workerWait := sync.WaitGroup{}
 
 	jobs := make(chan string, 100)
@@ -64,8 +62,6 @@ func main() {
 	}
 
 	close(jobs)
-
-	log.Println(count)
 
 	workerWait.Wait()
 }
