@@ -111,3 +111,24 @@ func CreateVersionChangeTable(db *sql.DB) error {
 
 	return nil
 }
+
+func CreatePopularity(db *sql.DB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS popularity(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
+		overall DOUBLE,
+		year2015 DOUBLE,
+		year2016 DOUBLE,
+		year2017 DOUBLE,
+		year2018 DOUBLE,
+		FOREIGN KEY(package) REFERENCES packages(name)
+	);
+	`
+	_, err := db.Exec(query)
+	if err != nil {
+		return errors.Wrap(err, "Error creating popularity table")
+	}
+
+	return nil
+}
