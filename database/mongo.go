@@ -49,11 +49,11 @@ func (m *MongoDB) FindOneSimple(key, value string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	element, err := val.Lookup("value")
-	if err != nil {
+	element := val.Lookup("value")
+	if element == nil {
 		return "", err
 	}
-	return element.Value().StringValue(), nil
+	return element.StringValue(), nil
 }
 
 func (m *MongoDB) FindAll() ([]Document, error) {
@@ -79,17 +79,17 @@ func (m *MongoDB) decodeValue(cur mongo.Cursor) (Document, error) {
 	if err != nil {
 		return Document{}, err
 	}
-	element, err := val.Lookup("value")
-	if err != nil {
+	element := val.Lookup("value")
+	if element == nil {
 		return Document{}, err
 	}
-	value := element.Value().StringValue()
+	value := element.StringValue()
 
-	element, err = val.Lookup("key")
-	if err != nil {
+	element = val.Lookup("key")
+	if element == nil {
 		return Document{}, err
 	}
-	key := element.Value().StringValue()
+	key := element.StringValue()
 	return Document{Key: key, Value: value}, nil
 }
 

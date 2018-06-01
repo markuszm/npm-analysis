@@ -5,8 +5,10 @@ import (
 	"log"
 	"sync"
 
+	"encoding/json"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/evolution"
+	"strings"
 )
 
 const MYSQL_USER = "root"
@@ -16,7 +18,7 @@ const MYSQL_PW = "npm-analysis"
 const MONGOURL = "mongodb://npm:npm123@localhost:27017"
 
 // NPM is rate-limiting so don't go over 8 workers here
-const workerNumber = 4
+const workerNumber = 3
 
 func main() {
 	mysqlInitializer := &database.Mysql{}
@@ -64,8 +66,15 @@ func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 
 	for pkg := range jobs {
 		if val, err := mongoDB.FindOneSimple("key", pkg); val != "" && err == nil {
-			log.Printf("Package %v already exists", pkg)
-			continue
+			downloadCount := evolution.DownloadCountResponse{}
+			err := json.Unmarshal([]byte(val), &downloadCount)
+			if err != nil {
+				log.Fatalf("ERROR: Cannot unmarshal DownloadCountResponse from db with error %v", err)
+			}
+			if len(downloadCount.DownloadCounts) > 0 {
+				log.Printf("Package %v already exists", pkg)
+				continue
+			}
 		}
 
 		doc, err := evolution.GetDownloadCountsForPackage(pkg)
@@ -98,7 +107,19 @@ func workerBulk(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 
 	for pkg := range jobs {
 		if val, err := mongoDB.FindOneSimple("key", pkg); val != "" && err == nil {
-			log.Printf("Package %v already exists", pkg)
+			downloadCount := evolution.DownloadCountResponse{}
+			err := json.Unmarshal([]byte(val), &downloadCount)
+			if err != nil {
+				log.Fatalf("ERROR: Cannot unmarshal DownloadCountResponse from db with error %v", err)
+			}
+			if len(downloadCount.DownloadCounts) > 0 {
+				//log.Printf("Package %v already exists", pkg)
+				continue
+			}
+		}
+
+		if strings.HasPrefix(pkg, "@") {
+			log.Printf("WARNING: Package %v unsupported for bulk download", pkg)
 			continue
 		}
 

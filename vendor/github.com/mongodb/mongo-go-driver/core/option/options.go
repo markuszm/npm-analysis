@@ -4,7 +4,7 @@
 // not use this file except in compliance with the License. You may obtain
 // a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
-package options
+package option
 
 import (
 	"time"
@@ -137,18 +137,32 @@ type ListDatabasesOptioner interface {
 	listDatabasesOption()
 }
 
-// ListIndexesOptioner is the interface implemented by types that can be used as
-// Options for ListIndexes operations.
-type ListIndexesOptioner interface {
-	Optioner
-	listIndexesOption()
-}
-
 // CursorOptioner is the interface implemented by types that can be used as
 // Options for Cursor operations.
 type CursorOptioner interface {
 	Optioner
 	cursorOption()
+}
+
+//ListIndexesOptioner is the interface implemented by types that can be used as
+// Options for list_indexes operations.
+type ListIndexesOptioner interface {
+	Optioner
+	listIndexesOption()
+}
+
+//CreateIndexesOptioner is the interface implemented by types that can be used as
+// Options for create_indexes operations.
+type CreateIndexesOptioner interface {
+	Optioner
+	createIndexesOption()
+}
+
+//DropIndexesOptioner is the interface implemented by types that can be used as
+// Options for drop_indexes operations.
+type DropIndexesOptioner interface {
+	Optioner
+	dropIndexesOption()
 }
 
 var (
@@ -242,6 +256,7 @@ var (
 	_ InsertOptioner            = (*OptOrdered)(nil)
 	_ InsertOptioner            = (*OptWriteConcern)(nil)
 	_ ListDatabasesOptioner     = OptNameOnly(false)
+	_ ListCollectionsOptioner   = OptNameOnly(false)
 	_ ListIndexesOptioner       = OptBatchSize(0)
 	_ ReplaceOptioner           = (*OptBypassDocumentValidation)(nil)
 	_ ReplaceOptioner           = (*OptCollation)(nil)
@@ -480,6 +495,9 @@ func (OptMaxTime) findOneOption()           {}
 func (OptMaxTime) findOneAndDeleteOption()  {}
 func (OptMaxTime) findOneAndReplaceOption() {}
 func (OptMaxTime) findOneAndUpdateOption()  {}
+func (OptMaxTime) listIndexesOption()       {}
+func (OptMaxTime) dropIndexesOption()       {}
+func (OptMaxTime) createIndexesOption()     {}
 
 // OptMin is for internal use.
 type OptMin struct{ Min *bson.Document }
@@ -563,7 +581,7 @@ type OptReadConcern struct{ ReadConcern *bson.Element }
 
 // Option implements the Optioner interface.
 func (opt OptReadConcern) Option(d *bson.Document) error {
-	if _, err := d.Lookup(opt.ReadConcern.Key()); err == bson.ErrElementNotFound {
+	if _, err := d.LookupElementErr(opt.ReadConcern.Key()); err == bson.ErrElementNotFound {
 		d.Append(opt.ReadConcern)
 	}
 	return nil
@@ -687,7 +705,7 @@ type OptWriteConcern struct {
 
 // Option implements the Optioner interface.
 func (opt OptWriteConcern) Option(d *bson.Document) error {
-	_, err := d.Lookup(opt.WriteConcern.Key())
+	_, err := d.LookupElementErr(opt.WriteConcern.Key())
 	if err == bson.ErrElementNotFound {
 		d.Append(opt.WriteConcern)
 		return nil
@@ -705,6 +723,8 @@ func (OptWriteConcern) insertManyOption()        {}
 func (OptWriteConcern) insertOneOption()         {}
 func (OptWriteConcern) replaceOption()           {}
 func (OptWriteConcern) updateOption()            {}
+func (OptWriteConcern) createIndexesOption()     {}
+func (OptWriteConcern) dropIndexesOption()       {}
 
 // OptNameOnly is for internal use.
 type OptNameOnly bool
@@ -715,4 +735,5 @@ func (opt OptNameOnly) Option(d *bson.Document) error {
 	return nil
 }
 
-func (OptNameOnly) listDatabasesOption() {}
+func (OptNameOnly) listDatabasesOption()   {}
+func (OptNameOnly) listCollectionsOption() {}

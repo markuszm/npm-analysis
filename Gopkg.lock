@@ -17,7 +17,7 @@
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
   revision = "a0583e0143b1624142adab07e0e97fe106d99561"
-  version = "v1.3"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/go-stack/stack"
@@ -42,8 +42,8 @@
 [[projects]]
   name = "github.com/mattn/go-sqlite3"
   packages = ["."]
-  revision = "6c771bb9887719704b210e87e934f08be014bdb1"
-  version = "v1.6.0"
+  revision = "323a32be5a2421b8c7087225079c6c900ec397cd"
+  version = "v1.7.0"
 
 [[projects]]
   name = "github.com/mongodb/mongo-go-driver"
@@ -52,8 +52,11 @@
     "bson/builder",
     "bson/decimal",
     "bson/elements",
+    "bson/internal/jsonparser",
     "bson/objectid",
-    "core/addr",
+    "bson/parser",
+    "bson/parser/ast",
+    "core/address",
     "core/auth",
     "core/auth/internal/gssapi",
     "core/command",
@@ -61,7 +64,7 @@
     "core/connstring",
     "core/description",
     "core/dispatch",
-    "core/options",
+    "core/option",
     "core/readconcern",
     "core/readpref",
     "core/result",
@@ -73,8 +76,8 @@
     "internal",
     "mongo"
   ]
-  revision = "ff5ad991913ea56c4609391ff190eaf83edf339b"
-  version = "v0.0.4"
+  revision = "de03a35e8661ae6df623f41ec8f616ffd8ef6131"
+  version = "v0.0.6"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -86,13 +89,13 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["pbkdf2"]
-  revision = "21052ae46654ecf18dfdba0f7c12701a1e2b3164"
+  revision = "5ba7f63082460102a45837dbd1827e10f9479ac0"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "f73e4c9ed3b7ebdd5f699a16a880c2b1994e50dd"
+  revision = "1e491301e022f8f977054da4c2d852decd59571f"
 
 [[projects]]
   branch = "master"
@@ -103,6 +106,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "204ab238b43916a941996d44a09361fc2ef2e5648d7f7c2990024395ebd9be8e"
+  inputs-digest = "f78afe34c888790fc331d30d9696e4916943cbcec3611b26745be8a6a6c3bffa"
   solver-name = "gps-cdcl"
   solver-version = 1
