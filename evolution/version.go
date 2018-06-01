@@ -3,17 +3,10 @@ package evolution
 import (
 	"github.com/blang/semver"
 	"github.com/markuszm/npm-analysis/model"
+	"github.com/markuszm/npm-analysis/util"
 	"reflect"
 	"time"
 )
-
-type VersionChange struct {
-	PackageName string
-	Version     string
-	VersionPrev string
-	VersionDiff string
-	ReleaseTime time.Time
-}
 
 func ProcessVersions(metadata model.Metadata, timeCutoff time.Time) ([]VersionChange, error) {
 	var changes []VersionChange
@@ -84,4 +77,39 @@ func SemverDiff(a semver.Version, b semver.Version) string {
 	}
 
 	return "equal"
+}
+
+func CountVersions(versionChanges []VersionChange) VersionCount {
+	majorCount := 0
+	minorCount := 0
+	patchCount := 0
+	for _, v := range versionChanges {
+		switch v.VersionDiff {
+		case "major":
+			majorCount++
+		case "minor":
+			minorCount++
+		case "patch":
+			patchCount++
+		}
+	}
+	averageMinorsBetweenMajor := util.AvgInts(minorCount, majorCount)
+	averagePatchesBetweenMajor := util.AvgInts(minorCount, majorCount)
+	averagePatchesBetweenMinor := util.AvgInts(minorCount, majorCount)
+	versionCount := VersionCount{
+		Major:                  majorCount,
+		Minor:                  minorCount,
+		Patch:                  patchCount,
+		AvgMinorBetweenMajor:   averageMinorsBetweenMajor,
+		AvgPatchesBetweenMajor: averagePatchesBetweenMajor,
+		AvgPatchesBetweenMinor: averagePatchesBetweenMinor,
+	}
+	return versionCount
+}
+
+type VersionCount struct {
+	Major, Minor, Patch    int
+	AvgMinorBetweenMajor   float64
+	AvgPatchesBetweenMajor float64
+	AvgPatchesBetweenMinor float64
 }

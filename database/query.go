@@ -61,9 +61,9 @@ func GetDependencies(db *sql.DB, depType string) ([]model.Dependency, error) {
 func GetPackages(db *sql.DB) ([]string, error) {
 	var packages []string
 
-	rows, err := db.Query("select name from packages")
+	rows, err := db.Query("select name from packages where name <> \"\"")
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to query dependencies")
+		return nil, errors.Wrap(err, "Failed to query packages")
 	}
 
 	defer rows.Close()
