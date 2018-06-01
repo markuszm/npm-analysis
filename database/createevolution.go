@@ -100,7 +100,8 @@ func CreateVersionChangeTable(db *sql.DB) error {
 		versionDiff VARCHAR(255),
 		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
 		releaseTime TIMESTAMP, 
-		FOREIGN KEY(package) REFERENCES packages(name)
+		FOREIGN KEY(package) REFERENCES packages(name),
+    	INDEX versionDiffIndex (versionDiff)
 	);	
 	`
 
