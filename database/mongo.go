@@ -8,8 +8,8 @@ import (
 
 type MongoDB struct {
 	url, database, collection string
-	client                    *mongo.Client
-	activeCollection          *mongo.Collection
+	Client                    *mongo.Client
+	ActiveCollection          *mongo.Collection
 }
 
 func NewMongoDB(url, database, collection string) *MongoDB {
@@ -21,25 +21,25 @@ func (m *MongoDB) Connect() error {
 	if err != nil {
 		return err
 	}
-	m.client = mongodb
+	m.Client = mongodb
 	err = mongodb.Connect(context.Background())
-	m.activeCollection = mongodb.Database(m.database).Collection(m.collection)
+	m.ActiveCollection = mongodb.Database(m.database).Collection(m.collection)
 	return err
 }
 
 func (m *MongoDB) Disconnect() {
-	m.client.Disconnect(context.Background())
+	m.Client.Disconnect(context.Background())
 }
 
 func (m *MongoDB) EnsureSingleIndex(key string) (string, error) {
-	return m.activeCollection.Indexes().CreateOne(context.Background(),
+	return m.ActiveCollection.Indexes().CreateOne(context.Background(),
 		mongo.IndexModel{
 			Keys: bson.NewDocument(
 				bson.EC.Int32(key, 1))})
 }
 
 func (m *MongoDB) FindOneSimple(key, value string) (string, error) {
-	result := m.activeCollection.FindOne(context.Background(), bson.NewDocument(
+	result := m.ActiveCollection.FindOne(context.Background(), bson.NewDocument(
 		bson.EC.String(key, value),
 	))
 
@@ -56,14 +56,34 @@ func (m *MongoDB) FindOneSimple(key, value string) (string, error) {
 	return element.StringValue(), nil
 }
 
+func (m *MongoDB) FindAllSimple(key, value string) ([]string, error) {
+	var result []string
+	cursor, err := m.ActiveCollection.Find(context.Background(), bson.NewDocument(
+		bson.EC.String(key, value),
+	))
+	if err != nil {
+		return result, nil
+	}
+
+	for cursor.Next(context.Background()) {
+		val, err := m.DecodeValue(cursor)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, val.Value)
+	}
+
+	return result, nil
+}
+
 func (m *MongoDB) FindAll() ([]Document, error) {
 	var result []Document
-	cursor, err := m.activeCollection.Find(context.Background(), bson.NewDocument())
+	cursor, err := m.ActiveCollection.Find(context.Background(), bson.NewDocument())
 	if err != nil {
 		return result, err
 	}
 	for cursor.Next(context.Background()) {
-		val, err := m.decodeValue(cursor)
+		val, err := m.DecodeValue(cursor)
 		if err != nil {
 			return result, err
 		}
@@ -72,7 +92,7 @@ func (m *MongoDB) FindAll() ([]Document, error) {
 	return result, nil
 }
 
-func (m *MongoDB) decodeValue(cur mongo.Cursor) (Document, error) {
+func (m *MongoDB) DecodeValue(cur mongo.Cursor) (Document, error) {
 	val := bson.NewDocument()
 
 	err := cur.Decode(val)
@@ -94,10 +114,16 @@ func (m *MongoDB) decodeValue(cur mongo.Cursor) (Document, error) {
 }
 
 func (m *MongoDB) InsertOneSimple(key, value string) error {
-	_, err := m.activeCollection.InsertOne(context.Background(), bson.NewDocument(
+	_, err := m.ActiveCollection.InsertOne(context.Background(), bson.NewDocument(
 		bson.EC.String("key", key),
 		bson.EC.String("value", value),
 	))
+	return err
+}
+
+func (m *MongoDB) RemoveWithKey(key string) error {
+	_, err := m.ActiveCollection.DeleteOne(context.Background(), bson.NewDocument(
+		bson.EC.String("key", key)))
 	return err
 }
 

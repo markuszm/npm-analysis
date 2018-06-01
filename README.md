@@ -24,3 +24,5 @@ Login is `npm:npm123`.
 Access via mongo shell: `mongo -u npm -p "npm123" admin`.
 Metadata for all packages is stored in database `npm` in the collection `packages`
 
+Run go tools using Docker with `runWithDocker.sh <exec name> <args>` 
+For available tools see `cmd` folder

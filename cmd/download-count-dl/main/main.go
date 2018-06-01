@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"encoding/json"
+	"flag"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/evolution"
 	"strings"
@@ -21,6 +22,9 @@ const MONGOURL = "mongodb://npm:npm123@localhost:27017"
 const workerNumber = 3
 
 func main() {
+	bulk := flag.Bool("bulk", true, "use bulk queries?")
+	flag.Parse()
+
 	mysqlInitializer := &database.Mysql{}
 	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
 	if databaseInitErr != nil {
@@ -33,9 +37,19 @@ func main() {
 
 	jobs := make(chan string, 100)
 
+	if *bulk {
+		log.Printf("Using bulk queries")
+	} else {
+		log.Printf("Using single package queries")
+	}
+
 	for w := 1; w <= workerNumber; w++ {
 		workerWait.Add(1)
-		go workerBulk(w, jobs, &workerWait)
+		if *bulk {
+			go workerBulk(w, jobs, &workerWait)
+		} else {
+			go worker(w, jobs, &workerWait)
+		}
 	}
 
 	log.Println("Loading packages from database")
@@ -71,9 +85,14 @@ func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 			if err != nil {
 				log.Fatalf("ERROR: Cannot unmarshal DownloadCountResponse from db with error %v", err)
 			}
-			if len(downloadCount.DownloadCounts) > 0 {
-				log.Printf("Package %v already exists", pkg)
+			if len(downloadCount.DownloadCounts) == 1190 {
+				//log.Printf("Package %v already exists", pkg)
 				continue
+			} else {
+				err := mongoDB.RemoveWithKey(pkg)
+				if err != nil {
+					log.Fatalf("ERROR: could not remove already existing but wrong data for package %v", pkg)
+				}
 			}
 		}
 
@@ -112,9 +131,14 @@ func workerBulk(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 			if err != nil {
 				log.Fatalf("ERROR: Cannot unmarshal DownloadCountResponse from db with error %v", err)
 			}
-			if len(downloadCount.DownloadCounts) > 0 {
+			if len(downloadCount.DownloadCounts) == 1190 {
 				//log.Printf("Package %v already exists", pkg)
 				continue
+			} else {
+				err := mongoDB.RemoveWithKey(pkg)
+				if err != nil {
+					log.Fatalf("ERROR: could not remove already existing but wrong data for package %v", pkg)
+				}
 			}
 		}
 
