@@ -20,6 +20,7 @@ func ProcessVersions(metadata model.Metadata, timeCutoff time.Time) ([]VersionCh
 	semver.Sort(semvers)
 
 	lastVersion := ""
+	var lastReleaseTime *time.Time = nil
 
 	for _, s := range semvers {
 		diff := ""
@@ -36,15 +37,24 @@ func ProcessVersions(metadata model.Metadata, timeCutoff time.Time) ([]VersionCh
 			continue
 		}
 
+		var timeDiff float64
+		if lastReleaseTime == nil {
+			timeDiff = 0.0
+		} else {
+			timeDiff = releaseTime.Sub(*lastReleaseTime).Hours()
+		}
+
 		change := VersionChange{
 			PackageName: metadata.Name,
 			Version:     v,
 			VersionPrev: lastVersion,
 			VersionDiff: diff,
+			TimeDiff:    timeDiff,
 			ReleaseTime: releaseTime,
 		}
 		changes = append(changes, change)
 		lastVersion = v
+		lastReleaseTime = &releaseTime
 	}
 
 	return changes, nil
@@ -81,21 +91,36 @@ func SemverDiff(a semver.Version, b semver.Version) string {
 
 func CountVersions(versionChanges []VersionChange) VersionCount {
 	majorCount := 0
+	minorBetweenMajorCount := 0
+	patchBetweenMajorCount := 0
+	patchBetweenMinorCount := 0
+	minorTmp := 0
 	minorCount := 0
 	patchCount := 0
+	patchMajorTmp := 0
+	patchMinorTmp := 0
 	for _, v := range versionChanges {
 		switch v.VersionDiff {
 		case "major":
 			majorCount++
+			minorBetweenMajorCount += minorTmp
+			patchBetweenMajorCount += patchMajorTmp
+			minorTmp = 0
+			patchMajorTmp = 0
 		case "minor":
+			minorTmp++
+			patchBetweenMinorCount += patchMinorTmp
+			patchMinorTmp = 0
 			minorCount++
 		case "patch":
+			patchMajorTmp++
+			patchMinorTmp++
 			patchCount++
 		}
 	}
-	averageMinorsBetweenMajor := util.AvgInts(minorCount, majorCount)
-	averagePatchesBetweenMajor := util.AvgInts(minorCount, majorCount)
-	averagePatchesBetweenMinor := util.AvgInts(minorCount, majorCount)
+	averageMinorsBetweenMajor := util.AvgInts(minorBetweenMajorCount, majorCount)
+	averagePatchesBetweenMajor := util.AvgInts(patchBetweenMajorCount, majorCount)
+	averagePatchesBetweenMinor := util.AvgInts(patchBetweenMinorCount, minorCount)
 	versionCount := VersionCount{
 		Major:                  majorCount,
 		Minor:                  minorCount,

@@ -11,6 +11,7 @@ type VersionChange struct {
 	Version     string
 	VersionPrev string
 	VersionDiff string
+	TimeDiff    float64
 	ReleaseTime time.Time
 }
 

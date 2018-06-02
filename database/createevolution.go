@@ -99,7 +99,8 @@ func CreateVersionChangeTable(db *sql.DB) error {
 		versionPrev VARCHAR(255),
 		versionDiff VARCHAR(255),
 		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
-		releaseTime TIMESTAMP, 
+		timeDiff DOUBLE,
+		releaseTime TIMESTAMP,
 		FOREIGN KEY(package) REFERENCES packages(name),
     	INDEX versionDiffIndex (versionDiff)
 	);	
@@ -123,6 +124,28 @@ func CreatePopularity(db *sql.DB) error {
 		year2016 DOUBLE,
 		year2017 DOUBLE,
 		year2018 DOUBLE,
+		FOREIGN KEY(package) REFERENCES packages(name)
+	);
+	`
+	_, err := db.Exec(query)
+	if err != nil {
+		return errors.Wrap(err, "Error creating popularity table")
+	}
+
+	return nil
+}
+
+func CreateVersionCount(db *sql.DB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS versionCount(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		package VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin,
+		major INT,
+		minor INT,
+		patch INT,
+		avgMinorBetweenMajor DOUBLE,
+		avgPatchBetweenMajor DOUBLE,
+		avgPatchBetweenMinor DOUBLE,
 		FOREIGN KEY(package) REFERENCES packages(name)
 	);
 	`

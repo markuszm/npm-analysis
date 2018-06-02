@@ -1,20 +1,22 @@
 package main
 
 import (
-	"encoding/csv"
+	"database/sql"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
+	"github.com/markuszm/npm-analysis/database/insert"
 	"github.com/markuszm/npm-analysis/evolution"
 	"log"
-	"os"
-	"strconv"
+	"sync"
 )
 
 const MYSQL_USER = "root"
 
 const MYSQL_PW = "npm-analysis"
 
-const resultPath = "/home/markus/npm-analysis/evolution-query.csv"
+const workerNumber = 100
+
+var db *sql.DB
 
 func main() {
 	mysqlInitializer := &database.Mysql{}
@@ -23,6 +25,8 @@ func main() {
 		log.Fatal(databaseInitErr)
 	}
 
+	db = mysql
+
 	packages, err := database.GetPackages(mysql)
 	if err != nil {
 		log.Fatalf("ERROR: loading packages from mysql with %v", err)
@@ -30,21 +34,34 @@ func main() {
 
 	log.Print("Finished retrieving packages from db")
 
-	file, err := os.Create(resultPath)
+	err = database.CreateVersionCount(mysql)
 	if err != nil {
-		log.Fatalf("Cannot create file")
+		log.Fatalf("ERROR: creating table with %v", err)
 	}
-	defer file.Close()
 
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
+	workerWait := sync.WaitGroup{}
+
+	jobs := make(chan string, 100)
+
+	for w := 1; w <= workerNumber; w++ {
+		workerWait.Add(1)
+		go worker(w, jobs, &workerWait)
+	}
 
 	for i, p := range packages {
 		if i%10000 == 0 {
 			log.Printf("Finished %v packages", i)
 		}
+		jobs <- p
+	}
 
-		versionChanges, err := database.GetVersionChangesForPackage(p, mysql)
+	close(jobs)
+	workerWait.Wait()
+}
+
+func worker(id int, jobs chan string, workerWait *sync.WaitGroup) {
+	for p := range jobs {
+		versionChanges, err := database.GetVersionChangesForPackage(p, db)
 		if err != nil {
 			log.Fatalf("ERROR: retrieving version changes for package %v", p)
 		}
@@ -53,23 +70,10 @@ func main() {
 
 		versionCount := evolution.CountVersions(versionChanges)
 
-		err = WriteToCSV(writer, p, versionCount)
+		err = insert.StoreVersionCount(db, p, versionCount)
 		if err != nil {
-			log.Fatalf("ERROR: writing to csv file")
+			log.Fatalf("ERROR: writing to database with %v", err)
 		}
 	}
-
-}
-
-func WriteToCSV(writer *csv.Writer, p string, versionCount evolution.VersionCount) error {
-	err := writer.Write([]string{
-		p,
-		strconv.Itoa(versionCount.Major),
-		strconv.Itoa(versionCount.Minor),
-		strconv.Itoa(versionCount.Patch),
-		strconv.FormatFloat(versionCount.AvgMinorBetweenMajor, 'f', -1, 64),
-		strconv.FormatFloat(versionCount.AvgPatchesBetweenMajor, 'f', -1, 64),
-		strconv.FormatFloat(versionCount.AvgPatchesBetweenMinor, 'f', -1, 64),
-	})
-	return err
+	workerWait.Done()
 }
