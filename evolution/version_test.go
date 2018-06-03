@@ -2,6 +2,7 @@ package evolution
 
 import (
 	"fmt"
+	semver2 "github.com/Masterminds/semver"
 	"github.com/blang/semver"
 	"testing"
 )
@@ -34,6 +35,15 @@ func TestSemverDiff(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSemverValid(t *testing.T) {
+	rangeVer := "^1.0.0"
+	semverRange, _ := semver2.NewConstraint(rangeVer)
+
+	ver := "1.2.1"
+	s := semver2.MustParse(ver)
+	t.Log(semverRange.Check(s))
 }
 
 func TestProcessVersions(t *testing.T) {

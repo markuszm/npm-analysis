@@ -15,3 +15,5 @@
 
 # Docker volume folders
 db-data
+
+*.tar.gz

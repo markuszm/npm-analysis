@@ -50,3 +50,46 @@ func GetVersionChangesForPackage(pkg string, db *sql.DB) ([]evolution.VersionCha
 	}
 	return changes, nil
 }
+
+func GetMaintainerChanges(db *sql.DB) ([]evolution.MaintainerChange, error) {
+	var changes []evolution.MaintainerChange
+
+	rows, err := db.Query("SELECT * FROM maintainerChanges ORDER BY name")
+	if err != nil {
+		return changes, errors.Wrap(err, "Failed to query version changes")
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			id          int
+			name        string
+			pkgName     string
+			changeType  string
+			version     string
+			releaseTime string
+		)
+		err := rows.Scan(&id, &name, &pkgName, &changeType, &version, &releaseTime)
+		if err != nil {
+			return changes, errors.Wrap(err, "Could not get info from row")
+		}
+
+		parsedTime, err := time.Parse("2006-01-02 15:04:05", releaseTime)
+		if err != nil {
+			parsedTime = time.Unix(1, 0)
+		}
+
+		changes = append(changes, evolution.MaintainerChange{
+			PackageName: pkgName,
+			Name:        name,
+			ChangeType:  changeType,
+			Version:     version,
+			ReleaseTime: parsedTime,
+		})
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return changes, nil
+}

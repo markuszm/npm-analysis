@@ -67,7 +67,7 @@ func InsertDependency(neo4JDatabase Database, dep model.Dependency) error {
 	_, insertErr := neo4JDatabase.Exec(`
 					MERGE (p1:Package {name: {p1}}) 
 					MERGE (p2:Package {name: {p2}})
-					MERGE (p1)-[:DEPEND {version: {version}}]->(p2)`,
+					MERGE (p1)-[:DEPEND {s: {sourceVersion}, t: {targetVersion}}]->(p2)`,
 		map[string]interface{}{"p1": dep.PkgName, "p2": dep.Name, "version": dep.Version})
 	return insertErr
 }
