@@ -54,7 +54,7 @@ func GetVersionChangesForPackage(pkg string, db *sql.DB) ([]evolution.VersionCha
 func GetMaintainerChanges(db *sql.DB) ([]evolution.MaintainerChange, error) {
 	var changes []evolution.MaintainerChange
 
-	rows, err := db.Query("SELECT * FROM maintainerChanges ORDER BY name")
+	rows, err := db.Query("SELECT * FROM maintainerChanges ORDER BY package, releaseTime")
 	if err != nil {
 		return changes, errors.Wrap(err, "Failed to query version changes")
 	}

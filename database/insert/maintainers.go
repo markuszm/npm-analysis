@@ -72,3 +72,11 @@ func StoreMaintainerChange(db *sql.DB, changes []evolution.MaintainerChange) err
 
 	return nil
 }
+
+func StoreMaintainerCount(db *sql.DB, m evolution.MaintainerCount) error {
+	query := `INSERT INTO maintainerCount(name, count2010,count2011,count2012,count2013,count2014,count2015,count2016,count2017,count2018) values(?,?,?,?,?,?,?,?,?,?)`
+
+	_, err := db.Exec(query, m.Name, m.Counts[2010], m.Counts[2011], m.Counts[2012], m.Counts[2013], m.Counts[2014], m.Counts[2015], m.Counts[2016], m.Counts[2017], m.Counts[2018])
+
+	return err
+}

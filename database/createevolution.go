@@ -151,7 +151,31 @@ func CreateVersionCount(db *sql.DB) error {
 	`
 	_, err := db.Exec(query)
 	if err != nil {
-		return errors.Wrap(err, "Error creating popularity table")
+		return errors.Wrap(err, "Error creating version count table")
+	}
+
+	return nil
+}
+
+func CreateMaintainerCount(db *sql.DB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS maintainerCount(
+		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		name VARCHAR(255),
+		count2010 INT,
+		count2011 INT,
+		count2012 INT,
+		count2013 INT,
+		count2014 INT,
+		count2015 INT,
+		count2016 INT,
+		count2017 INT,
+		count2018 INT
+	);
+	`
+	_, err := db.Exec(query)
+	if err != nil {
+		return errors.Wrap(err, "Error creating maintainer count table")
 	}
 
 	return nil

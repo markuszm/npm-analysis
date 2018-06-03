@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
+	"github.com/markuszm/npm-analysis/database/insert"
+	"github.com/markuszm/npm-analysis/evolution"
 	"log"
+	"sync"
 )
 
 const MYSQL_USER = "root"
@@ -31,5 +34,36 @@ func main() {
 
 	log.Print("Finished retrieving changes from db")
 
-	log.Print(changes) // remove
+	err = database.CreateMaintainerCount(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	countMap := evolution.CalculateMaintainerCountPerYear(changes)
+
+	workerWait := sync.WaitGroup{}
+
+	jobs := make(chan evolution.MaintainerCount, 100)
+
+	for w := 1; w <= workerNumber; w++ {
+		workerWait.Add(1)
+		go worker(w, jobs, &workerWait)
+	}
+
+	for _, maintainerCount := range countMap {
+		jobs <- maintainerCount
+	}
+
+	close(jobs)
+	workerWait.Wait()
+}
+
+func worker(id int, jobs chan evolution.MaintainerCount, workerWait *sync.WaitGroup) {
+	for m := range jobs {
+		err := insert.StoreMaintainerCount(db, m)
+		if err != nil {
+			log.Fatalf("ERROR: writing to database with %v", err)
+		}
+	}
+	workerWait.Done()
 }
