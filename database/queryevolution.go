@@ -24,9 +24,10 @@ func GetVersionChangesForPackage(pkg string, db *sql.DB) ([]evolution.VersionCha
 			versionPrev string
 			versionDiff string
 			pkg         string
+			timeDiff    float64
 			releaseTime string
 		)
-		err := rows.Scan(&id, &version, &versionPrev, &versionDiff, &pkg, &releaseTime)
+		err := rows.Scan(&id, &version, &versionPrev, &versionDiff, &pkg, &timeDiff, &releaseTime)
 		if err != nil {
 			return changes, errors.Wrap(err, "Could not get info from row")
 		}
@@ -41,6 +42,7 @@ func GetVersionChangesForPackage(pkg string, db *sql.DB) ([]evolution.VersionCha
 			Version:     version,
 			VersionPrev: versionPrev,
 			VersionDiff: versionDiff,
+			TimeDiff:    timeDiff,
 			ReleaseTime: parsedTime,
 		})
 	}

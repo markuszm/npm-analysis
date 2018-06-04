@@ -116,7 +116,25 @@ func CountVersions(versionChanges []VersionChange) VersionCount {
 			patchMajorTmp++
 			patchMinorTmp++
 			patchCount++
+		case "publish":
+			s := semver.MustParse(v.Version)
+			if s.Major > 0 {
+				majorCount++
+				continue
+			}
+			if s.Minor > 0 {
+				minorCount++
+				minorTmp++
+				continue
+			}
+			if s.Patch > 0 {
+				patchCount++
+				patchMajorTmp++
+				patchMinorTmp++
+				continue
+			}
 		}
+
 	}
 	averageMinorsBetweenMajor := util.AvgInts(minorBetweenMajorCount, majorCount)
 	averagePatchesBetweenMajor := util.AvgInts(patchBetweenMajorCount, majorCount)

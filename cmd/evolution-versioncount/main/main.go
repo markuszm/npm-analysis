@@ -63,7 +63,7 @@ func worker(id int, jobs chan string, workerWait *sync.WaitGroup) {
 	for p := range jobs {
 		versionChanges, err := database.GetVersionChangesForPackage(p, db)
 		if err != nil {
-			log.Fatalf("ERROR: retrieving version changes for package %v", p)
+			log.Fatalf("ERROR: retrieving version changes for package %v with %v", p, err)
 		}
 
 		evolution.SortVersionChange(versionChanges)
