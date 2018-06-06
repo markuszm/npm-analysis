@@ -5,6 +5,7 @@ type MaintainerCount struct {
 	Counts map[int]map[int]int
 }
 
+// start time is 11.2010 and cutoff is 04.2018
 func CalculateMaintainerCounts(changes []MaintainerChange) map[string]MaintainerCount {
 	maintainerCounts := make(map[string]MaintainerCount, 0)
 
@@ -20,29 +21,47 @@ func CalculateMaintainerCounts(changes []MaintainerChange) map[string]Maintainer
 		year := c.ReleaseTime.Year()
 		month := int(c.ReleaseTime.Month())
 		if c.ChangeType == "INITIAL" || c.ChangeType == "ADDED" {
-			for y := year; y < 2019; y++ {
+			for y := year; y <= 2018; y++ {
+				startMonth := 1
+				endMonth := 12
+				if y == 2010 {
+					startMonth = 11
+				}
+
 				if y == year {
-					for m := month; m <= 12; m++ {
-						maintainerCounts[c.Name].Counts[y][m]++
-					}
-				} else {
-					for m := 1; m <= 12; m++ {
-						maintainerCounts[c.Name].Counts[y][m]++
-					}
+					startMonth = month
+				}
+
+				if y == 2018 {
+					endMonth = 4
+				}
+
+				for m := startMonth; m <= endMonth; m++ {
+					maintainerCounts[c.Name].Counts[y][m]++
+
 				}
 			}
 		}
 
 		if c.ChangeType == "REMOVED" {
-			for y := year; y < 2019; y++ {
+			for y := year; y < 2018; y++ {
+				startMonth := 1
+				endMonth := 12
+				if y == 2010 {
+					startMonth = 11
+				}
+
 				if y == year {
-					for m := month + 1; m <= 12; m++ {
-						maintainerCounts[c.Name].Counts[y][m]--
-					}
-				} else {
-					for m := 1; m <= 12; m++ {
-						maintainerCounts[c.Name].Counts[y][m]--
-					}
+					startMonth = month
+				}
+
+				if y == 2018 {
+					endMonth = 4
+				}
+
+				for m := startMonth; m <= endMonth; m++ {
+					maintainerCounts[c.Name].Counts[y][m]--
+
 				}
 			}
 		}
@@ -55,15 +74,24 @@ func CreateCountMap() map[int]map[int]int {
 	countMap := make(map[int]map[int]int, 9)
 
 	for y := 2010; y <= 2018; y++ {
-		countMap[y] = CreateMonthMap()
+		countMap[y] = CreateMonthMap(y)
 	}
 	return countMap
 }
 
-func CreateMonthMap() map[int]int {
-	monthMap := make(map[int]int, 12)
-	for i := 1; i <= 12; i++ {
-		monthMap[i] = 0
+func CreateMonthMap(year int) map[int]int {
+	monthMap := make(map[int]int, 0)
+	startMonth := 1
+	endMonth := 12
+	if year == 2010 {
+		startMonth = 11
+	}
+	if year == 2018 {
+		endMonth = 4
+	}
+
+	for m := startMonth; m <= endMonth; m++ {
+		monthMap[m] = 0
 	}
 	return monthMap
 }
