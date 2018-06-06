@@ -64,7 +64,20 @@ func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 	for pkg := range jobs {
 		if val, err := mongoDB.FindOneSimple("key", pkg); val != "" && err == nil {
 			log.Printf("Package %v already exists", pkg)
-			continue
+
+			val, err := util.Decompress(val)
+			if err != nil {
+				log.Fatalf("ERROR: Decompressing: %v", err)
+			}
+
+			if val == "" {
+				err := mongoDB.RemoveWithKey(pkg)
+				if err != nil {
+					log.Fatalf("ERROR: could not remove already existing but wrong data for package %v", pkg)
+				}
+			} else {
+				continue
+			}
 		}
 
 		doc, err := evolution.GetMetadataFromNpm(pkg)
