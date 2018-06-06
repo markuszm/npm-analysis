@@ -39,7 +39,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	countMap := evolution.CalculateMaintainerCountPerYear(changes)
+	countMap := evolution.CalculateMaintainerCounts(changes)
 
 	workerWait := sync.WaitGroup{}
 

@@ -162,15 +162,9 @@ func CreateMaintainerCount(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS maintainerCount(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		name VARCHAR(255),
-		count2010 INT,
-		count2011 INT,
-		count2012 INT,
-		count2013 INT,
-		count2014 INT,
-		count2015 INT,
-		count2016 INT,
-		count2017 INT,
-		count2018 INT
+		year int,
+		month int,
+		count int
 	);
 	`
 	_, err := db.Exec(query)
