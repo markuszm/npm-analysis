@@ -10,6 +10,7 @@ import (
 
 const lodashTestJsonPath = "./testfiles/lodash-all.json"
 const expressTestJsonPath = "./testfiles/express-all.json"
+const reactTestJsonPath = "./testfiles/react.json"
 const devCliTestJsonPath = "./testfiles/@anycli-dev-cli.json"
 
 const lodashDownloadCountsPath = "./testfiles/lodash-downloadcounts.json"

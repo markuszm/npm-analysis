@@ -5,6 +5,7 @@ import (
 	semver2 "github.com/Masterminds/semver"
 	"github.com/blang/semver"
 	"testing"
+	"time"
 )
 
 func TestSemverDiff(t *testing.T) {
@@ -54,4 +55,32 @@ func TestProcessVersions(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(changes)
+}
+
+func TestFindLatestVersionExpress(t *testing.T) {
+	testPackage := MustReadMetadataFromTestFile(expressTestJsonPath, t)
+	specificDate := time.Date(2017, 5, 1, 0, 0, 0, 0, time.UTC)
+
+	latestVer := FindLatestVersion(testPackage, specificDate)
+
+	expectedVer := "4.15.2"
+	if latestVer != expectedVer {
+		t.Errorf("Expected %v but got %v", expectedVer, latestVer)
+	}
+
+	t.Log(latestVer)
+}
+
+func TestFindLatestVersionReact(t *testing.T) {
+	testPackage := MustReadMetadataFromTestFile(reactTestJsonPath, t)
+	specificDate := time.Date(2017, 5, 1, 0, 0, 0, 0, time.UTC)
+
+	latestVer := FindLatestVersion(testPackage, specificDate)
+
+	expectedVer := "15.5.4"
+	if latestVer != expectedVer {
+		t.Errorf("Expected %v but got %v", expectedVer, latestVer)
+	}
+
+	t.Log(latestVer)
 }

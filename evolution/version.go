@@ -156,3 +156,35 @@ type VersionCount struct {
 	AvgPatchesBetweenMajor float64
 	AvgPatchesBetweenMinor float64
 }
+
+func FindLatestVersion(metadata model.Metadata, date time.Time) string {
+	maxTime := time.Unix(0, 0)
+	maxVersion := "unreleased"
+	parsedTimeMap := GetParsedTimeMap(metadata.Time)
+	for v, t := range parsedTimeMap {
+		if v == "created" || v == "modified" || v == "unpublished" {
+			continue
+		}
+		if (maxTime.Before(t) && t.Before(date)) || maxTime.Equal(t) {
+			semverLater, err := semver.Parse(v)
+			// ignore the ones that don't parse because there is no metadata for them anyway
+			if err != nil {
+				continue
+			}
+			if maxVersion == "unreleased" {
+				maxTime = t
+				maxVersion = v
+				continue
+			}
+
+			semverPrevious := semver.MustParse(maxVersion)
+
+			if semverLater.GTE(semverPrevious) && len(semverLater.Pre) == 0 {
+				maxTime = t
+				maxVersion = v
+			}
+
+		}
+	}
+	return maxVersion
+}
