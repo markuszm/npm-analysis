@@ -40,6 +40,8 @@ type PackageData struct {
 	Maintainers  []string `json:"maintainers"`
 }
 
+type Timeline map[time.Time]PackageData
+
 // start time is 11.2010 and cutoff is 04.2018
 func GetPackageMetadataForEachMonth(metadata model.Metadata) map[time.Time]PackageData {
 	resultMap := make(map[time.Time]PackageData, 0)

@@ -54,6 +54,7 @@ func main() {
 	if *dbFlag == "sqlite" {
 		db = initializeDB(&database.Sqlite{}, DATABASE_PATH)
 	}
+	defer db.Close()
 
 	if *createFlag {
 		dbErr := createSchema(db)

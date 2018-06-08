@@ -29,6 +29,7 @@ func main() {
 	if databaseInitErr != nil {
 		log.Fatal(databaseInitErr)
 	}
+	defer mysql.Close()
 
 	err := database.CreatePopularity(mysql)
 
