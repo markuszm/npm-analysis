@@ -55,9 +55,18 @@ func main() {
 func generatePointsFromMaintainerCounts(counts evolution.MaintainerCount) plotter.XYs {
 	pts := make([]struct{ X, Y float64 }, 0)
 	x := 0
-	for _, innerMap := range counts.Counts {
-		for _, count := range innerMap {
-			pts = append(pts, struct{ X, Y float64 }{X: float64(x), Y: float64(count)})
+	for year := 2010; year < 2019; year++ {
+		startMonth := 1
+		endMonth := 12
+		if year == 2010 {
+			startMonth = 11
+		}
+		if year == 2018 {
+			endMonth = 4
+		}
+		for month := startMonth; month <= endMonth; month++ {
+			y := counts.Counts[year][month]
+			pts = append(pts, struct{ X, Y float64 }{X: float64(x), Y: float64(y)})
 			x++
 		}
 	}
