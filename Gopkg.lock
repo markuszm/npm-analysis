@@ -8,6 +8,12 @@
   version = "v1.4.2"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/ajstarks/svgo"
+  packages = ["."]
+  revision = "644b8db467afccf19a0692a3e31a1868e4287ab8"
+
+[[projects]]
   name = "github.com/blang/semver"
   packages = ["."]
   revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
@@ -32,6 +38,16 @@
   version = "v1.7.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/golang/freetype"
+  packages = [
+    ".",
+    "raster",
+    "truetype"
+  ]
+  revision = "e2365dfdc4a05e4b8299a783240d4a7d5a65d4e4"
+
+[[projects]]
   name = "github.com/johnnadratowski/golang-neo4j-bolt-driver"
   packages = [
     ".",
@@ -44,6 +60,22 @@
   ]
   revision = "2387cc1f01254d3a0055e034f5716278a1f420c7"
   version = "v0.1"
+
+[[projects]]
+  name = "github.com/jung-kurt/gofpdf"
+  packages = ["."]
+  revision = "14c1db30737a138f8d9797cffea58783892b2fae"
+  version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/llgcode/draw2d"
+  packages = [
+    ".",
+    "draw2dbase",
+    "draw2dimg"
+  ]
+  revision = "274031cf2abe8acd15c4a911e1f7f1295fc4830c"
 
 [[projects]]
   name = "github.com/mattn/go-sqlite3"
@@ -99,6 +131,19 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/image"
+  packages = [
+    "draw",
+    "font",
+    "math/f64",
+    "math/fixed",
+    "tiff",
+    "tiff/lzw"
+  ]
+  revision = "af66defab954cb421ca110193eed9477c8541e2a"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
   revision = "1e491301e022f8f977054da4c2d852decd59571f"
@@ -109,9 +154,47 @@
   packages = ["semaphore"]
   revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
+[[projects]]
+  branch = "master"
+  name = "gonum.org/v1/gonum"
+  packages = [
+    "blas",
+    "blas/blas64",
+    "blas/gonum",
+    "floats",
+    "internal/asm/c128",
+    "internal/asm/f32",
+    "internal/asm/f64",
+    "internal/math32",
+    "lapack",
+    "lapack/gonum",
+    "lapack/lapack64",
+    "mat"
+  ]
+  revision = "e4cc524e41c05103f0b96c02f041efd8d171a1de"
+
+[[projects]]
+  branch = "master"
+  name = "gonum.org/v1/plot"
+  packages = [
+    ".",
+    "palette",
+    "plotter",
+    "plotutil",
+    "tools/bezier",
+    "vg",
+    "vg/draw",
+    "vg/fonts",
+    "vg/vgeps",
+    "vg/vgimg",
+    "vg/vgpdf",
+    "vg/vgsvg"
+  ]
+  revision = "f671bfc8bb814c462e2a468e43f679bc94e21d9c"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0f9e31311971a9222ee994aca012d2b6b95ca9174ec24a54387792149f8b1459"
+  inputs-digest = "68ad3371d70d31edf48d73d5322d400eb1f16c86b459c79fdd5b0be8ec347c45"
   solver-name = "gps-cdcl"
   solver-version = 1
