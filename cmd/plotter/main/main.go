@@ -1,20 +1,21 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
-	"github.com/markuszm/npm-analysis/evolution"
-	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/plotutil"
-	"gonum.org/v1/plot/vg"
+	"github.com/markuszm/npm-analysis/plots"
 	"log"
-	"math/rand"
+	"sync"
 )
 
 const MYSQL_USER = "root"
 
 const MYSQL_PW = "npm-analysis"
+
+var db *sql.DB
+
+var workerNumber = 100
 
 func main() {
 	mysqlInitializer := &database.Mysql{}
@@ -24,94 +25,36 @@ func main() {
 	}
 	defer mysql.Close()
 
-	maintainerName := "types"
-	maintainerCount, err := database.GetMaintainerCountsForMaintainer(maintainerName, mysql)
+	db = mysql
+
+	maintainerNames, err := database.GetMaintainerNames(mysql)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	p, err := plot.New()
-	if err != nil {
-		panic(err)
+	log.Print("Retrieved maintainer names from database")
+
+	workerWait := sync.WaitGroup{}
+
+	jobs := make(chan string, 100)
+
+	for w := 1; w <= workerNumber; w++ {
+		workerWait.Add(1)
+		go worker(w, jobs, &workerWait)
 	}
 
-	p.Title.Text = fmt.Sprintf("Package count evolution for maintainer: %v", maintainerName)
-	p.X.Label.Text = "Time"
-	p.Y.Label.Text = "Count"
-
-	err = plotutil.AddLinePoints(p,
-		maintainerName, generatePointsFromMaintainerCounts(maintainerCount))
-	if err != nil {
-		panic(err)
+	for _, m := range maintainerNames {
+		jobs <- m
 	}
 
-	// Save the plot to a PNG file.
-	if err := p.Save(4*vg.Inch, 4*vg.Inch, "maintainerPackageEvolution.png"); err != nil {
-		panic(err)
-	}
+	close(jobs)
 
+	workerWait.Wait()
 }
 
-func generatePointsFromMaintainerCounts(counts evolution.MaintainerCount) plotter.XYs {
-	pts := make([]struct{ X, Y float64 }, 0)
-	x := 0
-	for year := 2010; year < 2019; year++ {
-		startMonth := 1
-		endMonth := 12
-		if year == 2010 {
-			startMonth = 11
-		}
-		if year == 2018 {
-			endMonth = 4
-		}
-		for month := startMonth; month <= endMonth; month++ {
-			y := counts.Counts[year][month]
-			pts = append(pts, struct{ X, Y float64 }{X: float64(x), Y: float64(y)})
-			x++
-		}
+func worker(id int, jobs chan string, workerWait *sync.WaitGroup) {
+	for j := range jobs {
+		plots.CreateLinePlotForMaintainerPackageCount(j, db)
 	}
-	return plotter.XYs(pts)
-}
-
-func boxPlotExample() {
-	// Get some data to display in our plot.
-	rand.Seed(int64(0))
-	n := 10
-	uniform := make(plotter.Values, n)
-	normal := make(plotter.Values, n)
-	expon := make(plotter.Values, n)
-	for i := 0; i < n; i++ {
-		uniform[i] = rand.Float64()
-		normal[i] = rand.NormFloat64()
-		expon[i] = rand.ExpFloat64()
-	}
-	// Create the plot and set its title and axis label.
-	p, err := plot.New()
-	if err != nil {
-		panic(err)
-	}
-	p.Title.Text = "Box plots"
-	p.Y.Label.Text = "Values"
-	// Make boxes for our data and add them to the plot.
-	w := vg.Points(20)
-	b0, err := plotter.NewBoxPlot(w, 0, uniform)
-	if err != nil {
-		panic(err)
-	}
-	b1, err := plotter.NewBoxPlot(w, 1, normal)
-	if err != nil {
-		panic(err)
-	}
-	b2, err := plotter.NewBoxPlot(w, 2, expon)
-	if err != nil {
-		panic(err)
-	}
-	p.Add(b0, b1, b2)
-	// Set the X axis of the plot to nominal with
-	// the given names for x=0, x=1 and x=2.
-	p.NominalX("Uniform\nDistribution", "Normal\nDistribution",
-		"Exponential\nDistribution")
-	if err := p.Save(3*vg.Inch, 4*vg.Inch, "boxplot.png"); err != nil {
-		panic(err)
-	}
+	workerWait.Done()
 }

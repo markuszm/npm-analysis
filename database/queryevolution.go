@@ -144,3 +144,23 @@ func GetMaintainerCountsForMaintainer(maintainerName string, db *sql.DB) (evolut
 	maintainerCount.Counts = tempMap
 	return maintainerCount, nil
 }
+
+func GetMaintainerNames(db *sql.DB) ([]string, error) {
+	var maintainerNames []string
+
+	rows, err := db.Query("SELECT distinct name FROM maintainerCount WHERE name <> \"\" order by name")
+	if err != nil {
+		return maintainerNames, errors.Wrap(err, "Failed to query maintainerCount")
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		err := rows.Scan(&name)
+		if err != nil {
+			return maintainerNames, errors.Wrap(err, "Could not get info from row")
+		}
+		maintainerNames = append(maintainerNames, name)
+	}
+	return maintainerNames, nil
+}
