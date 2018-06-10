@@ -125,6 +125,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/remeh/sizedwaitgroup"
+  packages = ["."]
+  revision = "5582a674300c427060d06980c142aeb52ed20040"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = ["pbkdf2"]
   revision = "5ba7f63082460102a45837dbd1827e10f9479ac0"
@@ -195,6 +201,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "68ad3371d70d31edf48d73d5322d400eb1f16c86b459c79fdd5b0be8ec347c45"
+  inputs-digest = "7ba154ee0e9ed376c98d915c2af4e117c5431cf588ccdbc4ce45655280adaba6"
   solver-name = "gps-cdcl"
   solver-version = 1

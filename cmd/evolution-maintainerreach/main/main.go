@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/remeh/sizedwaitgroup"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,7 +17,7 @@ const MONGOURL = "mongodb://npm:npm123@localhost:27017"
 
 const JSONPATH = "./db-data/dependenciesTimeline.json"
 
-const maxGoroutines = 10000
+const maxGoroutines = 100
 
 func main() {
 	calculatePackageReach()
@@ -39,19 +40,16 @@ func calculatePackageReach() {
 
 	log.Print("Finished loading json")
 
-	someDate := time.Date(2013, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
+	someDate := time.Date(2018, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
 
 	packageMap := dependenciesTimeline[someDate]
 
 	packages := sync.Map{}
 
-	workerWait := sync.WaitGroup{}
+	workerWait := sizedwaitgroup.New(maxGoroutines)
 
-	workerWait.Add(1)
-
-	guard := make(chan struct{}, maxGoroutines)
-
-	PackageReach("underscore", packageMap, &packages, &workerWait, guard)
+	workerWait.Add()
+	PackageReach("lodash", packageMap, &packages, &workerWait)
 
 	workerWait.Wait()
 
@@ -65,20 +63,16 @@ func calculatePackageReach() {
 	log.Print(length)
 }
 
-func PackageReach(pkg string, packageMap map[string]map[string]bool, packages *sync.Map, workerWait *sync.WaitGroup, guard chan struct{}) {
+func PackageReach(pkg string, packageMap map[string]map[string]bool, packages *sync.Map, workerWait *sizedwaitgroup.SizedWaitGroup) {
 	for p, deps := range packageMap {
 		if deps[pkg] {
 			if _, ok := packages.Load(p); !ok {
 				packages.Store(p, true)
-				workerWait.Add(1)
-				log.Print("Sending to guard")
-				guard <- struct{}{}
-				go PackageReach(p, packageMap, packages, workerWait, guard)
+				workerWait.Add()
+				go PackageReach(p, packageMap, packages, workerWait)
 			}
 		}
 	}
-	log.Print("Waiting for guard")
-	<-guard
 	workerWait.Done()
 }
 
