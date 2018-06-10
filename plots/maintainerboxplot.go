@@ -5,6 +5,7 @@ import (
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 	"log"
+	"math"
 	"time"
 )
 
@@ -23,7 +24,8 @@ func CreateBoxPlot(values map[time.Time][]int) {
 			counts := values[time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)]
 			var plotterValues []float64
 			for _, c := range counts {
-				plotterValues = append(plotterValues, float64(c))
+				val := math.Log10(float64(c))
+				plotterValues = append(plotterValues, val)
 			}
 			allValues = append(allValues, plotter.Values(plotterValues))
 		}
@@ -51,7 +53,7 @@ func CreateBoxPlot(values map[time.Time][]int) {
 
 	p.Add(plots...)
 	p.X.Label.Text = "Time"
-	p.X.Tick.Marker = YearTicks{}
+	p.X.Tick.Marker = YearTicks{startYear: 2010}
 	if err := p.Save(15*vg.Inch, 15*vg.Inch, "/home/markus/npm-analysis/boxplot.png"); err != nil {
 		log.Fatalf("ERROR: Could not save plot with %v", err)
 	}

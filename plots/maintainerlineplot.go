@@ -25,7 +25,7 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) 
 	}
 	p.Title.Text = fmt.Sprintf("Package count evolution for maintainer: %v", maintainerName)
 	p.X.Label.Text = "Time"
-	p.X.Tick.Marker = YearTicks{}
+	p.X.Tick.Marker = YearTicks{startYear: 2010}
 	p.Y.Label.Text = "Count"
 
 	err = plotutil.AddLinePoints(p, GeneratePointsFromMaintainerCounts(maintainerCount))
@@ -38,14 +38,14 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) 
 	log.Printf("Finished maintainer %v", maintainerName)
 }
 
-type YearTicks struct{}
+type YearTicks struct {
+	startYear int
+}
 
-// Ticks computes the default tick marks, but inserts commas
-// into the labels for the major tick marks.
-func (YearTicks) Ticks(min, max float64) []plot.Tick {
+func (y YearTicks) Ticks(min, max float64) []plot.Tick {
 	var ticks []plot.Tick
 	val := 0.0
-	for year := 2010; year < 2019; year++ {
+	for year := y.startYear; year < 2019; year++ {
 		startMonth := 1
 		endMonth := 12
 		if year == 2010 {
