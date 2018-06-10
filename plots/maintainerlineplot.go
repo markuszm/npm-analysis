@@ -11,6 +11,7 @@ import (
 	"gonum.org/v1/plot/vg"
 	"log"
 	"os"
+	"strings"
 )
 
 func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) {
@@ -27,8 +28,7 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) 
 	p.X.Tick.Marker = YearTicks{}
 	p.Y.Label.Text = "Count"
 
-	err = plotutil.AddLinePoints(p,
-		maintainerName, GeneratePointsFromMaintainerCounts(maintainerCount))
+	err = plotutil.AddLinePoints(p, GeneratePointsFromMaintainerCounts(maintainerCount))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,15 +75,25 @@ func (YearTicks) Ticks(min, max float64) []plot.Tick {
 }
 
 func SavePlot(maintainerName string, p *plot.Plot) {
-	nestedDir := fmt.Sprintf("/home/markus/npm-analysis/maintainer-evolution/%v", string(maintainerName[0]))
+	nestedDir := GetNestedDirName(maintainerName)
 	err := os.MkdirAll(nestedDir, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Could not create nested directory with %v", err)
 	}
 	// Save the plot to a PNG file.
-	if err := p.Save(8*vg.Inch, 8*vg.Inch, fmt.Sprintf("%v/maintainerPackageEvolution-%v.png", nestedDir, maintainerName)); err != nil {
+	if err := p.Save(8*vg.Inch, 8*vg.Inch, GetPlotFileName(maintainerName)); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func GetNestedDirName(maintainerName string) string {
+	return fmt.Sprintf("/home/markus/npm-analysis/maintainer-evolution/%v", string(maintainerName[0]))
+}
+
+func GetPlotFileName(maintainerName string) string {
+	maintainerName = strings.Replace(maintainerName, "/", "", -1)
+	maintainerName = strings.Replace(maintainerName, " ", "", -1)
+	return fmt.Sprintf("%v/maintainerPackageEvolution-%v.png", GetNestedDirName(maintainerName), maintainerName)
 }
 
 func GeneratePointsFromMaintainerCounts(counts evolution.MaintainerCount) plotter.XYs {

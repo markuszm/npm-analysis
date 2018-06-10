@@ -4,48 +4,55 @@ import (
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
-	"math/rand"
+	"log"
+	"time"
 )
 
-func boxPlotExample() {
-	// Get some data to display in our plot.
-	rand.Seed(int64(0))
-	n := 1000000
-	uniform := make(plotter.Values, n)
-	normal := make(plotter.Values, n)
-	expon := make(plotter.Values, n)
-	for i := 0; i < n; i++ {
-		uniform[i] = rand.Float64() * 100.0
-		normal[i] = rand.NormFloat64() * 100.0
-		expon[i] = rand.ExpFloat64() * 100.0
+func CreateBoxPlot(values map[time.Time][]int) {
+	var allValues []plotter.Values
+	for year := 2010; year < 2019; year++ {
+		startMonth := 1
+		endMonth := 12
+		if year == 2010 {
+			startMonth = 11
+		}
+		if year == 2018 {
+			endMonth = 4
+		}
+		for month := startMonth; month <= endMonth; month++ {
+			counts := values[time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)]
+			var plotterValues []float64
+			for _, c := range counts {
+				plotterValues = append(plotterValues, float64(c))
+			}
+			allValues = append(allValues, plotter.Values(plotterValues))
+		}
 	}
+
 	// Create the plot and set its title and axis label.
 	p, err := plot.New()
 	if err != nil {
 		panic(err)
 	}
 	p.Title.Text = "Box plots"
-	p.Y.Label.Text = "Values"
+	p.Y.Label.Text = "Package Count"
 	// Make boxes for our data and add them to the plot.
 	w := vg.Points(20)
-	b0, err := plotter.NewBoxPlot(w, 0, uniform)
-	if err != nil {
-		panic(err)
+
+	var plots []plot.Plotter
+
+	for i, v := range allValues {
+		b, err := plotter.NewBoxPlot(w, float64(i), v)
+		if err != nil {
+			log.Fatalf("ERROR: creating box plot with %v", err)
+		}
+		plots = append(plots, b)
 	}
-	b1, err := plotter.NewBoxPlot(w, 1, normal)
-	if err != nil {
-		panic(err)
-	}
-	b2, err := plotter.NewBoxPlot(w, 2, expon)
-	if err != nil {
-		panic(err)
-	}
-	p.Add(b0, b1, b2)
-	// Set the X axis of the plot to nominal with
-	// the given names for x=0, x=1 and x=2.
-	p.NominalX("Uniform\nDistribution", "Normal\nDistribution",
-		"Exponential\nDistribution")
-	if err := p.Save(8*vg.Inch, 9*vg.Inch, "boxplot.png"); err != nil {
-		panic(err)
+
+	p.Add(plots...)
+	p.X.Label.Text = "Time"
+	p.X.Tick.Marker = YearTicks{}
+	if err := p.Save(15*vg.Inch, 15*vg.Inch, "/home/markus/npm-analysis/boxplot.png"); err != nil {
+		log.Fatalf("ERROR: Could not save plot with %v", err)
 	}
 }
