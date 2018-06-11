@@ -104,7 +104,7 @@ func main() {
 
 func worker(id int, jobs chan string, workerWait *sync.WaitGroup) {
 	for maintainerName := range jobs {
-		fileName := plots.GetPlotFileName(maintainerName)
+		fileName := plots.GetPlotFileName(maintainerName, "maintainer-evolution")
 		if _, err := os.Stat(fileName); err != nil {
 			plots.CreateLinePlotForMaintainerPackageCount(maintainerName, db)
 		}

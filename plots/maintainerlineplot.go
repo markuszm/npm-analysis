@@ -33,9 +33,27 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) 
 		log.Fatal(err)
 	}
 
-	SavePlot(maintainerName, p)
+	SavePlot(maintainerName, "maintainer-evolution", p)
 
 	log.Printf("Finished maintainer %v", maintainerName)
+}
+
+func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64) {
+	p, err := plot.New()
+	if err != nil {
+		panic(err)
+	}
+	p.Title.Text = fmt.Sprintf("Maintainer Reach Evolution for %v", maintainerName)
+	p.X.Label.Text = "Time"
+	p.X.Tick.Marker = YearTicks{startYear: 2010}
+	p.Y.Label.Text = "Reach"
+
+	err = plotutil.AddLinePoints(p, GeneratePointsFromFloatArray(counts))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	SavePlot(maintainerName, "maintainer-reach", p)
 }
 
 type YearTicks struct {
@@ -74,26 +92,26 @@ func (y YearTicks) Ticks(min, max float64) []plot.Tick {
 	return ticks
 }
 
-func SavePlot(maintainerName string, p *plot.Plot) {
-	nestedDir := GetNestedDirName(maintainerName)
+func SavePlot(maintainerName string, dir string, p *plot.Plot) {
+	nestedDir := GetNestedDirName(maintainerName, dir)
 	err := os.MkdirAll(nestedDir, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Could not create nested directory with %v", err)
 	}
 	// Save the plot to a PNG file.
-	if err := p.Save(8*vg.Inch, 8*vg.Inch, GetPlotFileName(maintainerName)); err != nil {
+	if err := p.Save(8*vg.Inch, 8*vg.Inch, GetPlotFileName(maintainerName, dir)); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func GetNestedDirName(maintainerName string) string {
-	return fmt.Sprintf("/home/markus/npm-analysis/maintainer-evolution/%v", string(maintainerName[0]))
+func GetNestedDirName(maintainerName string, dir string) string {
+	return fmt.Sprintf("/home/markus/npm-analysis/%v/%v", dir, string(maintainerName[0]))
 }
 
-func GetPlotFileName(maintainerName string) string {
+func GetPlotFileName(maintainerName string, dir string) string {
 	maintainerName = strings.Replace(maintainerName, "/", "", -1)
 	maintainerName = strings.Replace(maintainerName, " ", "", -1)
-	return fmt.Sprintf("%v/maintainerPackageEvolution-%v.png", GetNestedDirName(maintainerName), maintainerName)
+	return fmt.Sprintf("%v/maintainerPackageEvolution-%v.png", GetNestedDirName(maintainerName, dir), maintainerName)
 }
 
 func GeneratePointsFromMaintainerCounts(counts evolution.MaintainerCount) plotter.XYs {
@@ -113,6 +131,16 @@ func GeneratePointsFromMaintainerCounts(counts evolution.MaintainerCount) plotte
 			pts = append(pts, struct{ X, Y float64 }{X: float64(x), Y: float64(y)})
 			x++
 		}
+	}
+	return plotter.XYs(pts)
+}
+
+func GeneratePointsFromFloatArray(values []float64) plotter.XYs {
+	pts := make([]struct{ X, Y float64 }, 0)
+	x := 0.0
+	for _, val := range values {
+		pts = append(pts, struct{ X, Y float64 }{X: x, Y: val})
+		x++
 	}
 	return plotter.XYs(pts)
 }
