@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/plots"
+	"github.com/markuszm/npm-analysis/util"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
@@ -28,7 +31,9 @@ type StoreMaintainedPackages struct {
 	PackagesTimeline map[time.Time][]string `json:"packages"`
 }
 
-//var resultMap = sync.Map{}
+var resultMap = sync.Map{}
+
+const createPlot = false
 
 func calculatePackageReach() {
 	dependenciesTimeline := loadJsonDependenciesTimeline()
@@ -83,21 +88,75 @@ func calculatePackageReach() {
 
 	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 
-	//var resultList []util.Pair
-	//
-	//resultMap.Range(func(key, value interface{}) bool {
-	//	resultList = append(resultList, util.Pair{Key: key.(string), Value: value.(int)})
-	//	return true
-	//})
-	//sortedList := util.PairList(resultList)
-	//sort.Sort(sort.Reverse(sortedList))
-	//
-	//for i, pair := range sortedList {
-	//	if i > 30 {
-	//		break
-	//	}
-	//	log.Print("Maintainer ", pair.Key, " Reach: ", pair.Value)
-	//}
+	calculateAverageMaintainerReach()
+}
+
+func calculateAverageMaintainerReach() {
+	maintainerReachCount := make(map[time.Time]float64, 0)
+	maintainerCount := make(map[time.Time]float64, 0)
+	averageMaintainerReachPerMonth := make(map[time.Time]float64, 0)
+
+	resultMap.Range(func(key, value interface{}) bool {
+		counts := value.([]float64)
+		x := 0
+		isActive := false
+		for year := 2010; year < 2019; year++ {
+			startMonth := 1
+			endMonth := 12
+			if year == 2010 {
+				startMonth = 11
+			}
+			if year == 2018 {
+				endMonth = 4
+			}
+			for month := startMonth; month <= endMonth; month++ {
+				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+				if counts[x] > 0 || isActive {
+					maintainerCount[date] = maintainerCount[date] + 1
+					maintainerReachCount[date] = maintainerReachCount[date] + counts[x]
+					isActive = true
+				}
+				x++
+			}
+		}
+		return true
+	})
+
+	for year := 2010; year < 2019; year++ {
+		startMonth := 1
+		endMonth := 12
+		if year == 2010 {
+			startMonth = 11
+		}
+		if year == 2018 {
+			endMonth = 4
+		}
+		for month := startMonth; month <= endMonth; month++ {
+			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+			average := maintainerReachCount[date] / maintainerCount[date]
+			averageMaintainerReachPerMonth[date] = average
+		}
+	}
+
+	var resultList []util.TimeValue
+
+	for k, v := range averageMaintainerReachPerMonth {
+		if !math.IsNaN(v) {
+			resultList = append(resultList, util.TimeValue{Key: k, Value: v})
+		}
+	}
+	sortedList := util.TimeValueList(resultList)
+	sort.Sort(sortedList)
+
+	var avgValues []float64
+
+	for _, v := range sortedList {
+		avgValues = append(avgValues, v.Value)
+	}
+
+	log.Print(avgValues, averageMaintainerReachPerMonth)
+
+	plots.GenerateLinePlotForAverageMaintainerReach(avgValues)
 }
 
 func generateDependentsMaps(dependenciesTimeline map[time.Time]map[string]map[string]bool) map[time.Time]map[string][]string {
@@ -123,9 +182,11 @@ func generateDependentsMaps(dependenciesTimeline map[time.Time]map[string]map[st
 
 func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
 	for j := range jobs {
-		fileName := plots.GetPlotFileName(j.Name, "maintainer-reach")
-		if _, err := os.Stat(fileName); err == nil {
-			continue
+		if createPlot {
+			fileName := plots.GetPlotFileName(j.Name, "maintainer-reach")
+			if _, err := os.Stat(fileName); err == nil {
+				continue
+			}
 		}
 		var counts []float64
 		for year := 2010; year < 2019; year++ {
@@ -148,7 +209,11 @@ func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[
 			}
 		}
 
-		plots.GenerateLinePlotForMaintainerReach(j.Name, counts)
+		resultMap.Store(j.Name, counts)
+
+		if createPlot {
+			plots.GenerateLinePlotForMaintainerReach(j.Name, counts)
+		}
 
 		log.Printf("Finished %v", j.Name)
 	}

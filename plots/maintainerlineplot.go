@@ -56,6 +56,24 @@ func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64)
 	SavePlot(maintainerName, "maintainer-reach", p)
 }
 
+func GenerateLinePlotForAverageMaintainerReach(counts []float64) {
+	p, err := plot.New()
+	if err != nil {
+		panic(err)
+	}
+	p.Title.Text = fmt.Sprintf("Average Maintainer Reach over all packages")
+	p.X.Label.Text = "Time"
+	p.X.Tick.Marker = YearTicks{startYear: 2011}
+	p.Y.Label.Text = "Reach"
+
+	err = plotutil.AddLinePoints(p, GeneratePointsFromFloatArray(counts))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	SavePlot("average", "maintainer-reach", p)
+}
+
 type YearTicks struct {
 	startYear int
 }

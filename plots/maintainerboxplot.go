@@ -24,7 +24,7 @@ func CreateBoxPlot(values map[time.Time][]int) {
 			counts := values[time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)]
 			var plotterValues []float64
 			for _, c := range counts {
-				val := math.Log10(float64(c))
+				val := math.Log10(float64(c) + 0.01)
 				plotterValues = append(plotterValues, val)
 			}
 			allValues = append(allValues, plotter.Values(plotterValues))

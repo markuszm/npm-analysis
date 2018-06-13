@@ -70,7 +70,7 @@ func main() {
 
 		allCounts := make(map[time.Time][]int)
 		for _, counts := range countMap {
-			//isActive := false
+			isActive := false
 
 			for year := 2010; year < 2019; year++ {
 				startMonth := 1
@@ -88,9 +88,9 @@ func main() {
 					if values == nil {
 						values = make([]int, 0)
 					}
-					if count > 0 {
+					if count > 0 || isActive {
 						values = append(values, count)
-						//isActive = true
+						isActive = true
 					}
 					allCounts[date] = values
 				}
