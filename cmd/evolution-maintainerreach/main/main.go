@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/markuszm/npm-analysis/util"
@@ -12,6 +13,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -89,6 +91,88 @@ func calculatePackageReach() {
 	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 
 	calculateAverageMaintainerReach()
+
+	calculateMaintainerReachDiff()
+}
+
+func calculateMaintainerReachDiff() {
+	maintainerReachDiffMap := make(map[time.Time][]util.MaintainerReachDiff, 0)
+
+	resultMap.Range(func(key, value interface{}) bool {
+		counts := value.([]float64)
+		x := 0
+		isActive := false
+		previousCount := math.MaxFloat64
+		for year := 2010; year < 2019; year++ {
+			startMonth := 1
+			endMonth := 12
+			if year == 2010 {
+				startMonth = 11
+			}
+			if year == 2018 {
+				endMonth = 4
+			}
+			for month := startMonth; month <= endMonth; month++ {
+				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+				count := counts[x]
+				if count > 0 || isActive {
+					if previousCount == math.MaxFloat64 {
+						previousCount = count
+						continue
+					}
+					diff := previousCount - count
+					diffs := maintainerReachDiffMap[date]
+					if diffs == nil {
+						diffs = make([]util.MaintainerReachDiff, 0)
+					}
+					diffs = append(diffs, util.MaintainerReachDiff{Name: key.(string), Diff: diff})
+					maintainerReachDiffMap[date] = diffs
+					isActive = true
+					previousCount = count
+				}
+				x++
+			}
+		}
+		return true
+	})
+
+	builder := strings.Builder{}
+
+	for year := 2010; year < 2019; year++ {
+		startMonth := 1
+		endMonth := 12
+		if year == 2010 {
+			startMonth = 11
+		}
+		if year == 2018 {
+			endMonth = 4
+		}
+		for month := startMonth; month <= endMonth; month++ {
+			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+			diffs := maintainerReachDiffMap[date]
+			sortedList := util.MaintainerReachDiffList(diffs)
+			sort.Sort(sortedList)
+
+			builder.WriteString(fmt.Sprintf("Top 20 decreases in %v \n", date))
+			for i, m := range sortedList {
+				if i > 20 {
+					break
+				}
+				builder.WriteString(fmt.Sprintf("%d. Name: %v Diff: %f \n", i, m.Name, m.Diff))
+			}
+
+			sort.Sort(sort.Reverse(sortedList))
+			builder.WriteString(fmt.Sprintf("Top 20 increases in %v \n", date))
+			for i, m := range sortedList {
+				if i > 20 {
+					break
+				}
+				builder.WriteString(fmt.Sprintf("%d. Name: %v Diff: %f \n", i, m.Name, m.Diff))
+			}
+		}
+	}
+
+	ioutil.WriteFile("/home/markus/npm-analysis/maintainerReachDiffs.txt", []byte(builder.String()), os.ModePerm)
 }
 
 func calculateAverageMaintainerReach() {
@@ -154,8 +238,6 @@ func calculateAverageMaintainerReach() {
 		avgValues = append(avgValues, v.Value)
 	}
 
-	log.Print(avgValues, averageMaintainerReachPerMonth)
-
 	plots.GenerateLinePlotForAverageMaintainerReach(avgValues)
 }
 
@@ -215,7 +297,7 @@ func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[
 			plots.GenerateLinePlotForMaintainerReach(j.Name, counts)
 		}
 
-		log.Printf("Finished %v", j.Name)
+		//log.Printf("Finished %v", j.Name)
 	}
 	workerWait.Done()
 }

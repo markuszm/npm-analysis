@@ -49,7 +49,7 @@ func CalculateMaintainerCounts(changes []MaintainerChange) map[string]Maintainer
 		}
 
 		if c.ChangeType == "REMOVED" {
-			for y := year; y < 2018; y++ {
+			for y := year; y <= 2018; y++ {
 				startMonth := 1
 				endMonth := 12
 				if y == 2010 {
@@ -113,7 +113,7 @@ func CalculateMaintainerPackages(changes []MaintainerChange) map[string]Maintain
 		}
 
 		if c.ChangeType == "REMOVED" {
-			for y := year; y < 2018; y++ {
+			for y := year; y <= 2018; y++ {
 				startMonth := 1
 				endMonth := 12
 				if y == 2010 {
