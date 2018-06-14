@@ -6,8 +6,13 @@ import (
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/insert"
 	"github.com/markuszm/npm-analysis/evolution"
+	"github.com/markuszm/npm-analysis/plots"
+	"github.com/markuszm/npm-analysis/util"
 	"log"
+	"math"
+	"sort"
 	"sync"
+	"time"
 )
 
 const MYSQL_USER = "root"
@@ -17,6 +22,8 @@ const MYSQL_PW = "npm-analysis"
 const workerNumber = 100
 
 var db *sql.DB
+
+const insertDB = false
 
 func main() {
 	mysqlInitializer := &database.Mysql{}
@@ -42,21 +49,126 @@ func main() {
 
 	countMap := evolution.CalculateMaintainerCounts(changes)
 
-	workerWait := sync.WaitGroup{}
+	if insertDB {
+		workerWait := sync.WaitGroup{}
 
-	jobs := make(chan evolution.MaintainerCount, 100)
+		jobs := make(chan evolution.MaintainerCount, 100)
 
-	for w := 1; w <= workerNumber; w++ {
-		workerWait.Add(1)
-		go worker(w, jobs, &workerWait)
+		for w := 1; w <= workerNumber; w++ {
+			workerWait.Add(1)
+			go worker(w, jobs, &workerWait)
+		}
+
+		for _, maintainerCount := range countMap {
+			jobs <- maintainerCount
+		}
+
+		close(jobs)
+		workerWait.Wait()
 	}
 
-	for _, maintainerCount := range countMap {
-		jobs <- maintainerCount
+	calculateAverageMaintainerCount(countMap)
+	plotSortedMaintainerPackageCount(countMap)
+}
+
+func calculateAverageMaintainerCount(countMap map[string]evolution.MaintainerCount) {
+	maintainerPackageCount := make(map[time.Time]float64, 0)
+	maintainerCount := make(map[time.Time]float64, 0)
+	averageMaintainerPackageCountPerMonth := make(map[time.Time]float64, 0)
+
+	for _, counts := range countMap {
+		x := 0
+		isActive := false
+		for year := 2010; year < 2019; year++ {
+			startMonth := 1
+			endMonth := 12
+			if year == 2010 {
+				startMonth = 11
+			}
+			if year == 2018 {
+				endMonth = 4
+			}
+			for month := startMonth; month <= endMonth; month++ {
+				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+				count := counts.Counts[year][month]
+				if count > 0 || isActive {
+					maintainerCount[date] = maintainerCount[date] + 1
+					maintainerPackageCount[date] = maintainerPackageCount[date] + float64(count)
+					isActive = true
+				}
+				x++
+			}
+		}
 	}
 
-	close(jobs)
-	workerWait.Wait()
+	for year := 2010; year < 2019; year++ {
+		startMonth := 1
+		endMonth := 12
+		if year == 2010 {
+			startMonth = 11
+		}
+		if year == 2018 {
+			endMonth = 4
+		}
+		for month := startMonth; month <= endMonth; month++ {
+			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+			average := maintainerPackageCount[date] / maintainerCount[date]
+			averageMaintainerPackageCountPerMonth[date] = average
+		}
+	}
+
+	var resultList []util.TimeValue
+
+	for k, v := range averageMaintainerPackageCountPerMonth {
+		if !math.IsNaN(v) {
+			resultList = append(resultList, util.TimeValue{Key: k, Value: v})
+		}
+	}
+	sortedList := util.TimeValueList(resultList)
+	sort.Sort(sortedList)
+
+	var avgValues []float64
+
+	for _, v := range sortedList {
+		avgValues = append(avgValues, v.Value)
+	}
+
+	plots.GenerateLinePlotForAverageMaintainerPackageCount(avgValues)
+}
+
+func plotSortedMaintainerPackageCount(countMap map[string]evolution.MaintainerCount) {
+	valuesPerYear := map[int][]float64{
+		2010: make([]float64, 0),
+		2011: make([]float64, 0),
+		2012: make([]float64, 0),
+		2013: make([]float64, 0),
+		2014: make([]float64, 0),
+		2015: make([]float64, 0),
+		2016: make([]float64, 0),
+		2017: make([]float64, 0),
+		2018: make([]float64, 0),
+	}
+
+	for _, counts := range countMap {
+		//isActive := false
+		for year := 2010; year < 2019; year++ {
+			count := counts.Counts[year][1]
+			if count > 0 {
+				vals := valuesPerYear[year]
+				vals = append(vals, float64(count))
+				valuesPerYear[year] = vals
+				//isActive = true
+			}
+		}
+	}
+
+	for y, vals := range valuesPerYear {
+		sortedList := util.FloatList(vals)
+		sort.Sort(sort.Reverse(sortedList))
+		valuesPerYear[y] = sortedList
+	}
+
+	plots.GenerateSortedLinePlotMaintainerPackageCount(valuesPerYear)
 }
 
 func worker(id int, jobs chan evolution.MaintainerCount, workerWait *sync.WaitGroup) {

@@ -11,6 +11,7 @@ import (
 	"gonum.org/v1/plot/vg"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -21,7 +22,7 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) 
 	}
 	p, err := plot.New()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	p.Title.Text = fmt.Sprintf("Package count evolution for maintainer: %v", maintainerName)
 	p.X.Label.Text = "Time"
@@ -33,7 +34,7 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) 
 		log.Fatal(err)
 	}
 
-	SavePlot(maintainerName, "maintainer-evolution", p)
+	SaveMaintainerPlot(maintainerName, "maintainer-evolution", p)
 
 	log.Printf("Finished maintainer %v", maintainerName)
 }
@@ -41,7 +42,7 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) 
 func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64) {
 	p, err := plot.New()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	p.Title.Text = fmt.Sprintf("Maintainer Reach Evolution for %v", maintainerName)
 	p.X.Label.Text = "Time"
@@ -53,13 +54,13 @@ func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64)
 		log.Fatal(err)
 	}
 
-	SavePlot(maintainerName, "maintainer-reach", p)
+	SaveMaintainerPlot(maintainerName, "maintainer-reach", p)
 }
 
 func GenerateLinePlotForAverageMaintainerReach(counts []float64) {
 	p, err := plot.New()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	p.Title.Text = fmt.Sprintf("Average Maintainer Reach over all packages")
 	p.X.Label.Text = "Time"
@@ -71,7 +72,47 @@ func GenerateLinePlotForAverageMaintainerReach(counts []float64) {
 		log.Fatal(err)
 	}
 
-	SavePlot("average", "maintainer-reach", p)
+	SavePlot("/home/markus/npm-analysis/averageMaintainerReach.png", p)
+}
+
+func GenerateLinePlotForAverageMaintainerPackageCount(counts []float64) {
+	p, err := plot.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	p.Title.Text = fmt.Sprintf("Average Maintainer Package Count over all packages")
+	p.X.Label.Text = "Time"
+	p.X.Tick.Marker = YearTicks{startYear: 2010}
+	p.Y.Label.Text = "Package Count"
+
+	err = plotutil.AddLinePoints(p, GeneratePointsFromFloatArray(counts))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	SavePlot("/home/markus/npm-analysis/averageMaintainerPackageCount.png", p)
+}
+
+func GenerateSortedLinePlotMaintainerPackageCount(valuesPerYear map[int][]float64) {
+	p, err := plot.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	p.Title.Text = fmt.Sprintf("All maintainers package count sorted by count")
+	p.X.Label.Text = "Maintainer"
+	p.Y.Label.Text = "Package Count"
+
+	var args []interface{}
+	for y := 2010; y < 2019; y++ {
+		args = append(args, strconv.Itoa(y), GeneratePointsFromFloatArray(valuesPerYear[y]))
+	}
+
+	err = plotutil.AddLinePoints(p, args...)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	SavePlot("/home/markus/npm-analysis/sortedMaintainerPackageCount.png", p)
 }
 
 type YearTicks struct {
@@ -110,7 +151,7 @@ func (y YearTicks) Ticks(min, max float64) []plot.Tick {
 	return ticks
 }
 
-func SavePlot(maintainerName string, dir string, p *plot.Plot) {
+func SaveMaintainerPlot(maintainerName string, dir string, p *plot.Plot) {
 	nestedDir := GetNestedDirName(maintainerName, dir)
 	err := os.MkdirAll(nestedDir, os.ModePerm)
 	if err != nil {
@@ -118,6 +159,13 @@ func SavePlot(maintainerName string, dir string, p *plot.Plot) {
 	}
 	// Save the plot to a PNG file.
 	if err := p.Save(8*vg.Inch, 8*vg.Inch, GetPlotFileName(maintainerName, dir)); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func SavePlot(fileName string, p *plot.Plot) {
+	// Save the plot to a PNG file.
+	if err := p.Save(8*vg.Inch, 8*vg.Inch, fileName); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -155,10 +203,8 @@ func GeneratePointsFromMaintainerCounts(counts evolution.MaintainerCount) plotte
 
 func GeneratePointsFromFloatArray(values []float64) plotter.XYs {
 	pts := make([]struct{ X, Y float64 }, 0)
-	x := 0.0
-	for _, val := range values {
-		pts = append(pts, struct{ X, Y float64 }{X: x, Y: val})
-		x++
+	for x, val := range values {
+		pts = append(pts, struct{ X, Y float64 }{X: float64(x), Y: val})
 	}
 	return plotter.XYs(pts)
 }
