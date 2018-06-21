@@ -8,6 +8,15 @@ func (d *DeclaredDependenciesAnalysis) AnalyzePackage(packagePath string) (strin
 }
 
 func (d *DeclaredDependenciesAnalysis) AnalyzePackages(packages map[string]string) (map[string]string, error) {
-	result := make(map[string]string, len(packages))
-	return result, nil
+	results := make(map[string]string, len(packages))
+
+	for pkg, pkgPath := range packages {
+		result, err := d.AnalyzePackage(pkgPath)
+		if err != nil {
+			return results, err
+		}
+		results[pkg] = result
+	}
+
+	return results, nil
 }

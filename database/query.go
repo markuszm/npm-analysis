@@ -79,10 +79,32 @@ func GetPackages(db *sql.DB) ([]string, error) {
 		packages = append(packages, pkgName)
 	}
 	err = rows.Err()
+	return packages, err
+}
+
+func GetPackagesWithVersion(db *sql.DB) ([]model.PackageVersionPair, error) {
+	var packages []model.PackageVersionPair
+
+	rows, err := db.Query("select name, version from packages where name <> \"\"")
 	if err != nil {
-		log.Fatal(err)
+		return nil, errors.Wrap(err, "Failed to query packages")
 	}
-	return packages, nil
+
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			pkgName string
+			version string
+		)
+		err := rows.Scan(&pkgName, &version)
+		if err != nil {
+			return packages, errors.Wrap(err, "Could not get info from row")
+		}
+
+		packages = append(packages, model.PackageVersionPair{Name: pkgName, Version: version})
+	}
+	err = rows.Err()
+	return packages, err
 }
 
 type Person struct {

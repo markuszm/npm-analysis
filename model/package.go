@@ -62,3 +62,8 @@ type PackageLegacy struct {
 	NodeVersion          string                 `json:"_nodeVersion"`
 	Distribution         interface{}            `json:"dist"`
 }
+
+type PackageVersionPair struct {
+	Name    string
+	Version string
+}

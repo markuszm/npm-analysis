@@ -3,12 +3,14 @@ package codeanalysis
 import (
 	"database/sql"
 	"github.com/markuszm/npm-analysis/database"
+	"github.com/markuszm/npm-analysis/model"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"strings"
 )
 
 type NameCollector interface {
-	GetPackageNames() ([]string, error)
+	GetPackageNames() ([]model.PackageVersionPair, error)
 }
 
 type DBNameCollector struct {
@@ -24,8 +26,8 @@ func NewDBNameCollector(url string) (*DBNameCollector, error) {
 	return &DBNameCollector{db: mysql}, nil
 }
 
-func (d *DBNameCollector) GetPackageNames() ([]string, error) {
-	return database.GetPackages(d.db)
+func (d *DBNameCollector) GetPackageNames() ([]model.PackageVersionPair, error) {
+	return database.GetPackagesWithVersion(d.db)
 }
 
 type FileNameCollector struct {
@@ -36,26 +38,34 @@ func NewFileNameCollector(fileName string) (*FileNameCollector, error) {
 	return &FileNameCollector{FileName: fileName}, nil
 }
 
-func (f *FileNameCollector) GetPackageNames() ([]string, error) {
-	var packages []string
+func (f *FileNameCollector) GetPackageNames() ([]model.PackageVersionPair, error) {
+	var packages []model.PackageVersionPair
 
 	bytes, err := ioutil.ReadFile(f.FileName)
 	if err != nil {
 		return packages, err
 	}
 
-	packages = strings.Split(string(bytes), "\n")
+	lines := strings.Split(string(bytes), "\n")
+	for _, l := range lines {
+		pair := strings.Split(l, ",")
+		if len(pair) != 2 {
+			return packages, errors.New("cannot read file - wrong format")
+		}
+		packageVersionPair := model.PackageVersionPair{Name: pair[0], Version: pair[1]}
+		packages = append(packages, packageVersionPair)
+	}
 	return packages, nil
 }
 
 type TestNameCollector struct {
-	PackageNames []string
+	Packages []model.PackageVersionPair
 }
 
-func NewTestNameCollector(names []string) *TestNameCollector {
-	return &TestNameCollector{PackageNames: names}
+func NewTestNameCollector(names []model.PackageVersionPair) *TestNameCollector {
+	return &TestNameCollector{Packages: names}
 }
 
-func (t *TestNameCollector) GetPackageNames() ([]string, error) {
-	return t.PackageNames, nil
+func (t *TestNameCollector) GetPackageNames() ([]model.PackageVersionPair, error) {
+	return t.Packages, nil
 }
