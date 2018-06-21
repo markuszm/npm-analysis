@@ -53,8 +53,10 @@ func main() {
 		for year, monthMap := range v.Packages {
 			for month, packages := range monthMap {
 				var keys []string
-				for p, _ := range packages {
-					keys = append(keys, p)
+				for p, ok := range packages {
+					if ok {
+						keys = append(keys, p)
+					}
 				}
 				packageTimeline[time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)] = keys
 			}
