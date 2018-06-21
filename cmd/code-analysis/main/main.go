@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/markuszm/npm-analysis/codeanalysis"
 	"github.com/markuszm/npm-analysis/codeanalysis/analysisimpl"
-	"github.com/markuszm/npm-analysis/model"
 	"io/ioutil"
 	"log"
 	"os"
@@ -22,19 +22,21 @@ func main() {
 	parallel := flag.Bool("parallel", false, "Execute pipeline in parallel?")
 	flag.Parse()
 
-	//collector, err := codeanalysis.NewDBNameCollector(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", mysqlUser, mysqlPw))
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	collector, err := codeanalysis.NewDBNameCollector(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", mysqlUser, mysqlPw))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	//collector, err := codeanalysis.NewFileNameCollector("test-packages.txt")
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
 
-	collector := codeanalysis.NewTestNameCollector([]model.PackageVersionPair{
-		{Name: "1720", Version: "1.0.0"},
-	})
+	//collector := codeanalysis.NewTestNameCollector([]model.PackageVersionPair{
+	//	{Name: "1720", Version: "1.0.0"},
+	//	{Name: "@esm/ms", Version: "2.0.1"},
+	//	{Name: "@fav/path", Version: "0.9.0"},
+	//})
 
 	loader, err := codeanalysis.NewDiskLoader(packagesPath)
 	if err != nil {

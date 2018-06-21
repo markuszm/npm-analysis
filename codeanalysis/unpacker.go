@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/mholt/archiver"
 	"github.com/pkg/errors"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -41,9 +42,38 @@ func (d *DiskUnpacker) UnpackPackage(packageFilePath string) (string, error) {
 }
 
 func unpackWithArchiver(packageFilePath, extractPath string) error {
-	a := archiver.MatchingFormat(extractPath)
-	err := a.Open(packageFilePath, extractPath)
+	contentType, err := detectContentTypeFromFile(packageFilePath)
+	if err != nil {
+		return errors.Wrap(err, "error detecting content type")
+	}
+
+	switch contentType {
+	case "application/x-tar":
+		err = archiver.Tar.Open(packageFilePath, extractPath)
+	case "application/gzip":
+		err = archiver.TarGz.Open(packageFilePath, extractPath)
+	default:
+		arch := archiver.MatchingFormat(packageFilePath)
+		err = arch.Open(packageFilePath, extractPath)
+	}
+
 	return err
+}
+
+func detectContentTypeFromFile(filePath string) (string, error) {
+	buffer := make([]byte, 512)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = file.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+	contentType := http.DetectContentType(buffer)
+	return contentType, nil
 }
 
 func unpackWithTar(packageFilePath, extractPath string) error {

@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	"log"
 	"os"
-	"strings"
 	"sync"
 )
 
@@ -130,10 +129,14 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 
 	packageFolderPath, err := p.unpacker.UnpackPackage(pkg)
 	if err != nil {
-		if !strings.Contains(err.Error(), "making hard link for") {
-			err = errors.Wrap(err, "ERROR: unpacking package")
-			return
-		}
+		// TODO: more selective error management here after finding all possible errors
+		result = err.Error()
+		err = nil
+		return
+		//if !strings.Contains(err.Error(), "making hard link for") {
+		//	err = errors.Wrap(err, "ERROR: unpacking package")
+		//	return
+		//}
 	}
 
 	result, err = p.analysis.AnalyzePackage(packageFolderPath)
