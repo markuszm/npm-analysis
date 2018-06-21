@@ -164,7 +164,8 @@ func CreateMaintainerCount(db *sql.DB) error {
 		name VARCHAR(255),
 		year int,
 		month int,
-		count int
+		count int,
+		INDEX maintainerIndex (year,month,count)
 	);
 	`
 	_, err := db.Exec(query)

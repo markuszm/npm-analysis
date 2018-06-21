@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 )
 
 type Unpacker interface {
@@ -36,7 +37,12 @@ func (d *DiskUnpacker) UnpackPackages(packages map[string]string) (map[string]st
 }
 
 func (d *DiskUnpacker) UnpackPackage(packageFilePath string) (string, error) {
-	extractPath := path.Join(d.TempFolder, path.Base(packageFilePath))
+	packageFileName := strings.Replace(path.Base(packageFilePath), path.Ext(packageFilePath), "", 1)
+	extractPath := path.Join(path.Dir(packageFilePath), packageFileName)
+
+	if _, err := os.Stat(extractPath); err == nil {
+		return extractPath, err
+	}
 	err := unpackWithArchiver(packageFilePath, extractPath)
 	return extractPath, err
 }

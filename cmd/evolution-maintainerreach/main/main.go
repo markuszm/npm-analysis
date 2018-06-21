@@ -35,9 +35,15 @@ type StoreMaintainedPackages struct {
 
 var resultMap = sync.Map{}
 
-const createPlot = false
+const createPlot = true
+
+const generateData = true
 
 func calculatePackageReach() {
+	if generateData {
+		generateTimeLatestVersionMap()
+	}
+
 	dependenciesTimeline := loadJsonDependenciesTimeline()
 
 	dependentsMaps := generateDependentsMaps(dependenciesTimeline)

@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+const deleteExtractedPackages = false
+
 type Pipeline struct {
 	collector NameCollector
 	loader    PackageLoader
@@ -145,9 +147,11 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 		return
 	}
 
-	err = os.RemoveAll(packageFolderPath)
-	if err != nil {
-		err = errors.Wrap(err, "ERROR: removing tmp folder")
+	if deleteExtractedPackages {
+		err = os.RemoveAll(packageFolderPath)
+		if err != nil {
+			err = errors.Wrap(err, "ERROR: removing tmp folder")
+		}
 	}
 	return
 }

@@ -27,7 +27,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//collector, err := codeanalysis.NewFileNameCollector("test-packages.txt")
+	//collector, err := codeanalysis.NewFileNameCollector("./codeanalysis/testfiles/test-packages.txt")
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
