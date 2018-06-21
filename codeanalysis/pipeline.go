@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-const deleteExtractedPackages = false
+const deleteExtractedPackages = true
 
 type Pipeline struct {
 	collector NameCollector

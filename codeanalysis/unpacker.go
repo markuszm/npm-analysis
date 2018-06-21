@@ -38,7 +38,7 @@ func (d *DiskUnpacker) UnpackPackages(packages map[string]string) (map[string]st
 
 func (d *DiskUnpacker) UnpackPackage(packageFilePath string) (string, error) {
 	packageFileName := strings.Replace(path.Base(packageFilePath), path.Ext(packageFilePath), "", 1)
-	extractPath := path.Join(path.Dir(packageFilePath), packageFileName)
+	extractPath := path.Join(d.TempFolder, packageFileName)
 
 	if _, err := os.Stat(extractPath); err == nil {
 		return extractPath, err
