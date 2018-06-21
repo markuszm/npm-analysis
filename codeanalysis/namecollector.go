@@ -47,3 +47,15 @@ func (f *FileNameCollector) GetPackageNames() ([]string, error) {
 	packages = strings.Split(string(bytes), "\n")
 	return packages, nil
 }
+
+type TestNameCollector struct {
+	PackageNames []string
+}
+
+func NewTestNameCollector(names []string) *TestNameCollector {
+	return &TestNameCollector{PackageNames: names}
+}
+
+func (t *TestNameCollector) GetPackageNames() ([]string, error) {
+	return t.PackageNames, nil
+}
