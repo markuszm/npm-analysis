@@ -7,7 +7,7 @@ import (
 )
 
 type AnalysisExecutor interface {
-	AnalyzePackage(packagePath string) (string, error)
+	AnalyzePackage(packagePath string) ([]string, error)
 }
 
 func ExecuteCommand(path string, args ...string) (string, error) {
@@ -23,8 +23,8 @@ func ExecuteCommand(path string, args ...string) (string, error) {
 	return out.String(), nil
 }
 
-func AnalyzePackages(packages map[string]string, executor AnalysisExecutor) (map[string]string, error) {
-	results := make(map[string]string, len(packages))
+func AnalyzePackages(packages map[string]string, executor AnalysisExecutor) (map[string][]string, error) {
+	results := make(map[string][]string, len(packages))
 
 	for pkg, pkgPath := range packages {
 		result, err := executor.AnalyzePackage(pkgPath)

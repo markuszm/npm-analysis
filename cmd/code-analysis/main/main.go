@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"github.com/markuszm/npm-analysis/codeanalysis"
 	"github.com/markuszm/npm-analysis/codeanalysis/analysisimpl"
-	"io/ioutil"
 	"log"
-	"os"
 )
 
 const mysqlUser = "root"
 const mysqlPw = "npm-analysis"
 
 const packagesPath = "/media/markus/NPM/NPM"
+
+//const packagesPath = "/home/markus/npm-analysis/test"
 const tmpPath = "/home/markus/tmp"
-const resultPath = "/home/markus/npm-analysis/code-analysis.json"
-const maxWorkers = 100
+const resultPath = "/home/markus/npm-analysis/code-analysis.csv"
+const maxWorkers = 1000
 
 func main() {
 	parallel := flag.Bool("parallel", false, "Execute pipeline in parallel?")
@@ -47,26 +47,21 @@ func main() {
 
 	analysis := &analysisimpl.EmptyPackageAnalysis{}
 
-	formatter := &codeanalysis.JSONFormatter{}
+	writer := codeanalysis.NewCSVWriter(resultPath)
 
-	pipeline := codeanalysis.NewPipeline(collector, loader, unpacker, analysis, formatter)
+	pipeline := codeanalysis.NewPipeline(collector, loader, unpacker, analysis, writer)
 
-	var result string
 	if *parallel {
 		log.Printf("Running in parallel with %v workers", maxWorkers)
-		result, err = pipeline.ExecuteParallel(maxWorkers)
+		err = pipeline.ExecuteParallel(maxWorkers)
 	} else {
 		log.Print("Running in sequential mode")
-		result, err = pipeline.Execute()
+		err = pipeline.Execute()
 	}
 
 	if err != nil {
 		log.Printf("ERRORS: \n %v", err)
 	}
-
-	ioutil.WriteFile(resultPath, []byte(result), os.ModePerm)
-
-	log.Printf("Wrote results to %v", resultPath)
 
 	// TODO on exit cleanup
 }

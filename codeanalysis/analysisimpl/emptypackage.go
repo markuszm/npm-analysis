@@ -9,11 +9,14 @@ import (
 type EmptyPackageAnalysis struct {
 }
 
-func (e *EmptyPackageAnalysis) AnalyzePackage(packagePath string) (string, error) {
+func (e *EmptyPackageAnalysis) AnalyzePackage(packagePath string) ([]string, error) {
+	var results []string
 	result, err := ExecuteCommand("find", packagePath, "-name", "*.js")
 	if err != nil {
-		return "", errors.Wrapf(err, "error analyzing package %v", packagePath)
+		return results, errors.Wrapf(err, "error analyzing package %v", packagePath)
 	}
 	lines := strings.Split(result, "\n")
-	return strconv.Itoa(len(lines) - 1), nil
+	jsCount := strconv.Itoa(len(lines) - 1)
+	results = append(results, jsCount)
+	return results, nil
 }

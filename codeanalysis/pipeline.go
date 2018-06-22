@@ -16,26 +16,24 @@ type Pipeline struct {
 	loader    PackageLoader
 	unpacker  Unpacker
 	analysis  analysisimpl.AnalysisExecutor
-	formatter ResultFormatter
-	resultMap sync.Map
+	writer    ResultWriter
 }
 
 func NewPipeline(collector NameCollector,
 	loader PackageLoader,
 	unpacker Unpacker,
 	analysis analysisimpl.AnalysisExecutor,
-	formatter ResultFormatter) *Pipeline {
+	writer ResultWriter) *Pipeline {
 	return &Pipeline{
 		collector: collector,
 		loader:    loader,
 		unpacker:  unpacker,
 		analysis:  analysis,
-		formatter: formatter,
-		resultMap: sync.Map{},
+		writer:    writer,
 	}
 }
 
-func (p *Pipeline) Execute() (result string, err error) {
+func (p *Pipeline) Execute() (err error) {
 	packageNames, err := p.collector.GetPackageNames()
 	if err != nil {
 		err = errors.Wrap(err, "ERROR: retrieving package names")
@@ -44,7 +42,7 @@ func (p *Pipeline) Execute() (result string, err error) {
 
 	log.Print("Successfully retrieved package names")
 
-	results := make(map[string]string, len(packageNames))
+	results := make(map[string][]string, len(packageNames))
 
 	for i, pkg := range packageNames {
 		if i%1000 == 0 {
@@ -53,18 +51,19 @@ func (p *Pipeline) Execute() (result string, err error) {
 
 		result, err := p.executePackageAnalysis(pkg)
 		if err != nil {
-			return "", err
+			return err
 		}
+		result = append([]string{pkg.Name}, result...)
 		results[pkg.Name] = result
 	}
 
 	log.Printf("Finished analyzing %v packages", len(packageNames))
 
-	result, err = p.formatter.Format(results)
+	err = p.writer.WriteAll(results)
 	return
 }
 
-func (p *Pipeline) ExecuteParallel(maxWorkers int) (result string, err error) {
+func (p *Pipeline) ExecuteParallel(maxWorkers int) (err error) {
 	packageNames, err := p.collector.GetPackageNames()
 	if err != nil {
 		err = errors.Wrap(err, "ERROR: retrieving package names")
@@ -73,13 +72,18 @@ func (p *Pipeline) ExecuteParallel(maxWorkers int) (result string, err error) {
 
 	log.Print("Successfully retrieved package names")
 
-	workerGroup := sync.WaitGroup{}
+	jobGroup := sync.WaitGroup{}
+	resultGroup := sync.WaitGroup{}
 
 	jobs := make(chan model.PackageVersionPair, 100)
+	resultsChan := make(chan []string, 1000)
+
+	resultGroup.Add(1)
+	go p.writer.WriteBuffered(resultsChan, &resultGroup)
 
 	for i := 0; i < maxWorkers; i++ {
-		workerGroup.Add(1)
-		go p.worker(i, jobs, &workerGroup)
+		jobGroup.Add(1)
+		go p.worker(i, jobs, resultsChan, &jobGroup)
 	}
 
 	for i, pkg := range packageNames {
@@ -92,38 +96,36 @@ func (p *Pipeline) ExecuteParallel(maxWorkers int) (result string, err error) {
 
 	close(jobs)
 
-	workerGroup.Wait()
+	jobGroup.Wait()
+
+	close(resultsChan)
+
+	resultGroup.Wait()
 
 	log.Printf("Finished analyzing %v packages", len(packageNames))
-
-	results := make(map[string]string, len(packageNames))
-	p.resultMap.Range(func(key, value interface{}) bool {
-		results[key.(string)] = value.(string)
-		return true
-	})
-	result, err = p.formatter.Format(results)
 
 	return
 }
 
-func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, workerGroup *sync.WaitGroup) {
+func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, results chan []string, workerGroup *sync.WaitGroup) {
 	for pkg := range packages {
 		result, err := p.executePackageAnalysis(pkg)
 		if err != nil {
 			// TODO: better error handling than panic
 			log.Fatalf("FATAL ERROR with package %v: \n %v", pkg, err)
 		}
-		p.resultMap.Store(pkg.Name, result)
+		result = append([]string{pkg.Name}, result...)
+		results <- result
 	}
 	workerGroup.Done()
 }
 
-func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) (result string, err error) {
+func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) (result []string, err error) {
 	pkg, err := p.loader.LoadPackage(packageName)
 	if err != nil {
 		// if package is not found continue but result is an error message
 		if err == ErrorNotFound {
-			return ErrorNotFound.Error(), nil
+			return []string{ErrorNotFound.Error()}, nil
 		}
 		err = errors.Wrap(err, "ERROR: loading package")
 		return
@@ -132,7 +134,7 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 	packageFolderPath, err := p.unpacker.UnpackPackage(pkg)
 	if err != nil {
 		// TODO: more selective error management here after finding all possible errors
-		result = err.Error()
+		result = []string{err.Error()}
 		err = nil
 		return
 		//if !strings.Contains(err.Error(), "making hard link for") {
