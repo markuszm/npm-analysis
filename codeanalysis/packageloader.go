@@ -1,8 +1,8 @@
 package codeanalysis
 
 import (
-	"errors"
 	"fmt"
+	"github.com/markuszm/npm-analysis/downloader"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/util"
 	"os"
@@ -13,36 +13,53 @@ import (
 type PackageLoader interface {
 	LoadPackage(pkg model.PackageVersionPair) (string, error)
 	LoadPackages(packages []model.PackageVersionPair) (map[string]string, error)
+	NeedsCleanup() bool
 }
 
 const ErrorNotFound = util.ConstantError("package not found")
 
-type WebLoader struct {
+type NetLoader struct {
 	RegistryUrl string
 	TempFolder  string
 }
 
-func NewWebLoader(registryUrl string, tempFolder string) *WebLoader {
-	return &WebLoader{RegistryUrl: registryUrl, TempFolder: tempFolder}
+func NewNetLoader(registryUrl string, tempFolder string) *NetLoader {
+	return &NetLoader{RegistryUrl: registryUrl, TempFolder: tempFolder}
 }
 
-func (w *WebLoader) LoadPackage(packageName string) (string, error) {
-	// TODO: if needed implement web loader
-	return "", errors.New("not implemented")
+func (n *NetLoader) LoadPackage(pkg model.PackageVersionPair) (string, error) {
+	dlPath, err := downloader.DownloadPackage(n.TempFolder, n.RegistryUrl, pkg)
+	if err != nil {
+		if err.Error() == "Not Found" {
+			return "", ErrorNotFound
+		}
+		return "", err
+	}
+	return dlPath, nil
 }
 
-func (w *WebLoader) LoadPackages(packageNames []model.PackageVersionPair) (map[string]string, error) {
-	// TODO: if needed implement web loader
-	result := make(map[string]string, len(packageNames))
-	return result, errors.New("not implemented")
+func (n *NetLoader) LoadPackages(packages []model.PackageVersionPair) (map[string]string, error) {
+	result := make(map[string]string, len(packages))
+	for _, pkg := range packages {
+		pkgPath, err := n.LoadPackage(pkg)
+		if err != nil {
+			return result, err
+		}
+		result[pkg.Name] = pkgPath
+	}
+	return result, nil
+}
+
+func (n *NetLoader) NeedsCleanup() bool {
+	return true
 }
 
 type DiskLoader struct {
 	Path string
 }
 
-func NewDiskLoader(path string) (*DiskLoader, error) {
-	return &DiskLoader{Path: path}, nil
+func NewDiskLoader(path string) *DiskLoader {
+	return &DiskLoader{Path: path}
 }
 
 func (d *DiskLoader) LoadPackage(pkg model.PackageVersionPair) (string, error) {
@@ -54,9 +71,9 @@ func (d *DiskLoader) LoadPackage(pkg model.PackageVersionPair) (string, error) {
 	return p, nil
 }
 
-func (d *DiskLoader) LoadPackages(packageNames []model.PackageVersionPair) (map[string]string, error) {
-	result := make(map[string]string, len(packageNames))
-	for _, pkg := range packageNames {
+func (d *DiskLoader) LoadPackages(packages []model.PackageVersionPair) (map[string]string, error) {
+	result := make(map[string]string, len(packages))
+	for _, pkg := range packages {
 		pkgPath, err := d.LoadPackage(pkg)
 		if err != nil {
 			return result, err
@@ -64,6 +81,10 @@ func (d *DiskLoader) LoadPackages(packageNames []model.PackageVersionPair) (map[
 		result[pkg.Name] = pkgPath
 	}
 	return result, nil
+}
+
+func (d *DiskLoader) NeedsCleanup() bool {
+	return false
 }
 
 func GetPackageFilePath(pkg, version string) string {

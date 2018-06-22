@@ -101,7 +101,7 @@ func extractTarballs(data []byte, jobs chan model.Dist, stop chan bool) {
 
 func worker(id int, jobs chan model.Dist, workerWait *sync.WaitGroup) {
 	for j := range jobs {
-		err := downloader.DownloadPackage(DOWNLOAD_PATH, j)
+		err := downloader.DownloadPackageAndVerify(DOWNLOAD_PATH, j.Url, j.Shasum)
 		if err != nil {
 			if err.Error() == "Not Found" {
 				notFoundPackages.WriteString(fmt.Sprintf("%s \n", j))

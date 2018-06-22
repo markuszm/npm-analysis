@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-const deleteExtractedPackages = true
+const cleanup = true
 
 type Pipeline struct {
 	collector NameCollector
@@ -90,20 +90,16 @@ func (p *Pipeline) ExecuteParallel(maxWorkers int) (err error) {
 		if i%1000 == 0 {
 			log.Printf("Finished analyzing %d packages", i)
 		}
-
 		jobs <- pkg
 	}
 
 	close(jobs)
-
 	jobGroup.Wait()
 
 	close(resultsChan)
-
 	resultGroup.Wait()
 
 	log.Printf("Finished analyzing %v packages", len(packageNames))
-
 	return
 }
 
@@ -149,10 +145,18 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 		return
 	}
 
-	if deleteExtractedPackages {
+	if cleanup {
 		err = os.RemoveAll(packageFolderPath)
 		if err != nil {
 			err = errors.Wrap(err, "ERROR: removing tmp folder")
+		}
+
+		if p.loader.NeedsCleanup() {
+			err := os.Remove(pkg)
+
+			if err != nil {
+				err = errors.Wrap(err, "ERROR: removing tmp package file")
+			}
 		}
 	}
 	return

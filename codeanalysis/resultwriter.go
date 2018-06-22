@@ -90,7 +90,25 @@ func (j *JSONWriter) WriteAll(results map[string][]string) error {
 	return err
 }
 
-func (j *JSONWriter) WriteBuffered(result chan []string, workerGroup *sync.WaitGroup) error {
-	// TODO: implement parallel json writer
-	return errors.New("not implemented")
+func (j *JSONWriter) WriteBuffered(results chan []string, workerGroup *sync.WaitGroup) error {
+	file, err := os.Create(j.FilePath)
+
+	if err != nil {
+		log.Fatal("Cannot create result file")
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+
+	for r := range results {
+		err := encoder.Encode(r)
+		if err != nil {
+			log.Fatal("Cannot write to result file", err)
+		}
+
+	}
+
+	workerGroup.Done()
+
+	return nil
 }

@@ -34,8 +34,8 @@ type FileNameCollector struct {
 	FileName string
 }
 
-func NewFileNameCollector(fileName string) (*FileNameCollector, error) {
-	return &FileNameCollector{FileName: fileName}, nil
+func NewFileNameCollector(fileName string) *FileNameCollector {
+	return &FileNameCollector{FileName: fileName}
 }
 
 func (f *FileNameCollector) GetPackageNames() ([]model.PackageVersionPair, error) {

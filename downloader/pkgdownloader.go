@@ -3,6 +3,7 @@ package downloader
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"io"
@@ -14,10 +15,46 @@ import (
 	"strings"
 )
 
-func DownloadPackage(downloadPath string, pkg model.Dist) error {
-	pkgUrl := pkg.Url
+func DownloadPackage(downloadPath string, registryUrl string, pkg model.PackageVersionPair) (string, error) {
+	downloadUrl := GenerateDownloadUrl(pkg, registryUrl)
 
-	if !strings.Contains(pkg.Url, "registry.npmjs.org") {
+	_, fileName, fileNameErr := GeneratePackageFileName(downloadUrl)
+	if fileNameErr != nil {
+		return "", errors.Wrapf(fileNameErr, "Error generating package filename: %s", downloadPath)
+	}
+
+	fullPath := path.Join(downloadPath, fileName)
+
+	resp, requestErr := http.Get(downloadUrl)
+	if requestErr != nil {
+		return "", errors.Wrapf(requestErr, "Error downloading package: %s", downloadUrl)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized {
+		return "", errors.New("Not Found")
+	}
+
+	file, createFileErr := os.Create(fullPath)
+
+	defer file.Close()
+
+	if createFileErr != nil {
+		return "", errors.Wrapf(createFileErr, "Error downloading package: %s", downloadUrl)
+	}
+
+	_, copyErr := io.Copy(file, resp.Body)
+
+	if copyErr != nil {
+		return "", errors.Wrapf(copyErr, "Error downloading package: %s", downloadUrl)
+	}
+
+	return fullPath, nil
+}
+
+func DownloadPackageAndVerify(downloadPath, pkgUrl, pkgShasum string) error {
+	if !strings.Contains(pkgUrl, "registry.npmjs.org") {
 		return errors.New("Not Found")
 	}
 
@@ -37,7 +74,7 @@ func DownloadPackage(downloadPath string, pkg model.Dist) error {
 		// path exists already - but check integrity
 		// rename to package file name (because we change the name to a scoped name)
 		os.Rename(scopedFilePath, packageFilePath)
-		integrityErr := VerifyIntegrity(pkg.Shasum, packageFilePath)
+		integrityErr := VerifyIntegrity(pkgShasum, packageFilePath)
 		if integrityErr != nil {
 			return errors.Wrapf(integrityErr, "Error downloading package: %s", pkgUrl)
 		}
@@ -70,7 +107,7 @@ func DownloadPackage(downloadPath string, pkg model.Dist) error {
 		return errors.Wrapf(copyErr, "Error downloading package: %s", pkgUrl)
 	}
 
-	integrityErr := VerifyIntegrity(pkg.Shasum, packageFilePath)
+	integrityErr := VerifyIntegrity(pkgShasum, packageFilePath)
 	if integrityErr != nil {
 		return errors.Wrapf(integrityErr, "Error downloading package: %s", pkgUrl)
 	}
@@ -108,6 +145,19 @@ func VerifyIntegrity(shasum, filePath string) error {
 	}
 
 	return nil
+}
+
+func GenerateDownloadUrl(pkg model.PackageVersionPair, registryUrl string) string {
+	fragments := strings.Split(pkg.Name, "/")
+	packageName := pkg.Name
+	if len(fragments) > 1 {
+		scopedName := fragments[0]
+		if strings.HasPrefix(scopedName, "@") {
+			packageName = fragments[1]
+		}
+	}
+	pkgUrl := fmt.Sprintf("%v/%v/-/%v-%v.tgz", registryUrl, pkg.Name, packageName, pkg.Version)
+	return pkgUrl
 }
 
 func CreateNestedFolders(fileName, downloadPath string) (string, error) {
