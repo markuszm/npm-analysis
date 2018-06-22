@@ -60,7 +60,7 @@ func main() {
 
 	unpacker := codeanalysis.NewDiskUnpacker(*tmpPath)
 
-	analysis := &analysisimpl.EmptyPackageAnalysis{}
+	analysis := &analysisimpl.FileDistributionAnalysis{}
 
 	var writer codeanalysis.ResultWriter
 	switch *writerFlag {
