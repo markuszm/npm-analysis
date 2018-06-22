@@ -107,7 +107,7 @@ func GenerateSortedLinePlotMaintainerPackageCount(valuesPerYear map[int][]float6
 		args = append(args, strconv.Itoa(y), GeneratePointsFromFloatArray(valuesPerYear[y]))
 	}
 
-	err = plotutil.AddLinePoints(p, args...)
+	err = plotutil.AddLines(p, args...)
 	if err != nil {
 		log.Fatal(err)
 	}
