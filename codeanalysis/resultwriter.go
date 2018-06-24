@@ -3,6 +3,7 @@ package codeanalysis
 import (
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
@@ -11,8 +12,8 @@ import (
 )
 
 type ResultWriter interface {
-	WriteAll(results map[string][]string) error
-	WriteBuffered(results chan []string, workerGroup *sync.WaitGroup) error
+	WriteAll(results map[string]PackageResult) error
+	WriteBuffered(results chan PackageResult, workerGroup *sync.WaitGroup) error
 }
 
 type CSVWriter struct {
@@ -23,7 +24,7 @@ func NewCSVWriter(filePath string) *CSVWriter {
 	return &CSVWriter{FilePath: filePath}
 }
 
-func (c *CSVWriter) WriteAll(results map[string][]string) error {
+func (c *CSVWriter) WriteAll(results map[string]PackageResult) error {
 	file, err := os.Create(c.FilePath)
 
 	if err != nil {
@@ -35,7 +36,9 @@ func (c *CSVWriter) WriteAll(results map[string][]string) error {
 	defer writer.Flush()
 
 	for _, r := range results {
-		err := writer.Write(r)
+		var fields []string
+		fields = append(fields, r.Name, r.Version, fmt.Sprint(r.Result))
+		err = writer.Write(fields)
 		if err != nil {
 			log.Fatal("Cannot write to result file", err)
 		}
@@ -44,7 +47,7 @@ func (c *CSVWriter) WriteAll(results map[string][]string) error {
 	return nil
 }
 
-func (c *CSVWriter) WriteBuffered(results chan []string, workerGroup *sync.WaitGroup) error {
+func (c *CSVWriter) WriteBuffered(results chan PackageResult, workerGroup *sync.WaitGroup) error {
 	file, err := os.Create(c.FilePath)
 
 	if err != nil {
@@ -58,7 +61,9 @@ func (c *CSVWriter) WriteBuffered(results chan []string, workerGroup *sync.WaitG
 	i := 0
 
 	for r := range results {
-		err := writer.Write(r)
+		var fields []string
+		fields = append(fields, r.Name, r.Version, fmt.Sprint(r.Result))
+		err = writer.Write(fields)
 		if err != nil {
 			log.Fatal("Cannot write to result file", err)
 		}
@@ -81,7 +86,7 @@ func NewJSONWriter(filePath string) *JSONWriter {
 	return &JSONWriter{FilePath: filePath}
 }
 
-func (j *JSONWriter) WriteAll(results map[string][]string) error {
+func (j *JSONWriter) WriteAll(results map[string]PackageResult) error {
 	bytes, err := json.MarshalIndent(results, "", "\t")
 	if err != nil {
 		return errors.Wrap(err, "error marshalling results as json")
@@ -90,7 +95,7 @@ func (j *JSONWriter) WriteAll(results map[string][]string) error {
 	return err
 }
 
-func (j *JSONWriter) WriteBuffered(results chan []string, workerGroup *sync.WaitGroup) error {
+func (j *JSONWriter) WriteBuffered(results chan PackageResult, workerGroup *sync.WaitGroup) error {
 	file, err := os.Create(j.FilePath)
 
 	if err != nil {

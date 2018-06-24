@@ -19,7 +19,7 @@ func main() {
 
 	packagesPath := flag.String("packages", "/media/markus/NPM/NPM", "folder path to packages")
 	tmpPath := flag.String("tmp", "/home/markus/tmp", "Temp path to store extracted packages")
-	resultPath := flag.String("result", "/home/markus/npm-analysis/code-analysis.csv", "File path to store results in")
+	resultPath := flag.String("result", "/home/markus/npm-analysis/code-analysis.json", "File path to store results in")
 
 	collectorFlag := flag.String("collector", "db", "how to collect package names (db or file)")
 	file := flag.String("namesFile", "./codeanalysis/testfiles/test-packages.txt", "filepath containing package names")
@@ -27,19 +27,21 @@ func main() {
 	loaderFlag := flag.String("loader", "disk", "specify loader type (disk or net)")
 	registryUrl := flag.String("registry", "http://registry.npmjs.org", "npm registry url (only when using net loader)")
 
-	writerFlag := flag.String("writer", "csv", "specify writer type (csv or json)")
+	writerFlag := flag.String("writer", "json", "specify writer type (csv or json)")
 
 	flag.Parse()
 
 	var collector codeanalysis.NameCollector
 	switch *collectorFlag {
 	case "db":
+		log.Print("using db collector")
 		var err error
 		collector, err = codeanalysis.NewDBNameCollector(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", mysqlUser, mysqlPw))
 		if err != nil {
 			log.Fatal(err)
 		}
 	case "file":
+		log.Printf("using file collector with file %v", *file)
 		collector = codeanalysis.NewFileNameCollector(*file)
 	}
 
@@ -53,8 +55,10 @@ func main() {
 
 	switch *loaderFlag {
 	case "disk":
+		log.Printf("using disk loader from packages path %v", *packagesPath)
 		loader = codeanalysis.NewDiskLoader(*packagesPath)
 	case "net":
+		log.Printf("using net loader from registry %v and storing temp packages into path %v", *registryUrl, *tmpPath)
 		loader = codeanalysis.NewNetLoader(*registryUrl, *tmpPath)
 	}
 
@@ -65,8 +69,10 @@ func main() {
 	var writer codeanalysis.ResultWriter
 	switch *writerFlag {
 	case "csv":
+		log.Printf("using csv result writer to path %v", *resultPath)
 		writer = codeanalysis.NewCSVWriter(*resultPath)
 	case "json":
+		log.Printf("using json result writer to path %v", *resultPath)
 		writer = codeanalysis.NewJSONWriter(*resultPath)
 	}
 

@@ -1,7 +1,6 @@
 package analysisimpl
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"path"
 	"strings"
@@ -10,15 +9,14 @@ import (
 type FileDistributionAnalysis struct {
 }
 
-func (e *FileDistributionAnalysis) AnalyzePackage(packagePath string) ([]string, error) {
-	var results []string
+func (e *FileDistributionAnalysis) AnalyzePackage(packagePath string) (interface{}, error) {
+	extensionMap := make(map[string]int, 0)
 	result, err := ExecuteCommand("find", packagePath)
 	if err != nil {
-		return results, errors.Wrapf(err, "error analyzing package %v", packagePath)
+		return extensionMap, errors.Wrapf(err, "error analyzing package %v", packagePath)
 	}
 	lines := strings.Split(result, "\n")
 
-	extensionMap := make(map[string]int, 0)
 	for _, l := range lines {
 		ext := path.Ext(l)
 		if ext != "" {
@@ -26,8 +24,5 @@ func (e *FileDistributionAnalysis) AnalyzePackage(packagePath string) ([]string,
 		}
 	}
 
-	for ext, count := range extensionMap {
-		results = append(results, fmt.Sprintf("%v-%v", ext, count))
-	}
-	return results, nil
+	return extensionMap, nil
 }

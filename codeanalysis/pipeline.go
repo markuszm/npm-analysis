@@ -33,6 +33,12 @@ func NewPipeline(collector NameCollector,
 	}
 }
 
+type PackageResult struct {
+	Name    string
+	Version string
+	Result  interface{}
+}
+
 func (p *Pipeline) Execute() (err error) {
 	packageNames, err := p.collector.GetPackageNames()
 	if err != nil {
@@ -42,7 +48,7 @@ func (p *Pipeline) Execute() (err error) {
 
 	log.Print("Successfully retrieved package names")
 
-	results := make(map[string][]string, len(packageNames))
+	results := make(map[string]PackageResult, len(packageNames))
 
 	for i, pkg := range packageNames {
 		if i%1000 == 0 {
@@ -53,8 +59,8 @@ func (p *Pipeline) Execute() (err error) {
 		if err != nil {
 			return err
 		}
-		result = append([]string{pkg.Name}, result...)
-		results[pkg.Name] = result
+		pkgResult := PackageResult{Name: pkg.Name, Version: pkg.Version, Result: result}
+		results[pkg.Name] = pkgResult
 	}
 
 	log.Printf("Finished analyzing %v packages", len(packageNames))
@@ -76,7 +82,7 @@ func (p *Pipeline) ExecuteParallel(maxWorkers int) (err error) {
 	resultGroup := sync.WaitGroup{}
 
 	jobs := make(chan model.PackageVersionPair, 100)
-	resultsChan := make(chan []string, 1000)
+	resultsChan := make(chan PackageResult, 1000)
 
 	resultGroup.Add(1)
 	go p.writer.WriteBuffered(resultsChan, &resultGroup)
@@ -103,20 +109,20 @@ func (p *Pipeline) ExecuteParallel(maxWorkers int) (err error) {
 	return
 }
 
-func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, results chan []string, workerGroup *sync.WaitGroup) {
+func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, results chan PackageResult, workerGroup *sync.WaitGroup) {
 	for pkg := range packages {
 		result, err := p.executePackageAnalysis(pkg)
 		if err != nil {
 			// TODO: better error handling than panic
 			log.Fatalf("FATAL ERROR with package %v: \n %v", pkg, err)
 		}
-		result = append([]string{pkg.Name}, result...)
-		results <- result
+		pkgResult := PackageResult{Name: pkg.Name, Version: pkg.Version, Result: result}
+		results <- pkgResult
 	}
 	workerGroup.Done()
 }
 
-func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) (result []string, err error) {
+func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) (result interface{}, err error) {
 	pkg, err := p.loader.LoadPackage(packageName)
 	if err != nil {
 		// if package is not found continue but result is an error message
@@ -130,7 +136,7 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 	packageFolderPath, err := p.unpacker.UnpackPackage(pkg)
 	if err != nil {
 		// TODO: more selective error management here after finding all possible errors
-		result = []string{err.Error()}
+		result = err.Error()
 		err = nil
 		return
 		//if !strings.Contains(err.Error(), "making hard link for") {
