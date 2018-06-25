@@ -1,4 +1,4 @@
-package codeanalysis
+package codeanalysispipeline
 
 import (
 	"fmt"

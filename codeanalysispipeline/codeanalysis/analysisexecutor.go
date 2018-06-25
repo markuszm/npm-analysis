@@ -1,4 +1,4 @@
-package analysisimpl
+package codeanalysis
 
 import (
 	"bytes"

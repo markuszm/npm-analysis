@@ -1,7 +1,7 @@
-package codeanalysis
+package codeanalysispipeline
 
 import (
-	"github.com/markuszm/npm-analysis/codeanalysis/analysisimpl"
+	"github.com/markuszm/npm-analysis/codeanalysispipeline/codeanalysis"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"log"
@@ -9,20 +9,20 @@ import (
 	"sync"
 )
 
-const cleanup = true
+const cleanup = false
 
 type Pipeline struct {
 	collector NameCollector
 	loader    PackageLoader
 	unpacker  Unpacker
-	analysis  analysisimpl.AnalysisExecutor
+	analysis  codeanalysis.AnalysisExecutor
 	writer    ResultWriter
 }
 
 func NewPipeline(collector NameCollector,
 	loader PackageLoader,
 	unpacker Unpacker,
-	analysis analysisimpl.AnalysisExecutor,
+	analysis codeanalysis.AnalysisExecutor,
 	writer ResultWriter) *Pipeline {
 	return &Pipeline{
 		collector: collector,

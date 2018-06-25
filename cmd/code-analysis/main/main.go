@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/markuszm/npm-analysis/codeanalysis"
-	"github.com/markuszm/npm-analysis/codeanalysis/analysisimpl"
+	"github.com/markuszm/npm-analysis/codeanalysispipeline"
+	"github.com/markuszm/npm-analysis/codeanalysispipeline/codeanalysis"
 	"log"
 )
 
@@ -22,61 +22,71 @@ func main() {
 	resultPath := flag.String("result", "/home/markus/npm-analysis/code-analysis.json", "File path to store results in")
 
 	collectorFlag := flag.String("collector", "db", "how to collect package names (db or file)")
-	file := flag.String("namesFile", "./codeanalysis/testfiles/test-packages.txt", "filepath containing package names")
+	file := flag.String("namesFile", "./codeanalysispipeline/testfiles/test-packages.txt", "filepath containing package names")
 
 	loaderFlag := flag.String("loader", "disk", "specify loader type (disk or net)")
 	registryUrl := flag.String("registry", "http://registry.npmjs.org", "npm registry url (only when using net loader)")
 
 	writerFlag := flag.String("writer", "json", "specify writer type (csv or json)")
 
+	analysisFlag := flag.String("analysis", "file_distribution", "specify which analysis to run")
+
 	flag.Parse()
 
-	var collector codeanalysis.NameCollector
+	var collector codeanalysispipeline.NameCollector
 	switch *collectorFlag {
 	case "db":
 		log.Print("using db collector")
 		var err error
-		collector, err = codeanalysis.NewDBNameCollector(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", mysqlUser, mysqlPw))
+		collector, err = codeanalysispipeline.NewDBNameCollector(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", mysqlUser, mysqlPw))
 		if err != nil {
 			log.Fatal(err)
 		}
 	case "file":
 		log.Printf("using file collector with file %v", *file)
-		collector = codeanalysis.NewFileNameCollector(*file)
+		collector = codeanalysispipeline.NewFileNameCollector(*file)
 	}
 
-	//collector := codeanalysis.NewTestNameCollector([]model.PackageVersionPair{
+	//collector := codeanalysispipeline.NewTestNameCollector([]model.PackageVersionPair{
 	//	{Name: "1720", Version: "1.0.0"},
 	//	{Name: "@esm/ms", Version: "2.0.1"},
 	//	{Name: "@fav/path", Version: "0.9.0"},
 	//})
 
-	var loader codeanalysis.PackageLoader
+	var loader codeanalysispipeline.PackageLoader
 
 	switch *loaderFlag {
 	case "disk":
 		log.Printf("using disk loader from packages path %v", *packagesPath)
-		loader = codeanalysis.NewDiskLoader(*packagesPath)
+		loader = codeanalysispipeline.NewDiskLoader(*packagesPath)
 	case "net":
 		log.Printf("using net loader from registry %v and storing temp packages into path %v", *registryUrl, *tmpPath)
-		loader = codeanalysis.NewNetLoader(*registryUrl, *tmpPath)
+		loader = codeanalysispipeline.NewNetLoader(*registryUrl, *tmpPath)
 	}
 
-	unpacker := codeanalysis.NewDiskUnpacker(*tmpPath)
+	unpacker := codeanalysispipeline.NewDiskUnpacker(*tmpPath)
 
-	analysis := &analysisimpl.FileDistributionAnalysis{}
+	var analysis codeanalysis.AnalysisExecutor
+	switch *analysisFlag {
+	case "file_distribution":
+		log.Print("executing file distribution analysis")
+		analysis = &codeanalysis.FileDistributionAnalysis{}
+	case "used_dependencies":
+		log.Print("executing used dependencies analysis")
+		analysis = &codeanalysis.UsedDependenciesAnalysis{}
+	}
 
-	var writer codeanalysis.ResultWriter
+	var writer codeanalysispipeline.ResultWriter
 	switch *writerFlag {
 	case "csv":
 		log.Printf("using csv result writer to path %v", *resultPath)
-		writer = codeanalysis.NewCSVWriter(*resultPath)
+		writer = codeanalysispipeline.NewCSVWriter(*resultPath)
 	case "json":
 		log.Printf("using json result writer to path %v", *resultPath)
-		writer = codeanalysis.NewJSONWriter(*resultPath)
+		writer = codeanalysispipeline.NewJSONWriter(*resultPath)
 	}
 
-	pipeline := codeanalysis.NewPipeline(collector, loader, unpacker, analysis, writer)
+	pipeline := codeanalysispipeline.NewPipeline(collector, loader, unpacker, analysis, writer)
 
 	var err error
 	if *parallel {
