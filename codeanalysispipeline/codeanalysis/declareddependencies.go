@@ -23,7 +23,7 @@ func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface
 		}
 	}
 
-	importResult, err := ExecuteCommand("grep", "-ohrP", "--include=*.js", "--include=*.ts", "--exclude-dir=node_modules", `import .*(".+");?`, packagePath)
+	importResult, err := ExecuteCommand("grep", "-ohrP", "--include=*.js", "--include=*.ts", "--exclude-dir=node_modules", `^import .*(("|').+("|'));?`, packagePath)
 	if err != nil {
 		if !strings.Contains(err.Error(), "exit status 1") {
 			return nil, errors.Wrap(err, "error retrieving imported packages")
@@ -117,8 +117,23 @@ func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface
 }
 
 func parseModuleFromImportStmt(i string) string {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("could not parse import %v with panic \n %v", i, r)
+		}
+	}()
+
 	startIndex := strings.Index(i, "\"")
 	endIndex := strings.LastIndex(i, "\"")
+	if startIndex == -1 || endIndex == -1 {
+		startIndex = strings.Index(i, "'")
+		endIndex = strings.LastIndex(i, "'")
+		if startIndex == -1 || endIndex == -1 {
+			log.Printf("could not parse import %v", i)
+			return ""
+		}
+	}
+
 	module := i[startIndex+1 : endIndex]
 	return module
 }

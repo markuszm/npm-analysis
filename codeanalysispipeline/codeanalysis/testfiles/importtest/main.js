@@ -6,6 +6,7 @@ import { c1 , c2} from "c";
 import { e1 , e2 as d1 , d2 } from "d";
 import f, * as f from "e";
 import "f";
+import 'g';
 
 import "/f";
 import "./f";
