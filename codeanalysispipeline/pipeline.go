@@ -1,6 +1,7 @@
 package codeanalysispipeline
 
 import (
+	"fmt"
 	"github.com/markuszm/npm-analysis/codeanalysispipeline/codeanalysis"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
@@ -113,8 +114,10 @@ func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, 
 	for pkg := range packages {
 		result, err := p.executePackageAnalysis(pkg)
 		if err != nil {
-			// TODO: better error handling than panic
-			log.Fatalf("FATAL ERROR with package %v: \n %v", pkg, err)
+			errorStr := fmt.Sprintf("FATAL ERROR with package %v: \n %v", pkg, err)
+			log.Print(errorStr)
+			pkgResult := PackageResult{Name: pkg.Name, Version: pkg.Version, Result: errorStr}
+			results <- pkgResult
 		}
 		pkgResult := PackageResult{Name: pkg.Name, Version: pkg.Version, Result: result}
 		results <- pkgResult
