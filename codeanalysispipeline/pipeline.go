@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-const cleanup = false
+const cleanup = true
 
 type Pipeline struct {
 	collector NameCollector

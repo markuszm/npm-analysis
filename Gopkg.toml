@@ -72,3 +72,6 @@
 [[constraint]]
   name = "github.com/mholt/archiver"
   revision = "e4ef56d48eb029648b0e895bb0b6a393ef0829c3"
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.2"
