@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/insert"
@@ -23,9 +24,14 @@ const workerNumber = 100
 
 var db *sql.DB
 
-const insertDB = false
+var insertDB bool
 
 func main() {
+	insertDBFlag := flag.Bool("insertdb", false, "specify whether maintainer count should be inserted into db")
+	flag.Parse()
+
+	insertDB = *insertDBFlag
+
 	mysqlInitializer := &database.Mysql{}
 	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
 	if databaseInitErr != nil {
@@ -155,7 +161,7 @@ func plotSortedMaintainerPackageCount(countMap map[string]evolution.MaintainerCo
 			count := counts.Counts[year][1]
 			if count > 0 {
 				vals := valuesPerYear[year]
-				vals = append(vals, float64(count))
+				vals = append(vals, math.Log10(float64(count)))
 				valuesPerYear[year] = vals
 				//isActive = true
 			}
