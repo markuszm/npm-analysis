@@ -1,0 +1,20 @@
+{
+  "name": "callgraph-analysis",
+  "version": "1.0.0",
+  "description": "",
+  "main": "ternClient.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "acorn": "^5.7.1",
+    "readdirp": "^2.1.0",
+    "tern": "^0.21.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
