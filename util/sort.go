@@ -40,3 +40,15 @@ type MaintainerReachDiffList []MaintainerReachDiff
 func (m MaintainerReachDiffList) Len() int           { return len(m) }
 func (m MaintainerReachDiffList) Less(i, j int) bool { return m[i].Diff < m[j].Diff }
 func (m MaintainerReachDiffList) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+
+type PackageReachResult struct {
+	Count      int
+	Package    string
+	Dependents []string
+}
+
+type PackageReachResultList []PackageReachResult
+
+func (p PackageReachResultList) Len() int           { return len(p) }
+func (p PackageReachResultList) Less(i, j int) bool { return p[i].Count < p[j].Count }
+func (p PackageReachResultList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
