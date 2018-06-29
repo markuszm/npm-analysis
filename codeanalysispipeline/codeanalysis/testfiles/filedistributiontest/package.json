@@ -1,0 +1,10 @@
+{
+  "name": "ImportTest",
+  "description": "...",
+  "version": "0.0.0",
+  "dependencies": {
+    "foo": "1.0.0",
+    "bar": "1.0.0",
+    "foobar": "^1.1.0"
+  }
+}

@@ -17,15 +17,20 @@ func NewFileDistributionAnalysis(logger *zap.SugaredLogger) *FileDistributionAna
 
 func (e *FileDistributionAnalysis) AnalyzePackage(packagePath string) (interface{}, error) {
 	extensionMap := make(map[string]int, 0)
-	result, err := ExecuteCommand("find", packagePath)
+	result, err := ExecuteCommand("find", packagePath, "-type", "f")
 	if err != nil {
 		return extensionMap, errors.Wrapf(err, "error analyzing package %v", packagePath)
 	}
 	lines := strings.Split(result, "\n")
 
 	for _, l := range lines {
+		if l == "" {
+			continue
+		}
 		ext := path.Ext(l)
-		if ext != "" {
+		if ext == "" {
+			extensionMap["binary"]++
+		} else {
 			extensionMap[ext]++
 		}
 	}
