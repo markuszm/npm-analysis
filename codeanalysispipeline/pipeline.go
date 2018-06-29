@@ -117,7 +117,7 @@ func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, 
 	for pkg := range packages {
 		result, err := p.executePackageAnalysis(pkg)
 		if err != nil {
-			errorStr := fmt.Sprintf("FATAL ERROR with package %v: \n %v", pkg, err)
+			errorStr := fmt.Sprintf("ERROR with package %v: \n %v", pkg, err)
 			p.logger.Errorf(errorStr)
 			pkgResult := PackageResult{Name: pkg.Name, Version: pkg.Version, Result: errorStr}
 			results <- pkgResult
@@ -132,17 +132,14 @@ func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, 
 func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) (result interface{}, err error) {
 	pkg, err := p.loader.LoadPackage(packageName)
 	if err != nil {
-		// if package is not found continue but result is an error message
-		if err == ErrorNotFound {
-			return []string{ErrorNotFound.Error()}, nil
-		}
-		err = errors.Wrap(err, "ERROR: loading package")
+		err = errors.Wrap(err, "loading package")
 		return
 	}
 
 	packageFolderPath, err := p.unpacker.UnpackPackage(pkg)
 	if err != nil {
-		p.logger.Errorf("Error unpacking package %v with %v", packageName, err)
+		p.logger.Errorf("unpacking package %v with %v", packageName, err)
+		err = errors.Wrap(err, "unpacking package")
 		return
 		//if !strings.Contains(err.Error(), "making hard link for") {
 		//	err = errors.Wrap(err, "ERROR: unpacking package")
@@ -152,21 +149,21 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 
 	result, err = p.analysis.AnalyzePackage(packageFolderPath)
 	if err != nil {
-		err = errors.Wrap(err, "ERROR: analyzing package")
+		err = errors.Wrap(err, "analyzing package")
 		return
 	}
 
 	if cleanup {
 		err = os.RemoveAll(packageFolderPath)
 		if err != nil {
-			err = errors.Wrap(err, "ERROR: removing tmp folder")
+			err = errors.Wrap(err, "removing tmp folder")
 		}
 
 		if p.loader.NeedsCleanup() {
 			err := os.Remove(pkg)
 
 			if err != nil {
-				err = errors.Wrap(err, "ERROR: removing tmp package file")
+				err = errors.Wrap(err, "removing tmp package file")
 			}
 		}
 	}
