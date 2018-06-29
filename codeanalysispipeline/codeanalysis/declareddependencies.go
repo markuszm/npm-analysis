@@ -125,7 +125,7 @@ func parseModuleFromImportStmt(i string) string {
 
 	startIndex := strings.Index(i, "\"")
 	endIndex := strings.LastIndex(i, "\"")
-	if startIndex == -1 || endIndex == -1 {
+	if startIndex == -1 || endIndex == -1 || startIndex == endIndex {
 		startIndex = strings.Index(i, "'")
 		endIndex = strings.LastIndex(i, "'")
 		if startIndex == -1 || endIndex == -1 {

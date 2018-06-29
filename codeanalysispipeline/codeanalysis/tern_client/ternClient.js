@@ -49,6 +49,7 @@ let debug = false;
             );
         },
         CallExpression: function (callNode) {
+            if (debug) console.log(callNode);
             callExpressions.push(
                 new CallExpression(
                     callNode.sourceFile.name,
