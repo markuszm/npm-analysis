@@ -175,19 +175,8 @@
   version = "v1.0.0"
 
 [[projects]]
-  name = "github.com/stretchr/objx"
-  packages = ["."]
-  revision = "477a77ecc69700c7cdeb1fa9e129548e1c1c393c"
-  version = "v0.1.1"
-
-[[projects]]
   name = "github.com/stretchr/testify"
-  packages = [
-    ".",
-    "assert",
-    "http",
-    "mock"
-  ]
+  packages = ["assert"]
   revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
   version = "v1.2.2"
 
@@ -201,6 +190,31 @@
   ]
   revision = "0c6b41e72360850ca4f98dc341fd999726ea007f"
   version = "v0.5.4"
+
+[[projects]]
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
+
+[[projects]]
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "go.uber.org/zap"
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore"
+  ]
+  revision = "eeedf312bc6c57391d84767a4cd413f02a917974"
+  version = "v1.8.0"
 
 [[projects]]
   branch = "master"
@@ -274,6 +288,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b900b5377640d1844030f97496d73ce479eac678549a96af5f9ed96bf4f59e88"
+  inputs-digest = "36469e21051e6d395b2abceaab3ae53c6891327f1e07244db9345dad0bb9a9f4"
   solver-name = "gps-cdcl"
   solver-version = 1

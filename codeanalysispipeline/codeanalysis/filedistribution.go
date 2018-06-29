@@ -2,11 +2,17 @@ package codeanalysis
 
 import (
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"path"
 	"strings"
 )
 
 type FileDistributionAnalysis struct {
+	logger *zap.SugaredLogger
+}
+
+func NewFileDistributionAnalysis(logger *zap.SugaredLogger) *FileDistributionAnalysis {
+	return &FileDistributionAnalysis{logger}
 }
 
 func (e *FileDistributionAnalysis) AnalyzePackage(packagePath string) (interface{}, error) {

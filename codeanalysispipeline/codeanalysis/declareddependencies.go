@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +13,11 @@ import (
 )
 
 type UsedDependenciesAnalysis struct {
+	logger *zap.SugaredLogger
+}
+
+func NewUsedDependenciesAnalysis(logger *zap.SugaredLogger) *UsedDependenciesAnalysis {
+	return &UsedDependenciesAnalysis{logger}
 }
 
 func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface{}, error) {
@@ -30,7 +35,7 @@ func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface
 		}
 	}
 
-	packageMetadata, err := parsePackageJSON(packagePath)
+	packageMetadata, err := d.parsePackageJSON(packagePath)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing package json")
@@ -74,7 +79,7 @@ func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface
 		if i == "" {
 			continue
 		}
-		module := parseModuleFromImportStmt(i)
+		module := d.parseModuleFromImportStmt(i)
 
 		if module != "" && !IsLocalImport(module) && !importedSet[module] && !requiredSet[module] {
 			importedSet[module] = true
@@ -116,10 +121,10 @@ func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface
 	return result, nil
 }
 
-func parseModuleFromImportStmt(i string) string {
+func (d *UsedDependenciesAnalysis) parseModuleFromImportStmt(i string) string {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("could not parse import %v with panic \n %v", i, r)
+			d.logger.Errorf("could not parse import %v with panic \n %v", i, r)
 		}
 	}()
 
@@ -129,7 +134,7 @@ func parseModuleFromImportStmt(i string) string {
 		startIndex = strings.Index(i, "'")
 		endIndex = strings.LastIndex(i, "'")
 		if startIndex == -1 || endIndex == -1 {
-			log.Printf("could not parse import %v", i)
+			d.logger.Errorf("could not parse import %v", i)
 			return ""
 		}
 	}
@@ -147,7 +152,7 @@ func stripQuotes(s string) string {
 	return strings.Trim(s, `"'`)
 }
 
-func parsePackageJSON(packagePath string) (MinimalPackage, error) {
+func (d *UsedDependenciesAnalysis) parsePackageJSON(packagePath string) (MinimalPackage, error) {
 	var packageMetadata MinimalPackage
 
 	pathToPackageJSONStandard := path.Join(packagePath, "package", "package.json")
@@ -173,7 +178,7 @@ func parsePackageJSON(packagePath string) (MinimalPackage, error) {
 				return nil
 			})
 			if err != nil {
-				log.Print(errors.Wrap(err, "error finding package json").Error())
+				d.logger.Error(errors.Wrap(err, "error finding package json").Error())
 				return packageMetadata, nil
 			}
 		}
@@ -181,7 +186,7 @@ func parsePackageJSON(packagePath string) (MinimalPackage, error) {
 
 	fileContents, err := ioutil.ReadFile(pathToPackageJSON)
 	if err != nil {
-		log.Print(errors.Wrap(err, "error reading package json").Error())
+		d.logger.Errorf(errors.Wrap(err, "error reading package json").Error())
 		return packageMetadata, nil
 	}
 
@@ -190,8 +195,8 @@ func parsePackageJSON(packagePath string) (MinimalPackage, error) {
 
 	err = json.Unmarshal(fileContents, &packageMetadata)
 	if err != nil {
-		log.Print(string(fileContents))
-		log.Print(errors.Wrap(err, "error parsing package json").Error())
+		d.logger.Debug(string(fileContents))
+		d.logger.Errorf(errors.Wrap(err, "error parsing package json").Error())
 		return packageMetadata, nil
 	}
 
