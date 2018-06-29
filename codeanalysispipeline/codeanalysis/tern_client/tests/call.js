@@ -1,6 +1,7 @@
 require('./fun.js');
-const foo = require('foo');
+const f = require('foo'), bar = require('bar');
+const foobar = require('foobar');
 
 myfun('2');
-foo.a();
+f.a();
 

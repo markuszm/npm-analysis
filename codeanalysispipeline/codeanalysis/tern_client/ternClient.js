@@ -23,21 +23,41 @@ let debug = false;
         debug = true
     }
 
-    const tern = new ternModule.Server({});
+    const tern = new ternModule.Server({
+        plugins: {
+            "modules": {},
+            "node": {},
+            "es_modules": {},
+        },
+    });
 
     // helper "class" to store call expressions
-    function CallExpression(file, start, end, name) {
+    function CallExpression(file, start, end, name, outerMethod, receiver) {
         this.file = file;
         this.start = start;
         this.end = end;
         this.name = name;
+        this.outerMethod = outerMethod;
+        this.receiver = receiver;
     }
 
     let callExpressions = [];
 
+    let requiredModules = {};
+
     // register AST visitors that get called when tern parses the files
     const astVisitors = {
-        FunctionDeclaration: function (fctNode) {
+        VariableDeclaration: function (declNode, _) {
+            for (let decl of declNode.declarations) {
+                if (decl.init.type === "CallExpression") {
+                    if (decl.init.callee.name === "require") {
+                        const moduleName = decl.init.arguments[0].value;
+                        requiredModules[decl.id.name] = moduleName;
+                    }
+                }
+            }
+        },
+        FunctionDeclaration: function (fctNode, _) {
             if (debug) console.log(
                 fctNode.sourceFile.name +
                 ", " +
@@ -48,23 +68,45 @@ let debug = false;
                 fctNode.id.name
             );
         },
-        CallExpression: function (callNode) {
-            if (debug) console.log(callNode);
+        CallExpression: function (callNode, ancestors) {
+            if (debug) console.log({callNode, ancestors});
+            const decl = ancestors.filter(node => node.type === 'FunctionDeclaration').pop();
+            let outerMethod = callNode.sourceFile.name;
+            if (decl) {
+                outerMethod = decl.id.name;
+            }
+
+            let functionName = callNode.callee.name;
+            let receiver = "this";
+            let receiverStart = 0;
+
+            if (!functionName) {
+                // parse child expression here as it is not an identifier
+                const callee = callNode.callee;
+                if (callee.type === "MemberExpression") {
+                    functionName = callee.property.name;
+                    receiver = callee.object.name;
+                }
+            }
+
             callExpressions.push(
                 new CallExpression(
                     callNode.sourceFile.name,
                     callNode.start,
                     callNode.end,
-                    callNode.callee.name
+                    functionName,
+                    outerMethod,
+                    receiver
                 )
             );
+
         }
     };
     tern.on("postParse", function (ast, text) {
-        acornWalk.simple(ast, astVisitors);
+        acornWalk.ancestor(ast, astVisitors);
     });
 
-    calls = []
+    calls = [];
 
     // parse and analyze files
     try {
@@ -74,11 +116,12 @@ let debug = false;
                 tern.addFile(fileInfo.name, fs.readFileSync(fileInfo.fullPath));
                 if (debug) console.log(`added file ${fileInfo.name} to tern`);
             },
-            ()  => {
+            () => {
                 // for each call expression, find the function definition that the call resolves to
                 for (let i = 0; i < callExpressions.length; i++) {
                     const callExpression = callExpressions[i];
-                    const query = {
+
+                    const queryFuncDef = {
                         //query:{type:"definition", end:{line:0, ch:1}, file:"call.js"}
                         query: {
                             type: "definition",
@@ -86,7 +129,7 @@ let debug = false;
                             file: callExpression.file
                         }
                     };
-                    tern.request(query, function (err, data) {
+                    tern.request(queryFuncDef, function (err, data) {
                         if (debug) {
                             console.log("\nCall at:");
                             console.log(callExpression);
@@ -95,11 +138,15 @@ let debug = false;
                         }
 
                         calls.push({
-                            from: callExpression.file,
-                            functionName: callExpression.name,
-                            to: data.origin
+                            fromFile: callExpression.file,
+                            fromFunction: callExpression.outerMethod,
+                            receiver: callExpression.receiver,
+                            module: requiredModules[callExpression.receiver],
+                            toFile: data.origin,
+                            toFunction: callExpression.name,
                         })
                     });
+
                 }
                 console.log(JSON.stringify(calls))
             }
