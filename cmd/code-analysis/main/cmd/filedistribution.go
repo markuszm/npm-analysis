@@ -6,14 +6,11 @@ import (
 	"path"
 )
 
-var inputPath string
-var outputPath string
-
-// resultCmd represents the result command
-var resultCmd = &cobra.Command{
-	Use:   "filedistribution",
-	Short: "Result processing for filedistribution results",
-	Long:  `Processes analysis results e.g. plots them or creates other insights`,
+// fileDistributionCmd represents the fileDistribution command
+var fileDistributionCmd = &cobra.Command{
+	Use:   "fileDistribution",
+	Short: "Result processing for file distribution analysis results",
+	Long:  `Processes analysis results to create plotable csv results`,
 	Run: func(cmd *cobra.Command, args []string) {
 		allPackages, err := resultprocessing.MergeFileDistributionResult(inputPath, 0)
 		if err != nil {
@@ -34,8 +31,8 @@ var resultCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(resultCmd)
+	rootCmd.AddCommand(fileDistributionCmd)
 
-	resultCmd.Flags().StringVarP(&inputPath, "input", "i", "/home/markus/npm-analysis/filedistribution.json", "path to file containing analysis results")
-	resultCmd.Flags().StringVarP(&outputPath, "output", "o", "/home/markus/npm-analysis/filedistribution", "output path")
+	fileDistributionCmd.Flags().StringVarP(&inputPath, "input", "i", "/home/markus/npm-analysis/filedistribution.json", "path to file containing analysis results")
+	fileDistributionCmd.Flags().StringVarP(&outputPath, "output", "o", "/home/markus/npm-analysis/filedistribution", "output path")
 }
