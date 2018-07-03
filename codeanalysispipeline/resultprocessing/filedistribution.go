@@ -54,6 +54,5 @@ func MergeFileDistributionResult(resultPath string, filter int) ([]util.Pair, er
 
 	sort.Sort(sort.Reverse(util.PairList(sortedDistribution)))
 
-	log.Print(sortedDistribution)
 	return sortedDistribution, nil
 }
