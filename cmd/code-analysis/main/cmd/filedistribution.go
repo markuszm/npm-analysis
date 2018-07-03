@@ -3,24 +3,33 @@ package cmd
 import (
 	"github.com/markuszm/npm-analysis/codeanalysispipeline/resultprocessing"
 	"github.com/spf13/cobra"
+	"path"
 )
 
 var inputPath string
 var outputPath string
-var analysis string
 
 // resultCmd represents the result command
 var resultCmd = &cobra.Command{
-	Use:   "result",
-	Short: "Result processing for analysis results",
+	Use:   "filedistribution",
+	Short: "Result processing for filedistribution results",
 	Long:  `Processes analysis results e.g. plots them or creates other insights`,
 	Run: func(cmd *cobra.Command, args []string) {
-		result, err := resultprocessing.MergeFileDistributionResult(inputPath, 1000)
+		allPackages, err := resultprocessing.MergeFileDistributionResult(inputPath, 0)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		resultprocessing.WriteFiledistributionResult(allPackages, path.Join(outputPath, "allpackages.csv"))
+
+		percentages, err := resultprocessing.CalculatePercentageForEachPackage(inputPath)
 		if err != nil {
 			logger.Fatal(err)
 		}
 
-		logger.Info(result)
+		err = resultprocessing.WritePercentagesPerPackageForExtension(percentages, path.Join(outputPath, "percentages.csv"))
+		if err != nil {
+			logger.Fatal(err)
+		}
 	},
 }
 
@@ -29,5 +38,4 @@ func init() {
 
 	resultCmd.Flags().StringVarP(&inputPath, "input", "i", "/home/markus/npm-analysis/filedistribution.json", "path to file containing analysis results")
 	resultCmd.Flags().StringVarP(&outputPath, "output", "o", "/home/markus/npm-analysis/filedistribution", "output path")
-	resultCmd.Flags().StringVarP(&analysis, "analysis", "a", "file_distribution", "specify for which analysis to process results")
 }
