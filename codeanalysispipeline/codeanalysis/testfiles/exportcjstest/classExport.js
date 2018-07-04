@@ -15,3 +15,4 @@ module.exports.calc = class Calculator2 {
         return a - b;
     }
 };
+

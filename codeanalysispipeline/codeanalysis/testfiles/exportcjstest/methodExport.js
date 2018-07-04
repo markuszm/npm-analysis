@@ -1,12 +1,12 @@
 function abs(x) {
     return Math.abs(x);
 }
-function sqrt(x) {
+function sqrtDefault(x) {
     return Math.sqrt(x);
 }
 
 module.exports.abs = abs;
-module.exports.sqrt = sqrt;
+module.exports.sqrt = sqrtDefault;
 module.exports.pow = function(x, exp) {
     return Math.pow(x, exp);
 };

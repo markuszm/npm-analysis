@@ -1,4 +1,4 @@
-import { Pattern, MemberExpression, Identifier } from "estree";
+import { Expression, Identifier, MemberExpression, Pattern } from "estree";
 
 export function isDirectAssignment(left: Pattern): boolean {
     switch (left.type) {
@@ -39,4 +39,52 @@ export function isPropertyAssignment(left: Pattern): boolean {
         }
     }
     return false;
+}
+
+export function patternToString(pattern: Pattern): string {
+    // TODO: better handling for other patterns
+    switch (pattern.type) {
+        case "AssignmentPattern":
+            return `${patternToString(pattern.left)}=${expressionToString(pattern.right)}`;
+        case "Identifier":
+            return pattern.name;
+        case "MemberExpression":
+            return expressionToString(pattern);
+        default:
+            return pattern.type;
+    }
+}
+
+export function expressionToString(expression: Expression): string {
+    // TODO: better handling for other expressions
+    switch (expression.type) {
+        case "MemberExpression":
+            if (expression.object.type === "Super") {
+                return `${expressionToString(expression)}.${expressionToString(
+                    expression.property
+                )}`;
+            } else {
+                return `${expressionToString(expression.object)}.${expressionToString(
+                    expression.property
+                )}`;
+            }
+        case "Identifier":
+            return expression.name;
+        default:
+            return expression.type;
+    }
+}
+
+export function createMethodSignatureString(id: string, params: Array<String>) {
+    let signature = id;
+    if (params.length > 0) {
+        signature += "(";
+        for (let i = 0; i < params.length; i++) {
+            signature += i < params.length - 1 ? params[i] + "," : params[i];
+        }
+        signature += ")";
+    } else {
+        signature += "()";
+    }
+    return signature;
 }

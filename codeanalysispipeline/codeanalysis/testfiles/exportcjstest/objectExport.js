@@ -13,7 +13,11 @@ module.exports = {
     },
     add32(a) {
         return a + 32;
-    }
+    },
+    addAll: function(a,...b){
+        console.log('From graph draw function');
+    },
+    theSolution: 42
 };
 
 module.exports.foo = {
@@ -28,5 +32,6 @@ module.exports.foo = {
     },
     sub16(a) {
         return a - 16;
-    }
+    },
+    theSolution: 42
 };
