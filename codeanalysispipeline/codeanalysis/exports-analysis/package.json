@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "exec": "node ./dist/index.js",
+    "start": "tsc && node ./dist/index.js"
   },
   "author": "",
   "license": "ISC",
@@ -12,5 +14,10 @@
     "@babel/parser": "^7.0.0-beta.51",
     "@babel/traverse": "^7.0.0-beta.51",
     "readdirp": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/babel-traverse": "^6.25.4",
+    "@types/estree": "0.0.39",
+    "@types/node": "^10.5.1"
   }
 }

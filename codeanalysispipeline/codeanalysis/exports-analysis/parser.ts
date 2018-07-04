@@ -1,9 +1,10 @@
-const parser = require("@babel/parser");
+import { parse } from "@babel/parser";
 
-exports.parseAst = content =>
-    parser.parse(content, {
+export function parseAst(content: string): any {
+    return parse(content, {
         sourceType: "module",
         allowImportExportEverywhere: true,
 
         plugins: ["jsx", "typescript", "estree"]
     });
+}

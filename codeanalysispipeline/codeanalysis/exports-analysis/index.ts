@@ -1,15 +1,15 @@
-const fs = require("fs");
-const process = require("process");
+import * as fs from "fs";
+import * as process from "process";
 
-const readdirp = require("readdirp");
+import readdirp from "readdirp";
 
-const parser = require("./parser");
-const traversal = require("./traversal");
+import * as parser from "./parser";
+import * as traversal from "./traversal";
 
 let debug = false;
 
 // parse command arguments
-const args = process.argv.slice(2);
+const args: Array<string> = process.argv.slice(2);
 const command = args[0];
 const path = args[1];
 if (args.length > 2 && args[2] === "debug") {
@@ -25,7 +25,7 @@ switch (command) {
         break;
     case "folder":
         try {
-            const definedExports = [];
+            const definedExports: Array<traversal.Export> = [];
             readdirp(
                 { root: path, fileFilter: ["*.ts", "*.js", "*.jsx"] },
                 fileInfo => {
