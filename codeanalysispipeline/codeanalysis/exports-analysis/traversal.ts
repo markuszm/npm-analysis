@@ -27,6 +27,18 @@ export class Variable {
     constructor(public id: string, public kind: string, public value?: string) {}
 }
 
+export class Class {
+    constructor(
+        public id: string,
+        public methods: Array<string>,
+        public superClass: string | null
+    ) {}
+}
+
+const declaredFunctions: Array<Function> = [];
+const declaredVariables: Array<Variable> = [];
+const declaredClasses: Array<Class> = [];
+
 function extractFunctionInfo(id: Identifier | null | undefined, baseFunc: BaseFunction): Function {
     const functionName = id ? id.name : "default function";
     const params = baseFunc.params;
@@ -80,11 +92,26 @@ function extractExportsFromObject(object: ObjectExpression): Array<Export> {
     return exports;
 }
 
+function collectAllMethodsFromClasses(className: string): Array<string> {
+    const classDecl = declaredClasses.find(value => value.id === className);
+
+    if (classDecl) {
+        const methods: Array<string> = [];
+        for (let method of classDecl.methods) {
+            methods.push(`${classDecl.id}.${method}`);
+        }
+        if (classDecl.superClass) {
+            methods.push(...collectAllMethodsFromClasses(classDecl.superClass));
+            return methods;
+        }
+        return methods;
+    }
+
+    return [];
+}
+
 export function traverseAst(ast: any, debug: boolean): Array<Export> {
     const definedExports: Array<Export> = [];
-
-    const declaredFunctions: Array<Function> = [];
-    const declaredVariables: Array<Variable> = [];
 
     traverse(ast, {
         FunctionDeclaration(path: NodePath) {
@@ -109,7 +136,14 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
         ClassDeclaration(path: NodePath) {
             const node = (path.node as Node) as ClassDeclaration;
 
-            console.log(node);
+            const superClass =
+                node.superClass && node.superClass.type === "Identifier"
+                    ? node.superClass.name
+                    : null;
+            const className = node.id ? node.id.name : "default";
+            declaredClasses.push(
+                new Class(className, extractMethodsFromClassBody(node.body), superClass)
+            );
         },
 
         AssignmentExpression(path: NodePath) {
@@ -128,7 +162,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                         definedExports.push(...extractExportsFromObject(right));
                         break;
                     case "ClassExpression":
-                        definedExports.push(new Export("class", `-DEFAULT`));
+                        definedExports.push(new Export("class", "default"));
                         const methods = extractMethodsFromClassBody(right.body);
                         for (let method of methods) {
                             if (debug) {
@@ -138,9 +172,17 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                         }
                         break;
                     case "NewExpression":
-                        console.log(right);
+                        const callee = right.callee;
+                        if (callee.type === "Identifier") {
+                            definedExports.push(new Export("class", callee.name));
+                            const methods = collectAllMethodsFromClasses(callee.name);
+                            for (let method of methods) {
+                                definedExports.push(new Export("function", method));
+                            }
+                        }
                         break;
                     default:
+                        definedExports.push(new Export("unknown", "default"));
                         break;
                 }
             }
@@ -234,7 +276,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
     });
 
     if (debug) {
-        console.log({ declaredFunctions, declaredVariables });
+        console.log({ declaredFunctions, declaredVariables, declaredClasses });
     }
 
     return definedExports;

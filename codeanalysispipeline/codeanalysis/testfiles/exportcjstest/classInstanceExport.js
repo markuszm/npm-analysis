@@ -1,4 +1,10 @@
-class Calculator {
+class Base {
+    toString(str) {
+        return `${str}`;
+    }
+}
+
+class Calculator extends Base {
     add(a, b) {
         return a + b;
     }
