@@ -16,7 +16,7 @@ import {
 import { NodePath } from "babel-traverse";
 
 export class Export {
-    constructor(public type: string, public id: string) {}
+    constructor(public type: string, public id: string, public bundleType) {}
 }
 
 export class Function {
@@ -81,12 +81,13 @@ function extractExportsFromObject(object: ObjectExpression): Array<Export> {
                 exports.push(
                     new Export(
                         "function",
-                        util.createMethodSignatureString(property.key.name, func.params)
+                        util.createMethodSignatureString(property.key.name, func.params),
+                        "commonjs"
                     )
                 );
                 continue;
             }
-            exports.push(new Export("member", property.key.name));
+            exports.push(new Export("member", property.key.name, "commonjs"));
         }
     }
     return exports;
@@ -162,27 +163,27 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                         definedExports.push(...extractExportsFromObject(right));
                         break;
                     case "ClassExpression":
-                        definedExports.push(new Export("class", "default"));
+                        definedExports.push(new Export("class", "default", "commonjs"));
                         const methods = extractMethodsFromClassBody(right.body);
                         for (let method of methods) {
                             if (debug) {
                                 console.log(`Found export with name: ${method}`);
                             }
-                            definedExports.push(new Export("function", method));
+                            definedExports.push(new Export("function", method, "commonjs"));
                         }
                         break;
                     case "NewExpression":
                         const callee = right.callee;
                         if (callee.type === "Identifier") {
-                            definedExports.push(new Export("class", callee.name));
+                            definedExports.push(new Export("class", callee.name, "commonjs"));
                             const methods = collectAllMethodsFromClasses(callee.name);
                             for (let method of methods) {
-                                definedExports.push(new Export("function", method));
+                                definedExports.push(new Export("function", method, "commonjs"));
                             }
                         }
                         break;
                     default:
-                        definedExports.push(new Export("unknown", "default"));
+                        definedExports.push(new Export("unknown", "default", "commonjs"));
                         break;
                 }
             }
@@ -197,7 +198,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                             );
                             if (variable) {
                                 definedExports.push(
-                                    new Export(variable.kind, memberExpr.property.name)
+                                    new Export(variable.kind, memberExpr.property.name, "commonjs")
                                 );
                                 break;
                             }
@@ -210,13 +211,14 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                                         util.createMethodSignatureString(
                                             memberExpr.property.name,
                                             method.params
-                                        )
+                                        ),
+                                        "commonjs"
                                     )
                                 );
                                 break;
                             }
 
-                            definedExports.push(new Export("unknown", memberExpr.property.name));
+                            definedExports.push(new Export("unknown", memberExpr.property.name, "commonjs"));
 
                             if (debug) {
                                 console.log(`Found export with name: ${memberExpr.property.name}`);
@@ -231,41 +233,42 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                                     util.createMethodSignatureString(
                                         memberExpr.property.name,
                                         func.params
-                                    )
+                                    ),
+                                    "commonjs"
                                 )
                             );
                             break;
 
                         case "ObjectExpression":
                             definedExports.push(
-                                new Export("object", `${memberExpr.property.name}`)
+                                new Export("object", `${memberExpr.property.name}`, "commonjs")
                             );
                             const exports = extractExportsFromObject(right);
                             for (let exp of exports) {
                                 definedExports.push(
-                                    new Export(exp.type, `${memberExpr.property.name}.${exp.id}`)
+                                    new Export(exp.type, `${memberExpr.property.name}.${exp.id}`, "commonjs")
                                 );
                             }
                             break;
                         case "ClassExpression":
-                            definedExports.push(new Export("class", `${memberExpr.property.name}`));
+                            definedExports.push(new Export("class", `${memberExpr.property.name}`, "commonjs"));
                             const methods = extractMethodsFromClassBody(right.body);
                             for (let method of methods) {
                                 if (debug) {
                                     console.log(`Found export with name: ${method}`);
                                 }
                                 definedExports.push(
-                                    new Export("function", `${memberExpr.property.name}.${method}`)
+                                    new Export("function", `${memberExpr.property.name}.${method}`, "commonjs")
                                 );
                             }
                             break;
                         case "MemberExpression":
                             definedExports.push(
-                                new Export("member", `${memberExpr.property.name}`)
+                                new Export("member", `${memberExpr.property.name}`, "commonjs")
                             );
                             break;
                         default:
-                            definedExports.push(new Export("unknown", memberExpr.property.name));
+                            definedExports.push(new Export("unknown", memberExpr.property.name, "commonjs"));
                             if (debug) {
                                 console.log(`Found export with name: ${memberExpr.property.name}`);
                             }
