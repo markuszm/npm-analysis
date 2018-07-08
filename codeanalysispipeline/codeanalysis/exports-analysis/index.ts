@@ -30,8 +30,12 @@ switch (command) {
                 { root: path, fileFilter: ["*.ts", "*.js", "*.jsx"] },
                 fileInfo => {
                     const content = fs.readFileSync(fileInfo.fullPath, "utf-8");
-                    let ast = parser.parseAst(content);
-                    definedExports.push(...traversal.traverseAst(ast, debug));
+                    try {
+                        let ast = parser.parseAst(content);
+                        definedExports.push(...traversal.traverseAst(ast, debug));
+                    } catch (e) {
+                        // ignore errors in parsing for now
+                    }
                 },
                 // after file processing
                 () => {

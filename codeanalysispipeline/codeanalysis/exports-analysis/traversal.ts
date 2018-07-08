@@ -24,7 +24,7 @@ const BUNDLE_TYPE_COMMONJS = "commonjs";
 const EXPORT_TYPE_FUNCTION = "function";
 
 export class Export {
-    constructor(public type: string, public id: string, public bundleType) {}
+    constructor(public type: string, public id: string, public bundleType: string) {}
 }
 
 export class Function {
