@@ -72,6 +72,9 @@ var analysisCmd = &cobra.Command{
 		case "used_dependencies":
 			log.Print("executing used dependencies analysis")
 			analysis = codeanalysis.NewUsedDependenciesAnalysis(logger)
+		case "exports":
+			log.Print("executing exports analysis")
+			analysis = codeanalysis.NewExportsAnalysis(logger)
 		}
 
 		var writer codeanalysispipeline.ResultWriter
