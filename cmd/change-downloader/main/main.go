@@ -51,6 +51,7 @@ func main() {
 				continue
 			}
 			log.Printf("ERROR: %v", err)
+			continue
 		}
 
 		file, err := os.Open(filePath)
