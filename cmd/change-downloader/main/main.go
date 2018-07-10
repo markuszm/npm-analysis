@@ -46,12 +46,27 @@ func main() {
 		downloadPath := "/tmp/"
 		filePath, err := downloader.DownloadPackageAndVerify(downloadPath, tarball, checksum)
 		if err != nil {
-			log.Fatal(err)
+			if err.Error() == "Not Found" {
+				log.Printf("WARNING: did not find package %v", value.Name)
+				continue
+			}
+			log.Printf("ERROR: %v", err)
 		}
 
 		file, err := os.Open(filePath)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		headObjectInput := s3.HeadObjectInput{
+			Bucket: aws.String(s3BucketName),
+			Key:    aws.String(strings.Replace(filePath, downloadPath, "", 1)),
+		}
+
+		_, err = svc.HeadObject(&headObjectInput)
+		if err == nil {
+			log.Printf("Already retrieved package %v", value.Name)
+			continue
 		}
 
 		putObjectInput := s3.PutObjectInput{
