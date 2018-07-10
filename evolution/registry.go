@@ -8,6 +8,8 @@ import (
 
 const npmUrl = "https://registry.npmjs.com/"
 
+const replicateUrl = "https://replicate.npmjs.com/"
+
 func GetMetadataFromNpm(pkg string) (string, error) {
 	pkgName := pkg
 	if strings.Contains(pkg, "/") {
@@ -26,4 +28,22 @@ func GetMetadataFromNpm(pkg string) (string, error) {
 	}
 	doc := string(bytes)
 	return doc, err
+}
+
+func PackageStillExists(pkg string) (bool, error) {
+	pkgName := pkg
+	if strings.Contains(pkg, "/") {
+		pkgName = transformScopedName(pkg)
+	}
+	url := replicateUrl + pkgName
+
+	resp, err := http.Head(url)
+
+	if err != nil {
+		return false, err
+	}
+
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK, nil
 }

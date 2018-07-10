@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/evolution"
@@ -17,7 +18,11 @@ const MONGOURL = "mongodb://npm:npm123@localhost:27017"
 
 const workerNumber = 25
 
+var command string
+
 func main() {
+	flag.StringVar(&command, "command", "check", "either download or check metadata")
+
 	mysqlInitializer := &database.Mysql{}
 	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
 	if databaseInitErr != nil {
@@ -55,53 +60,74 @@ func main() {
 }
 
 func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "packages")
-	mongoDB.Connect()
-	defer mongoDB.Disconnect()
-	log.Printf("logged in mongo - workerId %v", workerId)
+	var mongoDB *database.MongoDB
 
-	ensureIndex(mongoDB)
+	if command == "download" {
+		mongoDB := database.NewMongoDB(MONGOURL, "npm", "packages")
+		mongoDB.Connect()
+		defer mongoDB.Disconnect()
+		log.Printf("logged in mongo - workerId %v", workerId)
+
+		ensureIndex(mongoDB)
+	}
 
 	for pkg := range jobs {
-		if val, err := mongoDB.FindOneSimple("key", pkg); val != "" && err == nil {
-			log.Printf("Package %v already exists", pkg)
-
-			val, err := util.Decompress(val)
+		if command == "download" {
+			err := downloadMetadata(mongoDB, pkg)
 			if err != nil {
-				log.Fatalf("ERROR: Decompressing: %v", err)
-			}
-
-			if val == "" {
-				err := mongoDB.RemoveWithKey(pkg)
-				if err != nil {
-					log.Fatalf("ERROR: could not remove already existing but wrong data for package %v", pkg)
-				}
-			} else {
-				continue
+				log.Printf("ERROR: %v", err)
+				jobs <- pkg
+				log.Printf("Processed package %v worker: %v", pkg, workerId)
 			}
 		}
 
-		doc, err := evolution.GetMetadataFromNpm(pkg)
-		if err != nil {
-			log.Printf("ERROR: %v", err)
-			jobs <- pkg
+		if command == "check" {
+			exists, err := evolution.PackageStillExists(pkg)
+			if !exists || err != nil {
+				log.Printf("Package %v does not exist anymore", pkg)
+			}
 		}
 
-		data, err := util.Compress(doc)
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-
-		mongoDB.InsertOneSimple(pkg, data)
-		if err != nil {
-			log.Fatalf("ERROR: inserting %v into mongo with %s", pkg, err)
-		}
-
-		log.Printf("Inserted package metadata of %v worker: %v", pkg, workerId)
 	}
 
 	workerWait.Done()
 	log.Println("send finished worker ", workerId)
+}
+
+func downloadMetadata(db *database.MongoDB, pkg string) error {
+	if val, err := db.FindOneSimple("key", pkg); val != "" && err == nil {
+		log.Printf("Package %v already exists", pkg)
+
+		val, err := util.Decompress(val)
+		if err != nil {
+			log.Fatalf("ERROR: Decompressing: %v", err)
+		}
+
+		if val == "" {
+			err := db.RemoveWithKey(pkg)
+			if err != nil {
+				log.Fatalf("ERROR: could not remove already existing but wrong data for package %v", pkg)
+			}
+		} else {
+			return nil
+		}
+	}
+
+	doc, err := evolution.GetMetadataFromNpm(pkg)
+	if err != nil {
+		return err
+	}
+
+	data, err := util.Compress(doc)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	db.InsertOneSimple(pkg, data)
+	if err != nil {
+		log.Fatalf("ERROR: inserting %v into mongo with %s", pkg, err)
+	}
+	return nil
 }
 
 func ensureIndex(mongoDB *database.MongoDB) {
