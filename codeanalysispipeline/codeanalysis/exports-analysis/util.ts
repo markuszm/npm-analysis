@@ -1,4 +1,5 @@
-import { Expression, Identifier, MemberExpression, Pattern } from "estree";
+import { BaseFunction, ClassBody, Expression, Identifier, MemberExpression, ObjectExpression, Pattern } from "estree";
+import { Export, Function } from "./traversal";
 
 export function isDirectAssignment(left: Pattern): boolean {
     switch (left.type) {
@@ -87,4 +88,58 @@ export function createMethodSignatureString(id: string, params: Array<String>) {
         signature += "()";
     }
     return signature;
+}
+
+export function extractFunctionInfo(id: Identifier | null | undefined, baseFunc: BaseFunction): Function {
+    const functionName = id ? id.name : "default function";
+    const params = baseFunc.params;
+
+    const paramsToString: Array<string> = [];
+    for (let param of params) {
+        paramsToString.push(patternToString(param));
+    }
+    return new Function(functionName, paramsToString);
+}
+
+export function extractMethodsFromClassBody(body: ClassBody): Array<string> {
+    const methods: Array<string> = [];
+    const bodyElements = body.body;
+    for (let element of bodyElements) {
+        if (element.type === "MethodDefinition") {
+            const classMethod = extractFunctionInfo(element.value.id, element.value);
+            if (element.key.type === "Identifier") {
+                const methodSignature = createMethodSignatureString(
+                    element.key.name,
+                    classMethod.params
+                );
+                methods.push(methodSignature);
+            }
+        }
+    }
+    return methods;
+}
+
+export function extractExportsFromObject(object: ObjectExpression): Array<Export> {
+    const exports: Array<Export> = [];
+    const properties = object.properties;
+    for (let property of properties) {
+        if (property.key.type === "Identifier") {
+            if (
+                property.value.type === "FunctionExpression" ||
+                property.value.type === "ArrowFunctionExpression"
+            ) {
+                const func = extractFunctionInfo(null, property.value);
+                exports.push(
+                    new Export(
+                        "function",
+                        createMethodSignatureString(property.key.name, func.params),
+                        "commonjs"
+                    )
+                );
+                continue;
+            }
+            exports.push(new Export("member", property.key.name, "commonjs"));
+        }
+    }
+    return exports;
 }

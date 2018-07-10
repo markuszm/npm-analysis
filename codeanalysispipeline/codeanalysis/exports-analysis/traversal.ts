@@ -47,60 +47,6 @@ const declaredFunctions: Array<Function> = [];
 const declaredVariables: Array<Variable> = [];
 const declaredClasses: Array<Class> = [];
 
-function extractFunctionInfo(id: Identifier | null | undefined, baseFunc: BaseFunction): Function {
-    const functionName = id ? id.name : "default function";
-    const params = baseFunc.params;
-
-    const paramsToString: Array<string> = [];
-    for (let param of params) {
-        paramsToString.push(util.patternToString(param));
-    }
-    return new Function(functionName, paramsToString);
-}
-
-function extractMethodsFromClassBody(body: ClassBody): Array<string> {
-    const methods: Array<string> = [];
-    const bodyElements = body.body;
-    for (let element of bodyElements) {
-        if (element.type === "MethodDefinition") {
-            const classMethod = extractFunctionInfo(element.value.id, element.value);
-            if (element.key.type === "Identifier") {
-                const methodSignature = util.createMethodSignatureString(
-                    element.key.name,
-                    classMethod.params
-                );
-                methods.push(methodSignature);
-            }
-        }
-    }
-    return methods;
-}
-
-function extractExportsFromObject(object: ObjectExpression): Array<Export> {
-    const exports: Array<Export> = [];
-    const properties = object.properties;
-    for (let property of properties) {
-        if (property.key.type === "Identifier") {
-            if (
-                property.value.type === "FunctionExpression" ||
-                property.value.type === "ArrowFunctionExpression"
-            ) {
-                const func = extractFunctionInfo(null, property.value);
-                exports.push(
-                    new Export(
-                        "function",
-                        util.createMethodSignatureString(property.key.name, func.params),
-                        "commonjs"
-                    )
-                );
-                continue;
-            }
-            exports.push(new Export("member", property.key.name, "commonjs"));
-        }
-    }
-    return exports;
-}
-
 function collectAllMethodsFromClasses(className: string): Array<string> {
     const classDecl = declaredClasses.find(value => value.id === className);
 
@@ -119,21 +65,25 @@ function collectAllMethodsFromClasses(className: string): Array<string> {
     return [];
 }
 
-function findExportsForIdentifer(identifier: Identifier, name: string, bundleType: string): Array<Export> {
-    const variable = declaredVariables.find(
-        value => value.id === identifier.name
-    );
+function findExportsForIdentifer(
+    identifier: Identifier,
+    name: string,
+    bundleType: string
+): Array<Export> {
+    const variable = declaredVariables.find(value => value.id === identifier.name);
     if (variable) {
         const exports: Array<Export> = [];
         if (variable.value === "ObjectExpression") {
             for (let declaredVariable of declaredVariables) {
                 if (declaredVariable.id.startsWith(`${variable.id}.`)) {
-                    exports.push(new Export(declaredVariable.kind, declaredVariable.id, bundleType))
+                    exports.push(
+                        new Export(declaredVariable.kind, declaredVariable.id, bundleType)
+                    );
                 }
             }
             for (let declaredFunction of declaredFunctions) {
                 if (declaredFunction.id.startsWith(`${variable.id}.`)) {
-                    exports.push(new Export(EXPORT_TYPE_FUNCTION, declaredFunction.id, bundleType))
+                    exports.push(new Export(EXPORT_TYPE_FUNCTION, declaredFunction.id, bundleType));
                 }
             }
         }
@@ -143,17 +93,40 @@ function findExportsForIdentifer(identifier: Identifier, name: string, bundleTyp
 
     const method = declaredFunctions.find(value => value.id === identifier.name);
     if (method) {
-       return  [new Export(
+        return [
+            new Export(
                 EXPORT_TYPE_FUNCTION,
-                util.createMethodSignatureString(
-                    name,
-                    method.params
-                ),
+                util.createMethodSignatureString(name, method.params),
                 bundleType
-            )];
+            )
+        ];
     }
 
     return [new Export("unknown", name, bundleType)];
+}
+
+function extractMembersFromObjectExpression(decl) {
+    const properties = decl.init.properties;
+    for (let property of properties) {
+        if (property.key.type === "Identifier") {
+            if (
+                property.value.type === "FunctionExpression" ||
+                property.value.type === "ArrowFunctionExpression"
+            ) {
+                const func = util.extractFunctionInfo(null, property.value);
+                declaredFunctions.push(
+                    new Function(
+                        `${util.patternToString(decl.id)}.${property.key.name}`,
+                        func.params
+                    )
+                );
+            } else {
+                declaredVariables.push(
+                    new Variable(`${util.patternToString(decl.id)}.${property.key.name}`, "var")
+                );
+            }
+        }
+    }
 }
 
 export function traverseAst(ast: any, debug: boolean): Array<Export> {
@@ -163,7 +136,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
         /* --- Collecting Declared Members ---*/
         FunctionDeclaration(path: NodePath) {
             const node = (path.node as Node) as FunctionDeclaration;
-            const func = extractFunctionInfo(node.id, node);
+            const func = util.extractFunctionInfo(node.id, node);
             declaredFunctions.push(func);
         },
         VariableDeclaration(path: NodePath) {
@@ -171,18 +144,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
 
             for (let decl of node.declarations) {
                 if (decl.init && decl.init.type === "ObjectExpression") {
-                    const properties = decl.init.properties;
-                    for (let property of properties) {
-                        if (property.key.type === "Identifier") {
-                            if (property.value.type === "FunctionExpression" ||
-                                property.value.type === "ArrowFunctionExpression") {
-                                const func = extractFunctionInfo(null, property.value);
-                                declaredFunctions.push(new Function(`${util.patternToString(decl.id)}.${property.key.name}`, func.params));
-                                continue;
-                            }
-                            declaredVariables.push(new Variable(`${util.patternToString(decl.id)}.${property.key.name}`, "var"));
-                        }
-                    }
+                    extractMembersFromObjectExpression(decl);
                 }
 
                 const variable = decl.init
@@ -204,7 +166,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                     : null;
             const className = node.id ? node.id.name : "default";
             declaredClasses.push(
-                new Class(className, extractMethodsFromClassBody(node.body), superClass)
+                new Class(className, util.extractMethodsFromClassBody(node.body), superClass)
             );
         },
 
@@ -216,7 +178,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
 
             const id = node.source.value ? node.source.value.toString() : "unknown";
 
-            definedExports.push(new Export("all", id, BUNDLE_TYPE_ES6))
+            definedExports.push(new Export("all", id, BUNDLE_TYPE_ES6));
         },
         ExportNamedDeclaration(path: NodePath) {
             const node = (path.node as Node) as ExportNamedDeclaration;
@@ -229,10 +191,8 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                 switch (declaration.type) {
                     case "ClassDeclaration":
                         const name = declaration.id ? declaration.id.name : "default";
-                        definedExports.push(
-                            new Export("class", `${name}`, BUNDLE_TYPE_ES6)
-                        );
-                        const methods = extractMethodsFromClassBody(declaration.body);
+                        definedExports.push(new Export("class", `${name}`, BUNDLE_TYPE_ES6));
+                        const methods = util.extractMethodsFromClassBody(declaration.body);
                         for (let method of methods) {
                             if (debug) {
                                 console.log(`Found export with name: ${method}`);
@@ -247,7 +207,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                         }
                         break;
                     case "FunctionDeclaration":
-                        const func = extractFunctionInfo(declaration.id, declaration);
+                        const func = util.extractFunctionInfo(declaration.id, declaration);
                         definedExports.push(
                             new Export(
                                 EXPORT_TYPE_FUNCTION,
@@ -260,11 +220,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                         const kind = declaration.kind;
                         for (let varDecl of declaration.declarations) {
                             definedExports.push(
-                                new Export(
-                                    kind,
-                                    util.patternToString(varDecl.id),
-                                    BUNDLE_TYPE_ES6
-                                )
+                                new Export(kind, util.patternToString(varDecl.id), BUNDLE_TYPE_ES6)
                             );
                         }
                         break;
@@ -274,10 +230,16 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
             /* Handle specifiers */
             const specifiers = node.specifiers;
             for (let specifier of specifiers) {
-                const specifierExports = findExportsForIdentifer(specifier.exported, specifier.exported.name, BUNDLE_TYPE_ES6);
+                const specifierExports = findExportsForIdentifer(
+                    specifier.exported,
+                    specifier.exported.name,
+                    BUNDLE_TYPE_ES6
+                );
                 definedExports.push(...specifierExports);
                 if (debug) {
-                    specifierExports.forEach(exp => console.log(`Found export with name: ${exp.id}`));
+                    specifierExports.forEach(exp =>
+                        console.log(`Found export with name: ${exp.id}`)
+                    );
                 }
             }
         },
@@ -291,10 +253,8 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                 switch (declaration.type) {
                     case "ClassDeclaration":
                         const name = declaration.id ? declaration.id.name : "default";
-                        definedExports.push(
-                            new Export("class", `${name}`, BUNDLE_TYPE_ES6)
-                        );
-                        const methods = extractMethodsFromClassBody(declaration.body);
+                        definedExports.push(new Export("class", `${name}`, BUNDLE_TYPE_ES6));
+                        const methods = util.extractMethodsFromClassBody(declaration.body);
                         for (let method of methods) {
                             if (debug) {
                                 console.log(`Found export with name: ${method}`);
@@ -309,7 +269,7 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                         }
                         break;
                     case "FunctionDeclaration":
-                        const func = extractFunctionInfo(declaration.id, declaration);
+                        const func = util.extractFunctionInfo(declaration.id, declaration);
                         definedExports.push(
                             new Export(
                                 EXPORT_TYPE_FUNCTION,
@@ -348,25 +308,31 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
             if (util.isDirectAssignment(left)) {
                 switch (right.type) {
                     case "ObjectExpression":
-                        definedExports.push(...extractExportsFromObject(right));
+                        definedExports.push(...util.extractExportsFromObject(right));
                         break;
                     case "ClassExpression":
                         definedExports.push(new Export("class", "default", BUNDLE_TYPE_COMMONJS));
-                        const methods = extractMethodsFromClassBody(right.body);
+                        const methods = util.extractMethodsFromClassBody(right.body);
                         for (let method of methods) {
                             if (debug) {
                                 console.log(`Found export with name: ${method}`);
                             }
-                            definedExports.push(new Export(EXPORT_TYPE_FUNCTION, method, BUNDLE_TYPE_COMMONJS));
+                            definedExports.push(
+                                new Export(EXPORT_TYPE_FUNCTION, method, BUNDLE_TYPE_COMMONJS)
+                            );
                         }
                         break;
                     case "NewExpression":
                         const callee = right.callee;
                         if (callee.type === "Identifier") {
-                            definedExports.push(new Export("class", callee.name, BUNDLE_TYPE_COMMONJS));
+                            definedExports.push(
+                                new Export("class", callee.name, BUNDLE_TYPE_COMMONJS)
+                            );
                             const methods = collectAllMethodsFromClasses(callee.name);
                             for (let method of methods) {
-                                definedExports.push(new Export(EXPORT_TYPE_FUNCTION, method, BUNDLE_TYPE_COMMONJS));
+                                definedExports.push(
+                                    new Export(EXPORT_TYPE_FUNCTION, method, BUNDLE_TYPE_COMMONJS)
+                                );
                             }
                         }
                         break;
@@ -381,15 +347,21 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                 if (memberExpr.property.type === "Identifier") {
                     switch (right.type) {
                         case "Identifier":
-                            const identifierExports = findExportsForIdentifer(right, memberExpr.property.name, BUNDLE_TYPE_COMMONJS);
+                            const identifierExports = findExportsForIdentifer(
+                                right,
+                                memberExpr.property.name,
+                                BUNDLE_TYPE_COMMONJS
+                            );
                             definedExports.push(...identifierExports);
                             if (debug) {
-                                identifierExports.forEach(exp => console.log(`Found export with name: ${exp.id}`));
+                                identifierExports.forEach(exp =>
+                                    console.log(`Found export with name: ${exp.id}`)
+                                );
                             }
                             break;
                         case "ArrowFunctionExpression":
                         case "FunctionExpression":
-                            const func = extractFunctionInfo(null, right);
+                            const func = util.extractFunctionInfo(null, right);
                             definedExports.push(
                                 new Export(
                                     EXPORT_TYPE_FUNCTION,
@@ -404,9 +376,13 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
 
                         case "ObjectExpression":
                             definedExports.push(
-                                new Export("object", `${memberExpr.property.name}`, BUNDLE_TYPE_COMMONJS)
+                                new Export(
+                                    "object",
+                                    `${memberExpr.property.name}`,
+                                    BUNDLE_TYPE_COMMONJS
+                                )
                             );
-                            const exports = extractExportsFromObject(right);
+                            const exports = util.extractExportsFromObject(right);
                             for (let exp of exports) {
                                 definedExports.push(
                                     new Export(
@@ -419,9 +395,13 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                             break;
                         case "ClassExpression":
                             definedExports.push(
-                                new Export("class", `${memberExpr.property.name}`, BUNDLE_TYPE_COMMONJS)
+                                new Export(
+                                    "class",
+                                    `${memberExpr.property.name}`,
+                                    BUNDLE_TYPE_COMMONJS
+                                )
                             );
-                            const methods = extractMethodsFromClassBody(right.body);
+                            const methods = util.extractMethodsFromClassBody(right.body);
                             for (let method of methods) {
                                 if (debug) {
                                     console.log(`Found export with name: ${method}`);
@@ -437,12 +417,20 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                             break;
                         case "MemberExpression":
                             definedExports.push(
-                                new Export("member", `${memberExpr.property.name}`, BUNDLE_TYPE_COMMONJS)
+                                new Export(
+                                    "member",
+                                    `${memberExpr.property.name}`,
+                                    BUNDLE_TYPE_COMMONJS
+                                )
                             );
                             break;
                         default:
                             definedExports.push(
-                                new Export("unknown", memberExpr.property.name, BUNDLE_TYPE_COMMONJS)
+                                new Export(
+                                    "unknown",
+                                    memberExpr.property.name,
+                                    BUNDLE_TYPE_COMMONJS
+                                )
                             );
                             if (debug) {
                                 console.log(`Found export with name: ${memberExpr.property.name}`);
