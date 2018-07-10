@@ -38,7 +38,6 @@ func PackageStillExists(pkg string) (bool, error) {
 	url := replicateUrl + pkgName
 
 	resp, err := http.Head(url)
-
 	if err != nil {
 		return false, err
 	}
