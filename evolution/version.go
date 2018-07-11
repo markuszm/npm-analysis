@@ -171,6 +171,12 @@ func FindLatestVersion(metadata model.Metadata, date time.Time) string {
 			if err != nil {
 				continue
 			}
+
+			// check that metadata exists for package version
+			if _, ok := metadata.Versions[v]; !ok {
+				continue
+			}
+
 			if maxVersion == "unreleased" {
 				maxTime = t
 				maxVersion = v
