@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 
+	"flag"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -13,16 +15,21 @@ import (
 	"strings"
 )
 
-const url = "https://replicate.npmjs.com/_changes?include_docs=true&feed=continuous&since=5000000"
-
 const s3BucketName = "455877074454-npm-packages"
 
 func main() {
+	since := flag.Int("since", 5410000, "since which sequence to track changes")
+	flag.Parse()
+
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String("us-east-1"),
 	}))
 
 	svc := s3.New(sess)
+
+	url := fmt.Sprintf("https://replicate.npmjs.com/_changes?include_docs=true&feed=continuous&since=%v", *since)
+
+	log.Printf("Using replicate url: %v", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -47,7 +54,7 @@ func main() {
 		filePath, err := downloader.DownloadPackageAndVerify(downloadPath, tarball, checksum)
 		if err != nil {
 			if err.Error() == "Not Found" {
-				log.Printf("WARNING: did not find package %v", value.Name)
+				log.Printf("WARNING: Seq: %v, did not find package %v", value.Seq, value.Name)
 				continue
 			}
 			log.Printf("ERROR: %v", err)
@@ -56,7 +63,8 @@ func main() {
 
 		file, err := os.Open(filePath)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("ERROR: %v", err)
+			continue
 		}
 
 		headObjectInput := s3.HeadObjectInput{
@@ -66,7 +74,7 @@ func main() {
 
 		_, err = svc.HeadObject(&headObjectInput)
 		if err == nil {
-			log.Printf("Already retrieved package %v", value.Name)
+			log.Printf("Seq: %v, Already retrieved package %v", value.Seq, value.Name)
 			continue
 		}
 
@@ -77,7 +85,7 @@ func main() {
 		}
 		_, err = svc.PutObject(&putObjectInput)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("ERROR: %v", err)
 		}
 
 		file.Close()
