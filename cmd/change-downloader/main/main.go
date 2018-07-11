@@ -18,7 +18,7 @@ import (
 const s3BucketName = "455877074454-npm-packages"
 
 func main() {
-	since := flag.Int("since", 5410000, "since which sequence to track changes")
+	since := flag.Int("since", 5490900, "since which sequence to track changes")
 	flag.Parse()
 
 	sess := session.Must(session.NewSession(&aws.Config{
@@ -27,7 +27,7 @@ func main() {
 
 	svc := s3.New(sess)
 
-	url := fmt.Sprintf("https://replicate.npmjs.com/_changes?include_docs=true&feed=continuous&since=%v", *since)
+	url := fmt.Sprintf("https://replicate.npmjs.com/_changes?include_docs=true&feed=continuous&since=%v&heartbeat=3600000", *since)
 
 	log.Printf("Using replicate url: %v", url)
 
