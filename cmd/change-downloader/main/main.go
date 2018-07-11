@@ -62,6 +62,7 @@ func main() {
 		}
 
 		file, err := os.Open(filePath)
+		defer file.Close()
 		if err != nil {
 			log.Printf("ERROR: %v", err)
 			continue
@@ -75,6 +76,7 @@ func main() {
 		_, err = svc.HeadObject(&headObjectInput)
 		if err == nil {
 			log.Printf("Seq: %v, Already retrieved package %v", value.Seq, value.Name)
+			os.Remove(filePath)
 			continue
 		}
 
@@ -87,8 +89,6 @@ func main() {
 		if err != nil {
 			log.Printf("ERROR: %v", err)
 		}
-
-		file.Close()
 
 		log.Printf("Uploaded: Seq: %v, Id: %v, Version: %v", value.Seq, value.Name, latest)
 
