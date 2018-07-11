@@ -18,6 +18,7 @@ const workerNumber = 100
 
 var db *sql.DB
 
+// Calculates version count based on version changes
 func main() {
 	mysqlInitializer := &database.Mysql{}
 	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))

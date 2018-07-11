@@ -19,6 +19,8 @@ const MYSQL_USER = "root"
 
 const MYSQL_PW = "npm-analysis"
 
+// Collects all packages that are maintained by a maintainer for a specific time and stores into mongo in collection "maintainerPackages"
+
 func main() {
 	mysqlInitializer := &database.Mysql{}
 	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))

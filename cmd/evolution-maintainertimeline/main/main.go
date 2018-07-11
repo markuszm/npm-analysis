@@ -19,6 +19,7 @@ const MONGOURL = "mongodb://npm:npm123@localhost:27017"
 
 const workerNumber = 75
 
+// Extracts maintainers and dependencies for every month and grouped by package from evolution data and stores it into mongo collection called "timeline"
 func main() {
 	mongoDB := database.NewMongoDB(MONGOURL, "npm", "packages")
 

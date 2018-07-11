@@ -2,6 +2,12 @@ package util
 
 import "time"
 
+type StringList []string
+
+func (s StringList) Len() int           { return len(s) }
+func (s StringList) Less(i, j int) bool { return s[i] < s[j] }
+func (s StringList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 type Pair struct {
 	Key   string
 	Value int

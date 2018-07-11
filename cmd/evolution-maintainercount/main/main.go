@@ -26,6 +26,8 @@ var db *sql.DB
 
 var insertDB bool
 
+// Stores maintainer count into database and plots average maintainer count and sorted maintainer count
+
 func main() {
 	insertDBFlag := flag.Bool("insertdb", false, "specify whether maintainer count should be inserted into db")
 	flag.Parse()

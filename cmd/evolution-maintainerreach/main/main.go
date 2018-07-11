@@ -6,16 +6,16 @@ import (
 	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
+	reach "github.com/markuszm/npm-analysis/maintainerreach"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/markuszm/npm-analysis/util"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"io/ioutil"
 	"log"
-	"math"
 	"os"
 	"path"
 	"sort"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -26,8 +26,19 @@ const JSONPATH = "./db-data/dependenciesTimeline.json"
 
 const workerNumber = 100
 
+// calculates Package reach of a maintainer and plots it
 func main() {
-	calculatePackageReach()
+	createPlot = flag.Bool("createPlot", false, "whether it should create plots for each maintainer")
+	generateData = flag.Bool("generateData", false, "whether it should generate intermediate map for performance")
+	maintainer := flag.String("maintainer", "", "specifiy maintainer to get detailed results for the one")
+	resultPath = flag.String("resultPath", "/home/markus/npm-analysis/", "path for single maintainer result")
+	flag.Parse()
+
+	if *generateData {
+		reach.GenerateTimeLatestVersionMap(MONGOURL, JSONPATH)
+	}
+
+	calculatePackageReach(*maintainer)
 }
 
 type StoreMaintainedPackages struct {
@@ -42,20 +53,10 @@ var generateData *bool
 
 var resultPath *string
 
-func calculatePackageReach() {
-	createPlot = flag.Bool("createPlot", false, "whether it should create plots for each maintainer")
-	generateData = flag.Bool("generateData", false, "whether it should generate intermediate map for performance")
-	maintainer := flag.String("maintainer", "", "specifiy maintainer to get detailed results for the one")
-	resultPath = flag.String("resultPath", "/home/markus/npm-analysis/", "path for single maintainer result")
-	flag.Parse()
+func calculatePackageReach(maintainer string) {
+	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(JSONPATH)
 
-	if *generateData {
-		generateTimeLatestVersionMap()
-	}
-
-	dependenciesTimeline := loadJsonDependenciesTimeline()
-
-	dependentsMaps := generateDependentsMaps(dependenciesTimeline)
+	dependentsMaps := reach.GenerateDependentsMaps(dependenciesTimeline)
 
 	mongoDB := database.NewMongoDB(MONGOURL, "npm", "maintainerPackages")
 	mongoDB.Connect()
@@ -63,7 +64,7 @@ func calculatePackageReach() {
 
 	log.Print("Connected to mongodb")
 
-	if *maintainer == "" {
+	if maintainer == "" {
 		startTime := time.Now()
 
 		workerWait := sync.WaitGroup{}
@@ -108,11 +109,13 @@ func calculatePackageReach() {
 
 		log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 
-		calculateAverageMaintainerReach()
+		reach.CalculateAverageMaintainerReach(&resultMap)
 
-		calculateMaintainerReachDiff()
+		reach.CalculateMaintainerReachDiff(&resultMap)
 	} else {
-		val, err := mongoDB.FindOneSimple("key", *maintainer)
+		// calculate for one maintainer the reach of each package per month and overall reach
+
+		val, err := mongoDB.FindOneSimple("key", maintainer)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -123,7 +126,7 @@ func calculatePackageReach() {
 			log.Fatal(err)
 		}
 
-		log.Printf("Calculating package reach for each package of maintainer %v", *maintainer)
+		log.Printf("Calculating package reach for each package of maintainer %v", maintainer)
 
 		var resultMap = make(map[time.Time][]util.PackageReachResult, 0)
 		for year := 2010; year < 2019; year++ {
@@ -140,17 +143,22 @@ func calculatePackageReach() {
 				resultMap[date] = make([]util.PackageReachResult, 0)
 				allPackages := make(map[string]bool, 0)
 				for _, pkg := range data.PackagesTimeline[date] {
-					packages := make(map[string]bool, 0)
-					PackageReach(pkg, dependentsMaps[date], packages)
-					PackageReach(pkg, dependentsMaps[date], allPackages)
-					packageKeys := make([]string, len(allPackages))
+					packages := make(map[string]int, 0)
+					reach.PackageReachLayer(pkg, dependentsMaps[date], packages, 1)
+					reach.PackageReach(pkg, dependentsMaps[date], allPackages)
+					packageKeys := make([]string, len(packages))
 					i := 0
-					for k, _ := range allPackages {
-						packageKeys[i] = k
-						i++
+					for k, l := range packages {
+						if l > 0 {
+							packageKeys[i] = strconv.Itoa(l) + "_" + k
+							i++
+						}
 					}
 
-					resultMap[date] = append(resultMap[date], util.PackageReachResult{Count: len(allPackages), Package: pkg, Dependents: packageKeys})
+					sortedDependents := util.StringList(packageKeys)
+					sort.Sort(sortedDependents)
+
+					resultMap[date] = append(resultMap[date], util.PackageReachResult{Count: len(packages), Package: pkg, Dependents: sortedDependents})
 				}
 				log.Printf("Date: %v Count %v", date, len(allPackages))
 			}
@@ -165,7 +173,7 @@ func calculatePackageReach() {
 			log.Fatal(err)
 		}
 
-		filePath := path.Join(*resultPath, fmt.Sprintf("%v-reach.json", *maintainer))
+		filePath := path.Join(*resultPath, fmt.Sprintf("%v-reach.json", maintainer))
 		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -176,180 +184,8 @@ func calculatePackageReach() {
 
 }
 
-func calculateMaintainerReachDiff() {
-	maintainerReachDiffMap := make(map[time.Time][]util.MaintainerReachDiff, 0)
-
-	resultMap.Range(func(key, value interface{}) bool {
-		counts := value.([]float64)
-		x := 0
-		isActive := false
-		previousCount := math.MaxFloat64
-		for year := 2010; year < 2019; year++ {
-			startMonth := 1
-			endMonth := 12
-			if year == 2010 {
-				startMonth = 11
-			}
-			if year == 2018 {
-				endMonth = 4
-			}
-			for month := startMonth; month <= endMonth; month++ {
-				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-				count := counts[x]
-				if count > 0 || isActive {
-					diff := count - previousCount
-					if previousCount == math.MaxFloat64 {
-						diff = count
-					}
-					diffs := maintainerReachDiffMap[date]
-					if diffs == nil {
-						diffs = make([]util.MaintainerReachDiff, 0)
-					}
-					diffs = append(diffs, util.MaintainerReachDiff{Name: key.(string), Diff: diff})
-					maintainerReachDiffMap[date] = diffs
-					isActive = true
-					previousCount = count
-				}
-				x++
-			}
-		}
-		return true
-	})
-
-	builder := strings.Builder{}
-
-	for year := 2010; year < 2019; year++ {
-		startMonth := 1
-		endMonth := 12
-		if year == 2010 {
-			startMonth = 11
-		}
-		if year == 2018 {
-			endMonth = 4
-		}
-		for month := startMonth; month <= endMonth; month++ {
-			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-			diffs := maintainerReachDiffMap[date]
-			sortedList := util.MaintainerReachDiffList(diffs)
-			sort.Sort(sortedList)
-
-			builder.WriteString(fmt.Sprintf("Top 20 decreases in %v \n", date))
-			for i, m := range sortedList {
-				if i > 19 {
-					break
-				}
-				builder.WriteString(fmt.Sprintf("%d. Name: %v Diff: %f \n", i+1, m.Name, m.Diff))
-			}
-
-			sort.Sort(sort.Reverse(sortedList))
-			builder.WriteString(fmt.Sprintf("Top 20 increases in %v \n", date))
-			for i, m := range sortedList {
-				if i > 19 {
-					break
-				}
-				builder.WriteString(fmt.Sprintf("%d. Name: %v Diff: %f \n", i+1, m.Name, m.Diff))
-			}
-		}
-	}
-
-	ioutil.WriteFile("/home/markus/npm-analysis/maintainerReachDiffs.txt", []byte(builder.String()), os.ModePerm)
-}
-
-func calculateAverageMaintainerReach() {
-	maintainerReachCount := make(map[time.Time]float64, 0)
-	maintainerCount := make(map[time.Time]float64, 0)
-	averageMaintainerReachPerMonth := make(map[time.Time]float64, 0)
-
-	resultMap.Range(func(key, value interface{}) bool {
-		counts := value.([]float64)
-		x := 0
-		isActive := false
-		for year := 2010; year < 2019; year++ {
-			startMonth := 1
-			endMonth := 12
-			if year == 2010 {
-				startMonth = 11
-			}
-			if year == 2018 {
-				endMonth = 4
-			}
-			for month := startMonth; month <= endMonth; month++ {
-				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-				if counts[x] > 0 || isActive {
-					maintainerCount[date] = maintainerCount[date] + 1
-					maintainerReachCount[date] = maintainerReachCount[date] + counts[x]
-					isActive = true
-				}
-				x++
-			}
-		}
-		return true
-	})
-
-	for year := 2010; year < 2019; year++ {
-		startMonth := 1
-		endMonth := 12
-		if year == 2010 {
-			startMonth = 11
-		}
-		if year == 2018 {
-			endMonth = 4
-		}
-		for month := startMonth; month <= endMonth; month++ {
-			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-			average := maintainerReachCount[date] / maintainerCount[date]
-			averageMaintainerReachPerMonth[date] = average
-		}
-	}
-
-	var resultList []util.TimeValue
-
-	for k, v := range averageMaintainerReachPerMonth {
-		if !math.IsNaN(v) {
-			resultList = append(resultList, util.TimeValue{Key: k, Value: v})
-		}
-	}
-	sortedList := util.TimeValueList(resultList)
-	sort.Sort(sortedList)
-
-	var avgValues []float64
-
-	for _, v := range sortedList {
-		avgValues = append(avgValues, v.Value)
-	}
-
-	plots.GenerateLinePlotForAverageMaintainerReach(avgValues)
-}
-
-func generateDependentsMaps(dependenciesTimeline map[time.Time]map[string]map[string]bool) map[time.Time]map[string][]string {
-	dependentsMaps := make(map[time.Time]map[string][]string, 0)
-	for year := 2010; year < 2019; year++ {
-		startMonth := 1
-		endMonth := 12
-		if year == 2010 {
-			startMonth = 11
-		}
-		if year == 2018 {
-			endMonth = 4
-		}
-		for month := startMonth; month <= endMonth; month++ {
-			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-			packageMap := dependenciesTimeline[date]
-			dependentsMap := GenerateDependentMap(packageMap)
-			dependentsMaps[date] = dependentsMap
-		}
-	}
-	return dependentsMaps
-}
-
 func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
 	for j := range jobs {
-		if *createPlot {
-			fileName := plots.GetPlotFileName(j.Name, "maintainer-reach")
-			if _, err := os.Stat(fileName); err == nil {
-				continue
-			}
-		}
 		var counts []float64
 		for year := 2010; year < 2019; year++ {
 			startMonth := 1
@@ -364,7 +200,7 @@ func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[
 				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 				packages := make(map[string]bool, 0)
 				for _, pkg := range j.PackagesTimeline[date] {
-					PackageReach(pkg, dependentsMaps[date], packages)
+					reach.PackageReach(pkg, dependentsMaps[date], packages)
 				}
 
 				counts = append(counts, float64(len(packages)))
@@ -374,110 +210,14 @@ func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[
 		resultMap.Store(j.Name, counts)
 
 		if *createPlot {
+			fileName := plots.GetPlotFileName(j.Name, "maintainer-reach")
+			if _, err := os.Stat(fileName); err == nil {
+				continue
+			}
 			plots.GenerateLinePlotForMaintainerReach(j.Name, counts)
 		}
 
 		//log.Printf("Finished %v", j.Name)
 	}
 	workerWait.Done()
-}
-
-func loadJsonDependenciesTimeline() map[time.Time]map[string]map[string]bool {
-	log.Print("Loading json")
-	bytes, err := ioutil.ReadFile(JSONPATH)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var dependenciesTimeline map[time.Time]map[string]map[string]bool
-	err = json.Unmarshal(bytes, &dependenciesTimeline)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Print("Finished loading json")
-	return dependenciesTimeline
-}
-
-func GenerateDependentMap(packageMap map[string]map[string]bool) map[string][]string {
-	dependentsMap := make(map[string][]string, 0)
-	for dependent, deps := range packageMap {
-		for dep, _ := range deps {
-			dependentsList := dependentsMap[dep]
-			if dependentsList == nil {
-				dependentsList = make([]string, 0)
-			}
-			dependentsList = append(dependentsList, dependent)
-			dependentsMap[dep] = dependentsList
-		}
-	}
-	return dependentsMap
-}
-
-func PackageReach(pkg string, dependentsMap map[string][]string, packages map[string]bool) {
-	for _, dependent := range dependentsMap[pkg] {
-		if ok := packages[dependent]; !ok {
-			packages[dependent] = true
-			PackageReach(dependent, dependentsMap, packages)
-		}
-	}
-}
-
-func generateTimeLatestVersionMap() {
-	dependenciesTimeline := make(map[time.Time]map[string]map[string]bool, 0)
-
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "timeline")
-
-	mongoDB.Connect()
-	defer mongoDB.Disconnect()
-
-	startTime := time.Now()
-
-	cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
-	if err != nil {
-		log.Fatal(err)
-	}
-	i := 0
-	for cursor.Next(context.Background()) {
-		doc, err := mongoDB.DecodeValue(cursor)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		var timeMap map[time.Time]SlimPackageData
-
-		err = json.Unmarshal([]byte(doc.Value), &timeMap)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for t, pkg := range timeMap {
-			if dependenciesTimeline[t] == nil {
-				dependenciesTimeline[t] = make(map[string]map[string]bool, 0)
-			}
-			if len(pkg.Dependencies) > 0 {
-				dependencies := make(map[string]bool, 0)
-				for _, dep := range pkg.Dependencies {
-					dependencies[dep] = true
-				}
-				dependenciesTimeline[t][doc.Key] = dependencies
-			}
-		}
-
-		if i%10000 == 0 {
-			log.Printf("Finished %v packages", i)
-		}
-		i++
-	}
-	cursor.Close(context.Background())
-	endTime := time.Now()
-	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
-	bytes, err := json.Marshal(dependenciesTimeline)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Print("Finished transforming to JSON")
-	ioutil.WriteFile("./db-data/dependenciesTimeline.json", bytes, os.ModePerm)
-}
-
-type SlimPackageData struct {
-	Dependencies []string `json:"dependencies"`
 }
