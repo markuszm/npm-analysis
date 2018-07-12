@@ -190,3 +190,23 @@ func GeneratePackageFileName(downloadUrl string) (string, string, error) {
 	}
 	return packageFileName, scopedFileName, nil
 }
+
+func GeneratePackageFullPath(downloadUrl string) (string, error) {
+	if downloadUrl == "" {
+		return "", errors.New("empty download url")
+	}
+
+	_, fileName, err := GeneratePackageFileName(downloadUrl)
+	if err != nil {
+		return "", err
+	}
+
+	firstLetter := string(fileName[0])
+	secondLetter := ""
+	if len(fileName) > 1 {
+		secondLetter = string(fileName[1])
+	}
+
+	fullPath := path.Join(firstLetter, secondLetter, fileName)
+	return fullPath, nil
+}
