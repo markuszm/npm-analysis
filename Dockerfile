@@ -7,4 +7,4 @@ RUN CGO_ENABLED=0 GOOS=linux go build -v -a -installsuffix cgo -o app ./${exec_n
 FROM scratch
 COPY --from=builder /go/src/github.com/markuszm/npm-analysis/app .
 COPY --from=builder /etc/ssl/certs/ /etc/ssl/certs/
-CMD ["/app"]
+ENTRYPOINT ["/app"]

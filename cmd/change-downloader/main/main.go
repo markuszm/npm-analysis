@@ -44,7 +44,8 @@ func main() {
 		value := Value{}
 		err := decoder.Decode(&value)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("ERROR: EOF still continuing")
+			continue
 		}
 		latest := value.Document.DistTag["latest"]
 		tarball := value.Document.Versions[latest].Dist.Tarball
