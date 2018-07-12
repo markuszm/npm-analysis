@@ -60,8 +60,11 @@ func main() {
 		value := Value{}
 		err := decoder.Decode(&value)
 		if err != nil {
-			ioutil.WriteFile(lastSeqFile, []byte(strconv.Itoa(lastSeq)), os.ModePerm)
-			log.Fatal("EOF restarting with latest sequence stored")
+			err := ioutil.WriteFile(lastSeqFile, []byte(strconv.Itoa(lastSeq)), os.ModePerm)
+			log.Fatalf("EOF restarting with latest sequence stored")
+			if err != nil {
+				log.Print("ERROR writing lastSeq")
+			}
 		}
 		latest := value.Document.DistTag["latest"]
 		tarball := value.Document.Versions[latest].Dist.Tarball
