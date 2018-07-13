@@ -72,11 +72,19 @@ export function isPropertyAssignment(left: Pattern): boolean {
 }
 
 export function patternToString(pattern: Pattern): string {
+    if (!pattern) {
+        return "null";
+    }
+
     let patternString = "";
     switch (pattern.type) {
         case "ArrayPattern":
-            for (let element of pattern.elements) {
-                patternString += patternToString(element) + ",";
+            for (let i = 0; i < pattern.elements.length; i++) {
+                const element = pattern.elements[i];
+                patternString += patternToString(element);
+                if (i < pattern.elements.length - 1) {
+                    patternString += ",";
+                }
             }
             break;
         case "AssignmentPattern":
@@ -89,8 +97,12 @@ export function patternToString(pattern: Pattern): string {
             patternString = expressionToString(pattern);
             break;
         case "ObjectPattern":
-            for (let prop of pattern.properties) {
-                patternString += patternToString(prop.value) + ",";
+            for (let i = 0; i < pattern.properties.length; i++) {
+                const prop = pattern.properties[i];
+                patternString += patternToString(prop.value);
+                if (i < pattern.properties.length - 1) {
+                    patternString += ",";
+                }
             }
             break;
         case "RestElement":
@@ -101,42 +113,62 @@ export function patternToString(pattern: Pattern): string {
 }
 
 export function expressionToString(expression: Expression): string {
+    if (!expression) {
+        return "null";
+    }
+
     switch (expression.type) {
         case "ArrayExpression":
             let arrayString = "[";
-            for (let element of expression.elements) {
+            for (let i = 0; i < expression.elements.length; i++) {
+                const element = expression.elements[i];
                 arrayString +=
-                    element.type === "SpreadElement"
+                    element && element.type === "SpreadElement"
                         ? "..." + expressionToString(element.argument)
-                        : expressionToString(element) + ",";
+                        : expressionToString(element);
+                if (i < expression.elements.length - 1) {
+                    arrayString += ",";
+                }
             }
             arrayString += "]";
             return arrayString;
         case "ObjectExpression":
             let propertiesString = "{";
-            for (let property of expression.properties) {
+            for (let i = 0; i < expression.properties.length; i++) {
+                const property = expression.properties[i];
                 propertiesString += `${expressionToString(property.key)}:${
-                    property.value.type === "AssignmentPattern" ||
+                    (property.value && property.value.type === "AssignmentPattern") ||
                     property.value.type === "ObjectPattern" ||
                     property.value.type === "ArrayPattern" ||
                     property.value.type === "RestElement"
                         ? patternToString(property.value)
                         : expressionToString(property.value)
-                }, `;
+                }`;
+                if (i < expression.properties.length - 1) {
+                    propertiesString += ",";
+                }
             }
             propertiesString += "}";
             return propertiesString;
         case "FunctionExpression":
             let functionString = `${expression.async ? "async " : ""}function(`;
-            for (let param of expression.params) {
-                functionString += patternToString(param) + ",";
+            for (let i = 0; i < expression.params.length; i++) {
+                let param = expression.params[i];
+                functionString += patternToString(param);
+                if (i < expression.params.length - 1) {
+                    functionString += ",";
+                }
             }
             functionString += ") {...}";
             return functionString;
         case "ArrowFunctionExpression":
             let arrowFunctionString = `${expression.async ? "async " : ""}(`;
-            for (let param of expression.params) {
-                arrowFunctionString += patternToString(param) + ",";
+            for (let i = 0; i < expression.params.length; i++) {
+                let param = expression.params[i];
+                arrowFunctionString += patternToString(param);
+                if (i < expression.params.length - 1) {
+                    arrowFunctionString += ",";
+                }
             }
             arrowFunctionString += ") => {...}";
             return arrowFunctionString;
@@ -172,8 +204,12 @@ export function expressionToString(expression: Expression): string {
             return "new " + methodExpressionToString(expression.callee, expression.arguments);
         case "SequenceExpression":
             let sequenceString = "";
-            for (let expr of expression.expressions) {
-                sequenceString += expressionToString(expr) + ",";
+            for (let i = 0; i < expression.expressions.length; i++) {
+                let expr = expression.expressions[i];
+                sequenceString += expressionToString(expr);
+                if (i < expression.expressions.length - 1) {
+                    sequenceString += ",";
+                }
             }
             return sequenceString;
         case "TemplateLiteral":
@@ -220,11 +256,15 @@ function methodExpressionToString(
 ): string {
     const calleeString = callee.type === "Super" ? "super" : expressionToString(callee);
     let argumentsString = "";
-    for (let arg of args) {
+    for (let i = 0; i < args.length; i++) {
+        let arg = args[i];
         argumentsString +=
             arg.type === "SpreadElement"
                 ? "..." + expressionToString(arg.argument)
-                : expressionToString(arg) + ",";
+                : expressionToString(arg);
+        if (i < args.length - 1) {
+            argumentsString += ",";
+        }
     }
     return `${calleeString}.(${argumentsString})`;
 }

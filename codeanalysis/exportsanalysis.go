@@ -6,7 +6,6 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"path"
-	"strings"
 )
 
 type ExportsAnalysis struct {
@@ -33,9 +32,7 @@ func (e *ExportsAnalysis) AnalyzePackage(packagePath string) (interface{}, error
 
 	result, err := ExecuteCommand(pathToAnalysisExecutable, "folder", packagePath)
 	if err != nil {
-		if !strings.Contains(err.Error(), "exit status 1") {
-			return nil, errors.Wrap(err, "error executing export analysis")
-		}
+		return nil, errors.Wrap(err, "error executing export analysis")
 	}
 
 	var analysisResult []Export

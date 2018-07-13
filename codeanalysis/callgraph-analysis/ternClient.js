@@ -19,7 +19,11 @@ class TernClient {
             }
         });
 
-        tern.on("postParse", (ast, _) => acornWalk.ancestor(ast, visitors));
+        tern.on("postParse", (ast, _) => {
+            if(ast) {
+                acornWalk.ancestor(ast, visitors)
+            }
+        });
 
         this.ternServer = tern;
     }
@@ -38,6 +42,8 @@ class TernClient {
         };
 
         this.ternServer.request(queryFuncDef, (err, data) => {
+            if (!data) return;
+
             if (this.debug) {
                 console.log(
                     "\nCall at: %o \n .. goes to function defined at: \n %o",

@@ -75,6 +75,9 @@ var analysisCmd = &cobra.Command{
 		case "exports":
 			log.Print("executing exports analysis")
 			analysis = codeanalysis.NewExportsAnalysis(logger)
+		case "callgraph":
+			log.Print("executing callgraph analysis")
+			analysis = codeanalysis.NewCallgraphAnalysis(logger)
 		}
 
 		var writer codeanalysispipeline.ResultWriter

@@ -8,7 +8,7 @@ function Visitors(callExpressions, requiredModules, debug) {
         VariableDeclaration: function(declNode, _) {
             for (let decl of declNode.declarations) {
                 const isRequireInit =
-                    decl.init.type === "CallExpression" && decl.init.callee.name === "require";
+                    decl.init && decl.init.type === "CallExpression" && decl.init.callee.name === "require";
                 if (isRequireInit) {
                     const variableName = decl.id.name;
                     const moduleName = decl.init.arguments[0].value;
