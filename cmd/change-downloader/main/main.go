@@ -8,13 +8,10 @@ import (
 
 	"flag"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/markuszm/npm-analysis/storage"
 	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
 )
 
 const s3BucketName = "455877074454-npm-packages"
@@ -25,21 +22,7 @@ func main() {
 	since := flag.Int("since", 5506500, "since which sequence to track changes")
 	flag.Parse()
 
-	if _, err := os.Stat(lastSeqFile); err == nil {
-		bytes, err := ioutil.ReadFile(lastSeqFile)
-		if err == nil {
-			lastSeq, err := strconv.Atoi(strings.Trim(string(bytes), "\n"))
-			if err == nil {
-				since = &lastSeq
-			}
-		}
-	}
-
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String("us-east-1"),
-	}))
-
-	svc := s3.New(sess)
+	s3Client := storage.NewS3Client("us-east-1")
 
 	url := fmt.Sprintf("https://replicate.npmjs.com/_changes?include_docs=true&feed=continuous&since=%v&heartbeat=10000", *since)
 
@@ -66,6 +49,7 @@ func main() {
 				log.Print("ERROR writing lastSeq")
 			}
 		}
+
 		latest := value.Document.DistTag["latest"]
 		tarball := value.Document.Versions[latest].Dist.Tarball
 		checksum := value.Document.Versions[latest].Dist.Checksum
@@ -76,15 +60,9 @@ func main() {
 			continue
 		}
 
-		headObjectInput := s3.HeadObjectInput{
-			Bucket: aws.String(s3BucketName),
-			Key:    aws.String(packageFilePath),
-		}
-
-		_, err = svc.HeadObject(&headObjectInput)
+		_, err = s3Client.HeadObject(s3BucketName, packageFilePath)
 		if err == nil {
 			log.Printf("Seq: %v, Already retrieved package %v", value.Seq, value.Name)
-			lastSeq = int(value.Seq)
 			continue
 		}
 
@@ -107,12 +85,7 @@ func main() {
 			continue
 		}
 
-		putObjectInput := s3.PutObjectInput{
-			Body:   file,
-			Bucket: aws.String(s3BucketName),
-			Key:    aws.String(strings.Replace(filePath, downloadPath, "", 1)),
-		}
-		_, err = svc.PutObject(&putObjectInput)
+		err = s3Client.PutObject(s3BucketName, packageFilePath, file)
 		if err != nil {
 			log.Printf("ERROR: %v", err)
 		}
