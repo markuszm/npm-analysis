@@ -1,15 +1,11 @@
 package downloader
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
-	"fmt"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -120,46 +116,6 @@ func DownloadPackageAndVerify(downloadPath, pkgUrl, pkgShasum string) (string, e
 	return scopedFilePath, nil
 }
 
-func VerifyIntegrity(shasum, filePath string) error {
-	hasher := sha1.New()
-
-	file, openErr := os.Open(filePath)
-	defer file.Close()
-
-	if openErr != nil {
-		return errors.Wrapf(openErr, "Error opening package")
-	}
-
-	if _, err := io.Copy(hasher, file); err != nil {
-		return errors.Wrapf(err, "Error opening calculating shasum for package: %s", file.Name())
-	}
-	checksum := hex.EncodeToString(hasher.Sum(nil))
-	if checksum != shasum {
-		// delete file if it fails integrity check
-		deleteErr := os.Remove(filePath)
-		if deleteErr != nil {
-			log.Fatal("Error deleting file with failed integrity check - must stop")
-			return deleteErr
-		}
-		return errors.New("File integrity check failed")
-	}
-
-	return nil
-}
-
-func GenerateDownloadUrl(pkg model.PackageVersionPair, registryUrl string) string {
-	fragments := strings.Split(pkg.Name, "/")
-	packageName := pkg.Name
-	if len(fragments) > 1 {
-		scopedName := fragments[0]
-		if strings.HasPrefix(scopedName, "@") {
-			packageName = fragments[1]
-		}
-	}
-	pkgUrl := fmt.Sprintf("%v/%v/-/%v-%v.tgz", registryUrl, pkg.Name, packageName, pkg.Version)
-	return pkgUrl
-}
-
 func CreateNestedFolders(fileName, downloadPath string) (string, error) {
 	firstLetter := string(fileName[0])
 	secondLetter := ""
@@ -173,40 +129,4 @@ func CreateNestedFolders(fileName, downloadPath string) (string, error) {
 		return "", mkDirErr
 	}
 	return nestedDir, nil
-}
-
-func GeneratePackageFileName(downloadUrl string) (string, string, error) {
-	parsedUrl, parseErr := url.Parse(downloadUrl)
-	if parseErr != nil {
-		return "", "", parseErr
-	}
-	pathFragments := strings.Split(parsedUrl.Path, "/")
-	// take scoped name concatenated with file name
-	scopedName := pathFragments[1]
-	packageFileName := path.Base(parsedUrl.Path)
-	scopedFileName := packageFileName
-	if strings.HasPrefix(scopedName, "@") {
-		scopedFileName = scopedName + "_" + packageFileName
-	}
-	return packageFileName, scopedFileName, nil
-}
-
-func GeneratePackageFullPath(downloadUrl string) (string, error) {
-	if downloadUrl == "" {
-		return "", errors.New("empty download url")
-	}
-
-	_, fileName, err := GeneratePackageFileName(downloadUrl)
-	if err != nil {
-		return "", err
-	}
-
-	firstLetter := string(fileName[0])
-	secondLetter := ""
-	if len(fileName) > 1 {
-		secondLetter = string(fileName[1])
-	}
-
-	fullPath := path.Join(firstLetter, secondLetter, fileName)
-	return fullPath, nil
 }

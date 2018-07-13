@@ -8,6 +8,7 @@ import (
 
 	"flag"
 	"fmt"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/storage"
 	"io/ioutil"
 	"os"
@@ -51,8 +52,8 @@ func main() {
 		}
 
 		latest := value.Document.DistTag["latest"]
-		tarball := value.Document.Versions[latest].Dist.Tarball
-		checksum := value.Document.Versions[latest].Dist.Checksum
+		tarball := value.Document.Versions[latest].Dist.Url
+		checksum := value.Document.Versions[latest].Dist.Shasum
 
 		packageFilePath, err := downloader.GeneratePackageFullPath(tarball)
 		if err != nil {
@@ -98,13 +99,8 @@ func main() {
 	}
 }
 
-type Dist struct {
-	Tarball  string `json:"tarball"`
-	Checksum string `json:"shasum"`
-}
-
 type Version struct {
-	Dist Dist `json:"dist"`
+	Dist model.Dist `json:"dist"`
 }
 
 type Document struct {
