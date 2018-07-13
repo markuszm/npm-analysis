@@ -3,10 +3,10 @@
 const process = require("process");
 const readdirp = require("readdirp");
 
-const ternClient = require("./ternClient");
+const TernClient = require("./ternClient");
 const traversal = require("./astTraversal");
 
-// argument parsing
+/* argument parsing */
 let debug = false;
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -18,32 +18,26 @@ if (args.length > 1 && args[1] === "debug") {
     debug = true;
 }
 
-// create resources
-const calls = [];
-const callExpressions = [];
-const requiredModules = {};
+/* create resources */
+const calls = []; // type model.Call
+const callExpressions = []; // type model.CallExpression
+const requiredModules = {}; // map global variable name -> module name
 const visitors = traversal.Visitors(callExpressions, requiredModules, debug);
-const tern = ternClient.NewTernClient(visitors);
+const ternClient = new TernClient(visitors, debug);
 
-// process files from folder
+/* process files from folder */
 try {
     readdirp(
         { root: folderPath, fileFilter: "*.js" },
         fileInfo => {
-            ternClient.AddFile(tern, fileInfo.name, fileInfo.fullPath);
-            if (debug) console.log(`added file ${fileInfo.name} to tern`);
+            ternClient.AddFile(fileInfo.name, fileInfo.fullPath);
+            if (debug) console.log(`Added file ${fileInfo.name} to tern`);
         },
         () => {
             // for each call expression, find the function definition that the call resolves to
             for (let i = 0; i < callExpressions.length; i++) {
                 const callExpression = callExpressions[i];
-                ternClient.RequestCallExpression(
-                    tern,
-                    callExpression,
-                    requiredModules,
-                    calls,
-                    debug
-                );
+                ternClient.RequestCallExpression(callExpression, requiredModules, calls);
             }
             console.log(JSON.stringify(calls));
         }

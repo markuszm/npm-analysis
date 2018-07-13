@@ -1,43 +1,49 @@
 // Author: Michael Pradel, Markus Zimmermann
 
-const CallExpression = require("./callExpression").CallExpression;
+const model = require("./model");
 
 // register AST visitors that get called when tern parses the files
 function Visitors(callExpressions, requiredModules, debug) {
-    return (astVisitors = {
+    return {
         VariableDeclaration: function(declNode, _) {
             for (let decl of declNode.declarations) {
-                if (decl.init.type === "CallExpression") {
-                    if (decl.init.callee.name === "require") {
-                        requiredModules[decl.id.name] = decl.init.arguments[0].value;
+                const isRequireInit =
+                    decl.init.type === "CallExpression" && decl.init.callee.name === "require";
+                if (isRequireInit) {
+                    const variableName = decl.id.name;
+                    const moduleName = decl.init.arguments[0].value;
+                    requiredModules[variableName] = moduleName;
+                    if (debug) {
+                        console.log("\nModule Declaration: \n", {
+                            Variable: variableName,
+                            ModuleName: moduleName
+                        });
                     }
                 }
             }
         },
-        FunctionDeclaration: function(fctNode, _) {
-            if (debug)
-                console.log(
-                    fctNode.sourceFile.name +
-                        ", " +
-                        fctNode.id.start +
-                        ", " +
-                        fctNode.id.end +
-                        ", " +
-                        fctNode.id.name
-                );
+
+        FunctionDeclaration: function(functionDecl, _) {
+            if (debug) {
+                console.log("\nFunction Declaration: \n", {
+                    FileName: functionDecl.sourceFile.name,
+                    Start: functionDecl.id.start,
+                    End: functionDecl.id.end,
+                    Name: functionDecl.id.name
+                });
+            }
         },
+
         CallExpression: function(callNode, ancestors) {
-            if (debug) console.log({ callNode, ancestors });
-            const decl = ancestors.filter(node => node.type === "FunctionDeclaration").pop();
-            let outerMethod = callNode.sourceFile.name;
-            if (decl) {
-                outerMethod = decl.id.name;
+            if (debug) console.log("\nCallExpression: \n",{ callNode, ancestors });
+            const outerMethod = ancestors.filter(node => node.type === "FunctionDeclaration").pop();
+            let outerMethodName = callNode.sourceFile.name;
+            if (outerMethod) {
+                outerMethodName = outerMethod.id.name;
             }
 
             let functionName = callNode.callee.name;
             let receiver = "this";
-            let receiverStart = 0;
-
             if (!functionName) {
                 // parse child expression here as it is not an identifier
                 const callee = callNode.callee;
@@ -48,17 +54,17 @@ function Visitors(callExpressions, requiredModules, debug) {
             }
 
             callExpressions.push(
-                new CallExpression(
+                new model.CallExpression(
                     callNode.sourceFile.name,
                     callNode.start,
                     callNode.end,
                     functionName,
-                    outerMethod,
+                    outerMethodName,
                     receiver
                 )
             );
         }
-    });
+    };
 }
 
 exports.Visitors = Visitors;

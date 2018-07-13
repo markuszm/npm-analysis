@@ -3,8 +3,6 @@ import { default as traverse } from "@babel/traverse";
 // -- Need to use estree types because we use estree AST format instead of babel-parser format --
 import {
     AssignmentExpression,
-    BaseFunction,
-    ClassBody,
     ClassDeclaration,
     ExportAllDeclaration,
     ExportDefaultDeclaration,

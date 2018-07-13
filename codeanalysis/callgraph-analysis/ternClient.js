@@ -1,58 +1,63 @@
 // Author: Michael Pradel, Markus Zimmermann
 
-const acornWalk = require("acorn/dist/walk");
-const ternModule = require("tern");
 const fs = require("fs");
 
-function NewTernClient(visitors) {
-    const tern = new ternModule.Server({
-        plugins: {
-            modules: {},
-            node: {},
-            es_modules: {}
-        }
-    });
+const acornWalk = require("acorn/dist/walk");
+const ternModule = require("tern");
 
-    tern.on("postParse", function(ast, _) {
-        acornWalk.ancestor(ast, visitors);
-    });
+const model = require("./model");
 
-    return tern;
-}
+class TernClient {
+    constructor(visitors, debug) {
+        this.debug = debug;
 
-function AddFile(tern, fileName, filePath) {
-    const body = fs.readFileSync(filePath);
-    tern.addFile(fileName, body);
-}
-
-function RequestCallExpression(tern, callExpression, requiredModules, calls, debug) {
-    const queryFuncDef = {
-        query: {
-            type: "definition",
-            end: callExpression.start,
-            file: callExpression.file
-        }
-    };
-
-    tern.request(queryFuncDef, function(err, data) {
-        if (debug) {
-            console.log("\nCall at:");
-            console.log(callExpression);
-            console.log(".. goes to function defined at:");
-            console.log(data);
-        }
-
-        calls.push({
-            fromFile: callExpression.file,
-            fromFunction: callExpression.outerMethod,
-            receiver: callExpression.receiver,
-            module: requiredModules[callExpression.receiver],
-            toFile: data.origin,
-            toFunction: callExpression.name
+        const tern = new ternModule.Server({
+            plugins: {
+                modules: {},
+                node: {},
+                es_modules: {}
+            }
         });
-    });
+
+        tern.on("postParse", (ast, _) => acornWalk.ancestor(ast, visitors));
+
+        this.ternServer = tern;
+    }
+
+    AddFile(fileName, filePath) {
+        this.ternServer.addFile(fileName, fs.readFileSync(filePath));
+    }
+
+    RequestCallExpression(callExpression, requiredModules, calls) {
+        const queryFuncDef = {
+            query: {
+                type: "definition",
+                end: callExpression.start,
+                file: callExpression.file
+            }
+        };
+
+        this.ternServer.request(queryFuncDef, (err, data) => {
+            if (this.debug) {
+                console.log(
+                    "\nCall at: %o \n .. goes to function defined at: \n %o",
+                    callExpression,
+                    data
+                );
+            }
+
+            calls.push(
+                new model.Call(
+                    callExpression.file,
+                    callExpression.outerMethod,
+                    callExpression.receiver,
+                    requiredModules[callExpression.receiver],
+                    data.origin,
+                    callExpression.name
+                )
+            );
+        });
+    }
 }
 
-exports.NewTernClient = NewTernClient;
-exports.RequestCallExpression = RequestCallExpression;
-exports.AddFile = AddFile;
+module.exports = TernClient;
