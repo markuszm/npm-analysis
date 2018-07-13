@@ -2,18 +2,17 @@
   "name": "callgraph-analysis",
   "version": "1.0.0",
   "description": "",
-  "main": "ternClient.js",
-  "directories": {
-    "test": "tests"
-  },
+  "main": "index.js",
   "dependencies": {
     "acorn": "^5.7.1",
     "readdirp": "^2.1.0",
     "tern": "^0.21.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "pkg": "^4.3.3"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "pack": "pkg --output analysis ./index.js"
   },
   "author": "",
   "license": "ISC"
