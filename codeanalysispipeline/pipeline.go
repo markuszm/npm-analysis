@@ -2,7 +2,7 @@ package codeanalysispipeline
 
 import (
 	"fmt"
-	"github.com/markuszm/npm-analysis/codeanalysispipeline/codeanalysis"
+	"github.com/markuszm/npm-analysis/codeanalysis"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"

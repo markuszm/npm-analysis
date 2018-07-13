@@ -28,7 +28,7 @@ func (e *ExportsAnalysis) AnalyzePackage(packagePath string) (interface{}, error
 	if path.Base(workingDir) == "codeanalysis" {
 		pathToAnalysisExecutable = "./exports-analysis/analysis"
 	} else {
-		pathToAnalysisExecutable = "./codeanalysispipeline/codeanalysis/exports-analysis/analysis"
+		pathToAnalysisExecutable = "./codeanalysis/exports-analysis/analysis"
 	}
 
 	result, err := ExecuteCommand(pathToAnalysisExecutable, "folder", packagePath)

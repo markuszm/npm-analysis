@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/markuszm/npm-analysis/codeanalysis"
 	"github.com/markuszm/npm-analysis/codeanalysispipeline"
-	"github.com/markuszm/npm-analysis/codeanalysispipeline/codeanalysis"
 	"github.com/spf13/cobra"
 	"log"
 )

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/markuszm/npm-analysis/codeanalysispipeline/resultprocessing"
+	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/spf13/cobra"
 	"path"
 )

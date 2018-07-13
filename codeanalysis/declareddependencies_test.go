@@ -10,7 +10,7 @@ import (
 func TestRequireDetected(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	analysis := NewUsedDependenciesAnalysis(logger)
-	result, err := analysis.AnalyzePackage("./testfiles/requiretest")
+	result, err := analysis.AnalyzePackage("./testfiles/import/requiretest")
 
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +30,7 @@ func TestRequireDetected(t *testing.T) {
 func TestRequireMinified(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	analysis := NewUsedDependenciesAnalysis(logger)
-	result, err := analysis.AnalyzePackage("./testfiles/requireminifiedtest")
+	result, err := analysis.AnalyzePackage("./testfiles/import/requireminifiedtest")
 
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestRequireMinified(t *testing.T) {
 func TestImportDetected(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	analysis := NewUsedDependenciesAnalysis(logger)
-	result, err := analysis.AnalyzePackage("./testfiles/importtest")
+	result, err := analysis.AnalyzePackage("./testfiles/import/importtest")
 
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +73,7 @@ func TestImportMinified(t *testing.T) {
 
 	logger := zap.NewNop().Sugar()
 	analysis := NewUsedDependenciesAnalysis(logger)
-	result, err := analysis.AnalyzePackage("./testfiles/importminifiedtest")
+	result, err := analysis.AnalyzePackage("./testfiles/import/importminifiedtest")
 
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestParsePackageImport(t *testing.T) {
 func TestTypescript(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	analysis := NewUsedDependenciesAnalysis(logger)
-	result, err := analysis.AnalyzePackage("./testfiles/typescripttest")
+	result, err := analysis.AnalyzePackage("./testfiles/import/typescripttest")
 
 	if err != nil {
 		t.Fatal(err)

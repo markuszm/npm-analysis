@@ -10,7 +10,7 @@ import (
 func TestExportCommonJS(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	analysis := NewExportsAnalysis(logger)
-	result, err := analysis.AnalyzePackage("./testfiles/exportcjstest")
+	result, err := analysis.AnalyzePackage("./testfiles/export/exportcjstest")
 
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestExportCommonJS(t *testing.T) {
 func TestExportES6(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	analysis := NewExportsAnalysis(logger)
-	result, err := analysis.AnalyzePackage("./testfiles/exportes6test")
+	result, err := analysis.AnalyzePackage("./testfiles/export/exportes6test")
 
 	if err != nil {
 		t.Fatal(err)
