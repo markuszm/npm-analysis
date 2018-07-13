@@ -57,7 +57,7 @@ func TestExportCommonJS(t *testing.T) {
 		{"function", "add8(a)", "commonjs"},
 		{"function", "add16(a)", "commonjs"},
 		{"function", "add32(a)", "commonjs"},
-		{"function", "addAll(a,RestElement)", "commonjs"},
+		{"function", "addAll(a,...b)", "commonjs"},
 		{"member", "theSolution", "commonjs"},
 		{"object", "foo", "commonjs"},
 		{"function", "foo.sub2(a)", "commonjs"},

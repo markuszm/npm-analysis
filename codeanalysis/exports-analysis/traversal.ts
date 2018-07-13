@@ -71,18 +71,14 @@ function findExportsForIdentifer(
     const variable = declaredVariables.find(value => value.id === identifier.name);
     if (variable) {
         const exports: Array<Export> = [];
-        if (variable.value === "ObjectExpression") {
-            for (let declaredVariable of declaredVariables) {
-                if (declaredVariable.id.startsWith(`${variable.id}.`)) {
-                    exports.push(
-                        new Export(declaredVariable.kind, declaredVariable.id, bundleType)
-                    );
-                }
+        for (let declaredVariable of declaredVariables) {
+            if (declaredVariable.id.startsWith(`${variable.id}.`)) {
+                exports.push(new Export(declaredVariable.kind, declaredVariable.id, bundleType));
             }
-            for (let declaredFunction of declaredFunctions) {
-                if (declaredFunction.id.startsWith(`${variable.id}.`)) {
-                    exports.push(new Export(EXPORT_TYPE_FUNCTION, declaredFunction.id, bundleType));
-                }
+        }
+        for (let declaredFunction of declaredFunctions) {
+            if (declaredFunction.id.startsWith(`${variable.id}.`)) {
+                exports.push(new Export(EXPORT_TYPE_FUNCTION, declaredFunction.id, bundleType));
             }
         }
         exports.push(new Export(variable.kind, name, bundleType));
@@ -120,7 +116,11 @@ function extractMembersFromObjectExpression(decl) {
                 );
             } else {
                 declaredVariables.push(
-                    new Variable(`${util.patternToString(decl.id)}.${property.key.name}`, "var")
+                    new Variable(
+                        `${util.patternToString(decl.id)}.${property.key.name}`,
+                        "var",
+                        util.expressionToString(decl.init)
+                    )
                 );
             }
         }
