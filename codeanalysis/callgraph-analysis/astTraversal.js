@@ -1,6 +1,6 @@
 // Author: Michael Pradel, Markus Zimmermann
-
 const model = require("./model");
+const util = require("./util");
 
 // register AST visitors that get called when tern parses the files
 function Visitors(callExpressions, requiredModules, debug) {
@@ -35,7 +35,7 @@ function Visitors(callExpressions, requiredModules, debug) {
         },
 
         CallExpression: function(callNode, ancestors) {
-            if (debug) console.log("\nCallExpression: \n",{ callNode, ancestors });
+            if (debug) console.log("\nCallExpression: \n", { callNode, ancestors });
             const outerMethod = ancestors.filter(node => node.type === "FunctionDeclaration").pop();
             let outerMethodName = callNode.sourceFile.name;
             if (outerMethod) {
@@ -53,6 +53,13 @@ function Visitors(callExpressions, requiredModules, debug) {
                 }
             }
 
+            const arguments = [];
+
+            for (let argument of callNode.arguments) {
+                const argumentAsString = util.expressionToString(argument);
+                arguments.push(argumentAsString);
+            }
+
             callExpressions.push(
                 new model.CallExpression(
                     callNode.sourceFile.name,
@@ -60,7 +67,8 @@ function Visitors(callExpressions, requiredModules, debug) {
                     callNode.end,
                     functionName,
                     outerMethodName,
-                    receiver
+                    receiver,
+                    arguments
                 )
             );
         }

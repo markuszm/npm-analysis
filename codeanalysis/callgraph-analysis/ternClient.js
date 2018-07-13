@@ -53,7 +53,8 @@ class TernClient {
                     callExpression.receiver,
                     requiredModules[callExpression.receiver],
                     data.origin,
-                    callExpression.name
+                    callExpression.name,
+                    callExpression.arguments
                 )
             );
         });
