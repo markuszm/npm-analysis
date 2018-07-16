@@ -15,7 +15,6 @@ import (
 	"os"
 	"path"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -143,14 +142,14 @@ func calculatePackageReach(maintainer string) {
 				resultMap[date] = make([]util.PackageReachResult, 0)
 				allPackages := make(map[string]bool, 0)
 				for _, pkg := range data.PackagesTimeline[date] {
-					packages := make(map[string]int, 0)
+					packages := make(map[string]reach.ReachDetails, 0)
 					reach.PackageReachLayer(pkg, dependentsMaps[date], packages, 1)
 					reach.PackageReach(pkg, dependentsMaps[date], allPackages)
 					packageKeys := make([]string, len(packages))
 					i := 0
-					for k, l := range packages {
-						if l > 0 {
-							packageKeys[i] = strconv.Itoa(l) + "_" + k
+					for k, d := range packages {
+						if d.Layer > 0 {
+							packageKeys[i] = fmt.Sprintf("%02d_%v_%v", d.Layer, k, d.Dependency)
 							i++
 						}
 					}

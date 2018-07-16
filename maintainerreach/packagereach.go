@@ -9,11 +9,16 @@ func PackageReach(pkg string, dependentsMap map[string][]string, packages map[st
 	}
 }
 
-func PackageReachLayer(pkg string, dependentsMap map[string][]string, packages map[string]int, layer int) {
+func PackageReachLayer(pkg string, dependentsMap map[string][]string, packages map[string]ReachDetails, layer int) {
 	for _, dependent := range dependentsMap[pkg] {
-		if ok := packages[dependent]; ok == 0 {
-			packages[dependent] = layer
+		if _, ok := packages[dependent]; !ok {
+			packages[dependent] = ReachDetails{layer, pkg}
 			PackageReachLayer(dependent, dependentsMap, packages, layer+1)
 		}
 	}
+}
+
+type ReachDetails struct {
+	Layer      int
+	Dependency string
 }
