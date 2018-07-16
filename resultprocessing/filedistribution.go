@@ -126,6 +126,7 @@ func WritePercentagesPerPackageForExtension(result []PercentDistribution, filePa
 	distributionMap := make(map[string][]int)
 
 	extensionToTrack := []string{
+		"binary",
 		".js",
 		".json",
 		".png",

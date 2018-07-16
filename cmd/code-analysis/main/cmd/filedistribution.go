@@ -6,24 +6,27 @@ import (
 	"path"
 )
 
+var fileDistributionInput string
+var fileDistributionOutput string
+
 // fileDistributionCmd represents the fileDistribution command
 var fileDistributionCmd = &cobra.Command{
 	Use:   "fileDistribution",
 	Short: "Result processing for file distribution analysis results",
 	Long:  `Processes analysis results to create plotable csv results`,
 	Run: func(cmd *cobra.Command, args []string) {
-		allPackages, err := resultprocessing.MergeFileDistributionResult(inputPath, 0)
+		allPackages, err := resultprocessing.MergeFileDistributionResult(fileDistributionInput, 0)
 		if err != nil {
 			logger.Fatal(err)
 		}
-		resultprocessing.WriteFiledistributionResult(allPackages, path.Join(outputPath, "allpackages.csv"))
+		resultprocessing.WriteFiledistributionResult(allPackages, path.Join(fileDistributionOutput, "allpackages.csv"))
 
-		percentages, err := resultprocessing.CalculatePercentageForEachPackage(inputPath)
+		percentages, err := resultprocessing.CalculatePercentageForEachPackage(fileDistributionInput)
 		if err != nil {
 			logger.Fatal(err)
 		}
 
-		err = resultprocessing.WritePercentagesPerPackageForExtension(percentages, path.Join(outputPath, "percentages.csv"))
+		err = resultprocessing.WritePercentagesPerPackageForExtension(percentages, path.Join(fileDistributionOutput, "percentages.csv"))
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -33,6 +36,6 @@ var fileDistributionCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(fileDistributionCmd)
 
-	fileDistributionCmd.Flags().StringVarP(&inputPath, "input", "i", "/home/markus/npm-analysis/filedistribution.json", "path to file containing analysis results")
-	fileDistributionCmd.Flags().StringVarP(&outputPath, "output", "o", "/home/markus/npm-analysis/filedistribution", "output path")
+	fileDistributionCmd.Flags().StringVarP(&fileDistributionInput, "input", "i", "/home/markus/npm-analysis/filedistribution.json", "path to file containing analysis results")
+	fileDistributionCmd.Flags().StringVarP(&fileDistributionOutput, "output", "o", "/home/markus/npm-analysis/filedistribution", "output path")
 }

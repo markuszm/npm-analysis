@@ -14,9 +14,6 @@ var cfgFile string
 
 var logger *zap.SugaredLogger
 
-var inputPath string
-var outputPath string
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "code-analysis",
