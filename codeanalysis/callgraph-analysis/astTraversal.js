@@ -5,10 +5,13 @@ const util = require("./util");
 // register AST visitors that get called when tern parses the files
 function Visitors(callExpressions, requiredModules, debug) {
     return {
+        /* detect imports */
         VariableDeclaration: function(declNode, _) {
             for (let decl of declNode.declarations) {
                 const isRequireInit =
-                    decl.init && decl.init.type === "CallExpression" && decl.init.callee.name === "require";
+                    decl.init &&
+                    decl.init.type === "CallExpression" &&
+                    decl.init.callee.name === "require";
                 if (isRequireInit) {
                     const variableName = decl.id.name;
                     const moduleName = decl.init.arguments[0].value;
@@ -23,6 +26,18 @@ function Visitors(callExpressions, requiredModules, debug) {
             }
         },
 
+        ImportDeclaration: function(importDecl, _) {
+            if (debug) {
+                console.log({ImportDeclaration: importDecl});
+            }
+
+            const moduleName = importDecl.source.value;
+
+            for (let specifier of importDecl.specifiers) {
+                requiredModules[specifier.local.name] = moduleName;
+            }
+        },
+
         FunctionDeclaration: function(functionDecl, _) {
             if (debug) {
                 console.log("\nFunction Declaration: \n", {
@@ -34,6 +49,7 @@ function Visitors(callExpressions, requiredModules, debug) {
             }
         },
 
+        /* track function calls */
         CallExpression: function(callNode, ancestors) {
             if (debug) console.log("\nCallExpression: \n", { callNode, ancestors });
             const outerMethod = ancestors.filter(node => node.type === "FunctionDeclaration").pop();

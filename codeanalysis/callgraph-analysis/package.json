@@ -9,6 +9,7 @@
     "tern": "^0.21.0"
   },
   "devDependencies": {
+    "@types/estree": "^0.0.39",
     "pkg": "^4.3.3"
   },
   "scripts": {

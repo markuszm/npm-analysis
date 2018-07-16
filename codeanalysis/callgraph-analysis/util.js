@@ -153,6 +153,7 @@ function methodExpressionToString(callee, args) {
 }
 
 function patternToString(pattern) {
+
     if (!pattern) {
         return "null";
     }
@@ -190,6 +191,7 @@ function patternToString(pattern) {
             patternString += "..." + patternToString(pattern.argument);
             break;
     }
+    return patternString
 }
 
 exports.expressionToString = expressionToString;

@@ -49,6 +49,26 @@ func TestCallgraphModule(t *testing.T) {
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
 }
 
+func TestCallgraphES6Module(t *testing.T) {
+	logger := zap.NewNop().Sugar()
+	analysis := NewCallgraphAnalysis(logger)
+	result, err := analysis.AnalyzePackage("./testfiles/callgraph/es6modules")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	calls := result.([]Call)
+
+	expectedCalls := []Call{
+		{"call.js", "foo", "_", "underscore", "call.js", "map", []string{"aList", "(i) => {...}"}},
+		{"call.js", "foo", "bar", "foobar", "call.js", "add", []string{"i"}},
+		{"call.js", "foo", "this", "b", "call.js", "a", []string{"mappedList"}},
+	}
+
+	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
+}
+
 func TestCallgraphMix(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	analysis := NewCallgraphAnalysis(logger)

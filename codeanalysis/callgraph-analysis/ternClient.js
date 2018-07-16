@@ -52,12 +52,13 @@ class TernClient {
                 );
             }
 
+            const moduleName = requiredModules[callExpression.receiver] || requiredModules[callExpression.name];
             calls.push(
                 new model.Call(
                     callExpression.file,
                     callExpression.outerMethod,
                     callExpression.receiver,
-                    requiredModules[callExpression.receiver],
+                    moduleName,
                     data.origin,
                     callExpression.name,
                     callExpression.arguments
