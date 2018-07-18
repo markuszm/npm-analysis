@@ -15,25 +15,38 @@ if (args.length > 1 && args[1] === "debug") {
     debug = true;
 }
 
-try {
-    const definedExports: Array<traversal.Export> = [];
-    readdirp(
-        { root: path, fileFilter: ["*.ts", "*.js", "*.jsx"], directoryFilter: [ '!.git', '!node_modules', '!assets' ] },
-        fileInfo => {
-            const content = fs.readFileSync(fileInfo.fullPath, "utf-8");
-            try {
-                let ast = parser.parseAst(content);
-                definedExports.push(...traversal.traverseAst(ast, debug));
-            } catch (e) {
-                // ignore errors in parsing for now
+const stats = fs.statSync(path);
+
+if (stats.isDirectory()) {
+    try {
+        const definedExports: Array<traversal.Export> = [];
+        readdirp(
+            {
+                root: path,
+                fileFilter: ["*.ts", "*.js", "*.jsx"],
+                directoryFilter: ["!.git", "!node_modules", "!assets"]
+            },
+            fileInfo => {
+                const content = fs.readFileSync(fileInfo.fullPath, "utf-8");
+                try {
+                    let ast = parser.parseAst(content);
+                    definedExports.push(...traversal.traverseAst(ast, debug));
+                } catch (e) {
+                    // ignore errors in parsing for now
+                }
+            },
+            // after file processing
+            () => {
+                console.log(JSON.stringify(definedExports));
             }
-        },
-        // after file processing
-        () => {
-            console.log(JSON.stringify(definedExports));
-        }
-    );
-} catch (err) {
-    console.error(err);
-    console.error("could not find any files");
+        );
+    } catch (err) {
+        console.error(err);
+        console.error("could not find any files");
+    }
+} else {
+    const content = fs.readFileSync(path, "utf-8");
+    let ast = parser.parseAst(content);
+    const definedExports = traversal.traverseAst(ast, debug);
+    console.log(JSON.stringify(definedExports));
 }

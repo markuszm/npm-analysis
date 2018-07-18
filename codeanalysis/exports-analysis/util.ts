@@ -266,7 +266,7 @@ function methodExpressionToString(
             argumentsString += ",";
         }
     }
-    return `${calleeString}.(${argumentsString})`;
+    return `${calleeString}(${argumentsString})`;
 }
 
 export function createMethodSignatureString(id: string, params: Array<String>) {

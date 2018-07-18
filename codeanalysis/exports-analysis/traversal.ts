@@ -15,6 +15,7 @@ import {
     VariableDeclaration
 } from "estree";
 import { NodePath } from "babel-traverse";
+import { expressionToString } from "./util";
 
 const BUNDLE_TYPE_ES6 = "es6";
 const BUNDLE_TYPE_COMMONJS = "commonjs";
@@ -334,8 +335,21 @@ export function traverseAst(ast: any, debug: boolean): Array<Export> {
                             }
                         }
                         break;
+                    case "Identifier":
+                        const identifierExports = findExportsForIdentifer(
+                            right,
+                            right.name,
+                            BUNDLE_TYPE_COMMONJS
+                        );
+                        definedExports.push(...identifierExports);
+                        if (debug) {
+                            identifierExports.forEach(exp =>
+                                console.log(`Found export with name: ${exp.id}`)
+                            );
+                        }
+                        break;
                     default:
-                        definedExports.push(new Export("unknown", "default", BUNDLE_TYPE_COMMONJS));
+                        definedExports.push(new Export("unknown", expressionToString(right), BUNDLE_TYPE_COMMONJS));
                         break;
                 }
             }

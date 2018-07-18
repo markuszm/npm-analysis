@@ -126,7 +126,7 @@ func TestCallgraphMix(t *testing.T) {
 		{FromFile: "anotherFile.js", FromFunction: "aFnInAnotherFile", Receiver: "console", ToFunction: "log", Arguments: []string{"cool"}},
 		{FromFile: "file.js", FromFunction: "file.js", Receiver: "this", ToFunction: "require", Arguments: []string{"./anotherFile"}},
 		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "_", ToFunction: "curry", Arguments: []string{"libVar.referencedFn"}},
-		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "async", ToFunction: "series", Arguments: []string{"[_.curry.(libVar.referencedFn)]"}},
+		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "async", ToFunction: "series", Arguments: []string{"[_.curry(libVar.referencedFn)]"}},
 		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "libVar", Module: "./anotherFile", ToFile: "file.js", ToFunction: "aFnInAnotherFile", Arguments: []string{"n + 1"}},
 		{FromFile: "file.js", FromFunction: "file.js", Receiver: "libVar", Module: "./anotherFile", ToFile: "file.js", ToFunction: "aFnInAnotherFile", Arguments: []string{"2"}},
 		{FromFile: "file.js", FromFunction: "file.js", Receiver: "this", ToFile: "file.js", ToFunction: "aFunction", Arguments: []string{}},

@@ -149,7 +149,7 @@ function methodExpressionToString(callee, args) {
             argumentsString += ",";
         }
     }
-    return `${calleeString}.(${argumentsString})`;
+    return `${calleeString}(${argumentsString})`;
 }
 
 function patternToString(pattern) {
