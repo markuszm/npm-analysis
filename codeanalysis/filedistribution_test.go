@@ -24,6 +24,7 @@ func TestFileDistribution(t *testing.T) {
 		".jsx":   1,
 		".mjs":   1,
 		"binary": 2,
+		"text":   1,
 	}
 
 	t.Log(extensionMap)

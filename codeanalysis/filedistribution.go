@@ -29,7 +29,20 @@ func (e *FileDistributionAnalysis) AnalyzePackage(packagePath string) (interface
 		}
 		ext := path.Ext(l)
 		if ext == "" {
-			extensionMap["binary"]++
+			fileType, err := ExecuteCommand("file", l)
+			if err != nil {
+				continue
+			}
+
+			if strings.Contains(fileType, "executable") {
+				extensionMap["binary"]++
+				continue
+			}
+
+			if strings.Contains(fileType, "text") {
+				extensionMap["text"]++
+				continue
+			}
 		} else {
 			extensionMap[ext]++
 		}
