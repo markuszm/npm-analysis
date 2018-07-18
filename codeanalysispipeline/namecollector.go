@@ -50,7 +50,7 @@ func (f *FileNameCollector) GetPackageNames() ([]model.PackageVersionPair, error
 	for _, l := range lines {
 		pair := strings.Split(l, ",")
 		if len(pair) != 2 {
-			return packages, errors.New("cannot read file - wrong format")
+			return packages, errors.Errorf("cannot read file - wrong format on pair %v", pair)
 		}
 		packageVersionPair := model.PackageVersionPair{Name: pair[0], Version: pair[1]}
 		packages = append(packages, packageVersionPair)

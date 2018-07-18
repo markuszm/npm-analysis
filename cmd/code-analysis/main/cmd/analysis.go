@@ -20,6 +20,7 @@ var loaderFlag string
 var registryUrl string
 var writerFlag string
 var analysisFlag string
+var analysisExecPath string
 
 const mysqlUser = "root"
 const mysqlPw = "npm-analysis"
@@ -72,12 +73,9 @@ var analysisCmd = &cobra.Command{
 		case "used_dependencies":
 			log.Print("executing used dependencies analysis")
 			analysis = codeanalysis.NewUsedDependenciesAnalysis(logger)
-		case "exports":
-			log.Print("executing exports analysis")
-			analysis = codeanalysis.NewExportsAnalysis(logger)
-		case "callgraph":
-			log.Print("executing callgraph analysis")
-			analysis = codeanalysis.NewCallgraphAnalysis(logger)
+		case "ast":
+			log.Print("executing ast analysis")
+			analysis = codeanalysis.NewASTAnalysis(logger, analysisExecPath)
 		}
 
 		var writer codeanalysispipeline.ResultWriter
@@ -130,4 +128,6 @@ func init() {
 	analysisCmd.Flags().StringVarP(&writerFlag, "writer", "w", "json", "specify writer type (csv or json)")
 
 	analysisCmd.Flags().StringVarP(&analysisFlag, "analysis", "a", "file_distribution", "specify which analysis to run")
+
+	analysisCmd.Flags().StringVarP(&analysisExecPath, "exec", "e", "./analysis", "path to analysis executable for some analyses")
 }

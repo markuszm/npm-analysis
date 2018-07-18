@@ -20,3 +20,4 @@ db-data
 
 node_modules
 dist
+bin

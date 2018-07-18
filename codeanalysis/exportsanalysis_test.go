@@ -2,23 +2,26 @@ package codeanalysis
 
 import (
 	"fmt"
+	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
 )
 
 func TestExportCommonJS(t *testing.T) {
+	const analysisPath = "./exports-analysis/analysis"
+
 	logger := zap.NewNop().Sugar()
-	analysis := NewExportsAnalysis(logger)
+	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/export/exportcjstest")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	exports := result.([]Export)
+	exports := result.([]resultprocessing.Export)
 
-	expectedExports := []Export{
+	expectedExports := []resultprocessing.Export{
 		{"class", "default", "commonjs"},
 		{"function", "add(a,b)", "commonjs"},
 		{"function", "subtract(a,b)", "commonjs"},
@@ -70,17 +73,19 @@ func TestExportCommonJS(t *testing.T) {
 }
 
 func TestExportES6(t *testing.T) {
+	const analysisPath = "./exports-analysis/analysis"
+
 	logger := zap.NewNop().Sugar()
-	analysis := NewExportsAnalysis(logger)
+	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/export/exportes6test")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	exports := result.([]Export)
+	exports := result.([]resultprocessing.Export)
 
-	expectedExports := []Export{
+	expectedExports := []resultprocessing.Export{
 		{"function", "default.abs()", "es6"},
 		{"class", "Calculator", "es6"},
 		{"function", "Calculator.add(a,b)", "es6"},

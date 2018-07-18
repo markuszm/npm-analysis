@@ -2,23 +2,26 @@ package codeanalysis
 
 import (
 	"fmt"
+	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
 )
 
 func TestCallgraphLocal(t *testing.T) {
+	const analysisPath = "./callgraph-analysis/analysis"
+
 	logger := zap.NewNop().Sugar()
-	analysis := NewCallgraphAnalysis(logger)
+	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/callgraph/local")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	calls := result.([]Call)
+	calls := result.([]resultprocessing.Call)
 
-	expectedCalls := []Call{
+	expectedCalls := []resultprocessing.Call{
 		{"call.js", "call.js", "this", "", "fun.js", "myfun", []string{"2"}},
 		{"fun.js", "myfun", "this", "", "fun.js", "otherfun", []string{"x"}},
 		{"fun.js", "otherfun", "this", "", "fun.js", "anotherfun", []string{"y"}},
@@ -27,17 +30,19 @@ func TestCallgraphLocal(t *testing.T) {
 }
 
 func TestCallgraphModule(t *testing.T) {
+	const analysisPath = "./callgraph-analysis/analysis"
+
 	logger := zap.NewNop().Sugar()
-	analysis := NewCallgraphAnalysis(logger)
+	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/callgraph/modules")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	calls := result.([]Call)
+	calls := result.([]resultprocessing.Call)
 
-	expectedCalls := []Call{
+	expectedCalls := []resultprocessing.Call{
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"foo"}},
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"bar"}},
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"foobar"}},
@@ -50,17 +55,19 @@ func TestCallgraphModule(t *testing.T) {
 }
 
 func TestCallgraphES6Module(t *testing.T) {
+	const analysisPath = "./callgraph-analysis/analysis"
+
 	logger := zap.NewNop().Sugar()
-	analysis := NewCallgraphAnalysis(logger)
+	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/callgraph/es6modules")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	calls := result.([]Call)
+	calls := result.([]resultprocessing.Call)
 
-	expectedCalls := []Call{
+	expectedCalls := []resultprocessing.Call{
 		{"call.js", "foo", "_", "underscore", "call.js", "map", []string{"aList", "(i) => {...}"}},
 		{"call.js", "foo", "bar", "foobar", "call.js", "add", []string{"i"}},
 		{"call.js", "foo", "this", "b", "call.js", "a", []string{"mappedList"}},
@@ -70,17 +77,19 @@ func TestCallgraphES6Module(t *testing.T) {
 }
 
 func TestCallgraphMix(t *testing.T) {
+	const analysisPath = "./callgraph-analysis/analysis"
+
 	logger := zap.NewNop().Sugar()
-	analysis := NewCallgraphAnalysis(logger)
+	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/callgraph/mix")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	calls := result.([]Call)
+	calls := result.([]resultprocessing.Call)
 
-	expectedCalls := []Call{
+	expectedCalls := []resultprocessing.Call{
 		{FromFile: "anotherFile.js", FromFunction: "aFnInAnotherFile", Receiver: "console", ToFunction: "log", Arguments: []string{"cool"}},
 		{FromFile: "file.js", FromFunction: "file.js", Receiver: "this", ToFunction: "require", Arguments: []string{"./anotherFile"}},
 		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "_", ToFunction: "curry", Arguments: []string{"libVar.referencedFn"}},
