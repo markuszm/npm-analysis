@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
@@ -9,8 +10,10 @@ import (
 	"github.com/markuszm/npm-analysis/evolution"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/markuszm/npm-analysis/util"
+	"io/ioutil"
 	"log"
 	"math"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -170,13 +173,28 @@ func plotSortedMaintainerPackageCount(countMap map[string]evolution.MaintainerCo
 		}
 	}
 
-	for y, vals := range valuesPerYear {
-		sortedList := util.FloatList(vals)
+	for y, values := range valuesPerYear {
+		sortedList := util.FloatList(values)
 		sort.Sort(sort.Reverse(sortedList))
 		valuesPerYear[y] = sortedList
 	}
 
+	err := writeSortedMaintainerPackageCount(valuesPerYear, "/home/markus/npm-analysis/sortedMaintainerPackageCount.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	plots.GenerateSortedLinePlotMaintainerPackageCount(valuesPerYear)
+}
+
+func writeSortedMaintainerPackageCount(valuesPerYear map[int][]float64, filePath string) error {
+	bytes, err := json.Marshal(valuesPerYear)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(filePath, bytes, os.ModePerm)
+	return err
 }
 
 func worker(id int, jobs chan evolution.MaintainerCount, workerWait *sync.WaitGroup) {
