@@ -1,12 +1,33 @@
 package codeanalysis
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
 )
+
+func transformToExports(result interface{}) ([]resultprocessing.Export, error) {
+	objs := result.([]interface{})
+
+	var exports []resultprocessing.Export
+
+	for _, value := range objs {
+		export := resultprocessing.Export{}
+		bytes, err := json.Marshal(value)
+		if err != nil {
+			return exports, err
+		}
+		err = json.Unmarshal(bytes, &export)
+		if err != nil {
+			return exports, err
+		}
+		exports = append(exports, export)
+	}
+	return exports, nil
+}
 
 func TestExportCommonJS(t *testing.T) {
 	const analysisPath = "./exports-analysis/analysis"
@@ -19,7 +40,10 @@ func TestExportCommonJS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exports := result.([]resultprocessing.Export)
+	exports, err := transformToExports(result)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expectedExports := []resultprocessing.Export{
 		{"class", "default", "commonjs"},
@@ -83,7 +107,10 @@ func TestExportES6(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	exports := result.([]resultprocessing.Export)
+	exports, err := transformToExports(result)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expectedExports := []resultprocessing.Export{
 		{"function", "default.abs()", "es6"},

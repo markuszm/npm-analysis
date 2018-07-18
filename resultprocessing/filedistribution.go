@@ -3,7 +3,7 @@ package resultprocessing
 import (
 	"encoding/csv"
 	"encoding/json"
-	"github.com/markuszm/npm-analysis/codeanalysispipeline"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/util"
 	"log"
 	"os"
@@ -22,7 +22,7 @@ func MergeFileDistributionResult(resultPath string, filter int) ([]util.Pair, er
 	mergedDistribution := make(map[string]int, 0)
 
 	for {
-		result := codeanalysispipeline.PackageResult{}
+		result := model.PackageResult{}
 		err := decoder.Decode(&result)
 		if err != nil {
 			if err.Error() == "EOF" {
@@ -85,7 +85,7 @@ func CalculatePercentageForEachPackage(resultPath string) ([]PercentDistribution
 	var percentDistributions []PercentDistribution
 
 	for {
-		result := codeanalysispipeline.PackageResult{}
+		result := model.PackageResult{}
 		err := decoder.Decode(&result)
 		if err != nil {
 			if err.Error() == "EOF" {

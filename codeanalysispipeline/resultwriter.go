@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
@@ -12,8 +13,8 @@ import (
 )
 
 type ResultWriter interface {
-	WriteAll(results map[string]PackageResult) error
-	WriteBuffered(results chan PackageResult, workerGroup *sync.WaitGroup) error
+	WriteAll(results map[string]model.PackageResult) error
+	WriteBuffered(results chan model.PackageResult, workerGroup *sync.WaitGroup) error
 }
 
 type CSVWriter struct {
@@ -24,7 +25,7 @@ func NewCSVWriter(filePath string) *CSVWriter {
 	return &CSVWriter{FilePath: filePath}
 }
 
-func (c *CSVWriter) WriteAll(results map[string]PackageResult) error {
+func (c *CSVWriter) WriteAll(results map[string]model.PackageResult) error {
 	file, err := os.Create(c.FilePath)
 
 	if err != nil {
@@ -47,7 +48,7 @@ func (c *CSVWriter) WriteAll(results map[string]PackageResult) error {
 	return nil
 }
 
-func (c *CSVWriter) WriteBuffered(results chan PackageResult, workerGroup *sync.WaitGroup) error {
+func (c *CSVWriter) WriteBuffered(results chan model.PackageResult, workerGroup *sync.WaitGroup) error {
 	file, err := os.Create(c.FilePath)
 
 	if err != nil {
@@ -86,7 +87,7 @@ func NewJSONWriter(filePath string) *JSONWriter {
 	return &JSONWriter{FilePath: filePath}
 }
 
-func (j *JSONWriter) WriteAll(results map[string]PackageResult) error {
+func (j *JSONWriter) WriteAll(results map[string]model.PackageResult) error {
 	bytes, err := json.MarshalIndent(results, "", "\t")
 	if err != nil {
 		return errors.Wrap(err, "error marshalling results as json")
@@ -95,7 +96,7 @@ func (j *JSONWriter) WriteAll(results map[string]PackageResult) error {
 	return err
 }
 
-func (j *JSONWriter) WriteBuffered(results chan PackageResult, workerGroup *sync.WaitGroup) error {
+func (j *JSONWriter) WriteBuffered(results chan model.PackageResult, workerGroup *sync.WaitGroup) error {
 	file, err := os.Create(j.FilePath)
 
 	if err != nil {

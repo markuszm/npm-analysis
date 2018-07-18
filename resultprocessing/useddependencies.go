@@ -3,7 +3,7 @@ package resultprocessing
 import (
 	"encoding/csv"
 	"encoding/json"
-	"github.com/markuszm/npm-analysis/codeanalysispipeline"
+	"github.com/markuszm/npm-analysis/model"
 	"log"
 	"os"
 	"strconv"
@@ -20,7 +20,7 @@ func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, erro
 	usedDependencyRatios := make(map[string]float64, 0)
 
 	for {
-		result := codeanalysispipeline.PackageResult{}
+		result := model.PackageResult{}
 		err := decoder.Decode(&result)
 		if err != nil {
 			if err.Error() == "EOF" {

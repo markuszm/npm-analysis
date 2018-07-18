@@ -21,6 +21,7 @@ var registryUrl string
 var writerFlag string
 var analysisFlag string
 var analysisExecPath string
+var nocleanup bool
 
 const mysqlUser = "root"
 const mysqlPw = "npm-analysis"
@@ -88,7 +89,7 @@ var analysisCmd = &cobra.Command{
 			writer = codeanalysispipeline.NewJSONWriter(resultPath)
 		}
 
-		pipeline := codeanalysispipeline.NewPipeline(collector, loader, unpacker, analysis, writer, logger)
+		pipeline := codeanalysispipeline.NewPipeline(collector, loader, unpacker, analysis, writer, logger, !nocleanup)
 
 		var err error
 		if parallel {
@@ -110,9 +111,9 @@ var analysisCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(analysisCmd)
 
-	analysisCmd.Flags().StringVarP(&logPath, "logfile", "l", "/home/markus/npm-analysis/codeanalysis.log", "path to log file")
+	analysisCmd.Flags().StringVar(&logPath, "logfile", "/home/markus/npm-analysis/codeanalysis.log", "path to log file")
 
-	analysisCmd.Flags().BoolVarP(&parallel, "parallel", "m", false, "Execute pipeline in parallel?")
+	analysisCmd.Flags().BoolVar(&parallel, "parallel", false, "Execute pipeline in parallel?")
 	analysisCmd.Flags().IntVarP(&maxWorkers, "scale", "s", 100, "number of workers (only if parallel)")
 
 	analysisCmd.Flags().StringVarP(&packagesPath, "packages", "p", "/media/markus/NPM/NPM", "folder path to packages")
@@ -122,7 +123,7 @@ func init() {
 	analysisCmd.Flags().StringVarP(&collectorFlag, "collector", "c", "db", "how to collect package names (db or file)")
 	analysisCmd.Flags().StringVarP(&namesFilePath, "namesFile", "n", "./codeanalysispipeline/testfiles/test-packages.txt", "filepath containing package names")
 
-	analysisCmd.Flags().StringVarP(&loaderFlag, "loader", "f", "disk", "specify loader type (disk or net)")
+	analysisCmd.Flags().StringVarP(&loaderFlag, "loader", "l", "disk", "specify loader type (disk or net)")
 	analysisCmd.Flags().StringVarP(&registryUrl, "registry", "r", "http://registry.npmjs.org", "npm registry url (only when using net loader)")
 
 	analysisCmd.Flags().StringVarP(&writerFlag, "writer", "w", "json", "specify writer type (csv or json)")
@@ -130,4 +131,5 @@ func init() {
 	analysisCmd.Flags().StringVarP(&analysisFlag, "analysis", "a", "file_distribution", "specify which analysis to run")
 
 	analysisCmd.Flags().StringVarP(&analysisExecPath, "exec", "e", "./analysis", "path to analysis executable for some analyses")
+	analysisCmd.Flags().BoolVar(&nocleanup, "nocleanup", false, "disable cleanup of temp files")
 }

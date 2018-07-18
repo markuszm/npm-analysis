@@ -10,8 +10,6 @@ import (
 	"sync"
 )
 
-const cleanup = true
-
 type Pipeline struct {
 	collector NameCollector
 	loader    PackageLoader
@@ -19,6 +17,7 @@ type Pipeline struct {
 	analysis  codeanalysis.AnalysisExecutor
 	writer    ResultWriter
 	logger    *zap.SugaredLogger
+	cleanup   bool
 }
 
 func NewPipeline(collector NameCollector,
@@ -26,7 +25,8 @@ func NewPipeline(collector NameCollector,
 	unpacker Unpacker,
 	analysis codeanalysis.AnalysisExecutor,
 	writer ResultWriter,
-	logger *zap.SugaredLogger) *Pipeline {
+	logger *zap.SugaredLogger,
+	cleanup bool) *Pipeline {
 	return &Pipeline{
 		collector: collector,
 		loader:    loader,
@@ -34,13 +34,8 @@ func NewPipeline(collector NameCollector,
 		analysis:  analysis,
 		writer:    writer,
 		logger:    logger,
+		cleanup:   cleanup,
 	}
-}
-
-type PackageResult struct {
-	Name    string
-	Version string
-	Result  interface{}
 }
 
 func (p *Pipeline) Execute() (err error) {
@@ -52,7 +47,7 @@ func (p *Pipeline) Execute() (err error) {
 
 	p.logger.Info("Successfully retrieved package names")
 
-	results := make(map[string]PackageResult, len(packageNames))
+	results := make(map[string]model.PackageResult, len(packageNames))
 
 	for i, pkg := range packageNames {
 		if i%1000 == 0 {
@@ -63,7 +58,7 @@ func (p *Pipeline) Execute() (err error) {
 		if err != nil {
 			return err
 		}
-		pkgResult := PackageResult{Name: pkg.Name, Version: pkg.Version, Result: result}
+		pkgResult := model.PackageResult{Name: pkg.Name, Version: pkg.Version, Result: result}
 		results[pkg.Name] = pkgResult
 	}
 
@@ -86,7 +81,7 @@ func (p *Pipeline) ExecuteParallel(maxWorkers int) (err error) {
 	resultGroup := sync.WaitGroup{}
 
 	jobs := make(chan model.PackageVersionPair, 100)
-	resultsChan := make(chan PackageResult, 1000)
+	resultsChan := make(chan model.PackageResult, 1000)
 
 	resultGroup.Add(1)
 	go p.writer.WriteBuffered(resultsChan, &resultGroup)
@@ -113,17 +108,17 @@ func (p *Pipeline) ExecuteParallel(maxWorkers int) (err error) {
 	return
 }
 
-func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, results chan PackageResult, workerGroup *sync.WaitGroup) {
+func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, results chan model.PackageResult, workerGroup *sync.WaitGroup) {
 	for pkg := range packages {
 		result, err := p.executePackageAnalysis(pkg)
 		if err != nil {
 			errorStr := fmt.Sprintf("ERROR with package %v: \n %v", pkg, err)
 			p.logger.Errorf(errorStr)
-			pkgResult := PackageResult{Name: pkg.Name, Version: pkg.Version, Result: errorStr}
+			pkgResult := model.PackageResult{Name: pkg.Name, Version: pkg.Version, Result: errorStr}
 			results <- pkgResult
 			continue
 		}
-		pkgResult := PackageResult{Name: pkg.Name, Version: pkg.Version, Result: result}
+		pkgResult := model.PackageResult{Name: pkg.Name, Version: pkg.Version, Result: result}
 		results <- pkgResult
 	}
 	workerGroup.Done()
@@ -153,7 +148,7 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 		return
 	}
 
-	if cleanup {
+	if p.cleanup {
 		err = os.RemoveAll(packageFolderPath)
 		if err != nil {
 			err = errors.Wrap(err, "removing tmp folder")

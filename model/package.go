@@ -67,3 +67,9 @@ type PackageVersionPair struct {
 	Name    string
 	Version string
 }
+
+type PackageResult struct {
+	Name    string
+	Version string
+	Result  interface{}
+}

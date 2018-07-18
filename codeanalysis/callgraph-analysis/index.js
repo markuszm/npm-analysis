@@ -28,12 +28,13 @@ const ternClient = new TernClient(visitors, debug);
 /* process files from folder */
 try {
     readdirp(
-        { root: folderPath, fileFilter: "*.js" },
+        { root: folderPath, fileFilter: "*.js", directoryFilter: [ '!.git', '!node_modules', '!assets' ]},
         fileInfo => {
             ternClient.AddFile(fileInfo.name, fileInfo.fullPath);
             if (debug) console.log(`Added file ${fileInfo.name} to tern`);
         },
         () => {
+            if (debug) console.log(`Finished collecting AST walking`);
             // for each call expression, find the function definition that the call resolves to
             for (let i = 0; i < callExpressions.length; i++) {
                 const callExpression = callExpressions[i];

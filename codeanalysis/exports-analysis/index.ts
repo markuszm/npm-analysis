@@ -18,7 +18,7 @@ if (args.length > 1 && args[1] === "debug") {
 try {
     const definedExports: Array<traversal.Export> = [];
     readdirp(
-        { root: path, fileFilter: ["*.ts", "*.js", "*.jsx"] },
+        { root: path, fileFilter: ["*.ts", "*.js", "*.jsx"], directoryFilter: [ '!.git', '!node_modules', '!assets' ] },
         fileInfo => {
             const content = fs.readFileSync(fileInfo.fullPath, "utf-8");
             try {

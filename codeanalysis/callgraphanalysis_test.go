@@ -1,12 +1,33 @@
 package codeanalysis
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
 )
+
+func transformToCalls(result interface{}) ([]resultprocessing.Call, error) {
+	objs := result.([]interface{})
+
+	var calls []resultprocessing.Call
+
+	for _, value := range objs {
+		call := resultprocessing.Call{}
+		bytes, err := json.Marshal(value)
+		if err != nil {
+			return calls, err
+		}
+		err = json.Unmarshal(bytes, &call)
+		if err != nil {
+			return calls, err
+		}
+		calls = append(calls, call)
+	}
+	return calls, nil
+}
 
 func TestCallgraphLocal(t *testing.T) {
 	const analysisPath = "./callgraph-analysis/analysis"
@@ -19,7 +40,10 @@ func TestCallgraphLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	calls := result.([]resultprocessing.Call)
+	calls, err := transformToCalls(result)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expectedCalls := []resultprocessing.Call{
 		{"call.js", "call.js", "this", "", "fun.js", "myfun", []string{"2"}},
@@ -40,7 +64,10 @@ func TestCallgraphModule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	calls := result.([]resultprocessing.Call)
+	calls, err := transformToCalls(result)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expectedCalls := []resultprocessing.Call{
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"foo"}},
@@ -65,7 +92,10 @@ func TestCallgraphES6Module(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	calls := result.([]resultprocessing.Call)
+	calls, err := transformToCalls(result)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expectedCalls := []resultprocessing.Call{
 		{"call.js", "foo", "_", "underscore", "call.js", "map", []string{"aList", "(i) => {...}"}},
@@ -87,7 +117,10 @@ func TestCallgraphMix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	calls := result.([]resultprocessing.Call)
+	calls, err := transformToCalls(result)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	expectedCalls := []resultprocessing.Call{
 		{FromFile: "anotherFile.js", FromFunction: "aFnInAnotherFile", Receiver: "console", ToFunction: "log", Arguments: []string{"cool"}},
