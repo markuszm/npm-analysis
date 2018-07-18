@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CGO_ENABLED=0 GOOS=linux go build -a -v -o bin/pipeline ./cmd/code-analysis/main/main.go
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -v -installsuffix cgo -o bin/pipeline ./cmd/code-analysis/main/main.go
 
 cd codeanalysis/callgraph-analysis/
 npm run pack

@@ -14,6 +14,8 @@ var cfgFile string
 
 var logger *zap.SugaredLogger
 
+var logPath string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "code-analysis",
@@ -34,6 +36,8 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.PersistentFlags().StringVar(&logPath, "logfile", "/tmp/codeanalysis.log", "path to log file")
+
 	// Initialize logger for all commands
 	cfg := zap.NewDevelopmentConfig()
 	cfg.OutputPaths = append(cfg.OutputPaths, logPath)

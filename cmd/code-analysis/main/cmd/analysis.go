@@ -8,7 +8,6 @@ import (
 	"log"
 )
 
-var logPath string
 var parallel bool
 var maxWorkers int
 var packagesPath string
@@ -110,8 +109,6 @@ var analysisCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(analysisCmd)
-
-	analysisCmd.Flags().StringVar(&logPath, "logfile", "/home/markus/npm-analysis/codeanalysis.log", "path to log file")
 
 	analysisCmd.Flags().BoolVar(&parallel, "parallel", false, "Execute pipeline in parallel?")
 	analysisCmd.Flags().IntVarP(&maxWorkers, "scale", "s", 100, "number of workers (only if parallel)")
