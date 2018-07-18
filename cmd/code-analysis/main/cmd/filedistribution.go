@@ -15,6 +15,8 @@ var fileDistributionCmd = &cobra.Command{
 	Short: "Result processing for file distribution analysis results",
 	Long:  `Processes analysis results to create plotable csv results`,
 	Run: func(cmd *cobra.Command, args []string) {
+		initializeLogger()
+
 		allPackages, err := resultprocessing.MergeFileDistributionResult(fileDistributionInput, 0)
 		if err != nil {
 			logger.Fatal(err)

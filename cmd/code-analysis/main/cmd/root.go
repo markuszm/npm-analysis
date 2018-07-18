@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	"log"
 )
 
 var cfgFile string
@@ -36,21 +37,23 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&logPath, "logfile", "/tmp/codeanalysis.log", "path to log file")
-
-	// Initialize logger for all commands
-	cfg := zap.NewDevelopmentConfig()
-	cfg.OutputPaths = append(cfg.OutputPaths, logPath)
-	cfg.DisableStacktrace = true
-	l, _ := cfg.Build()
-	logger = l.Sugar()
-
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
+	rootCmd.PersistentFlags().StringVar(&logPath, "logfile", "/tmp/codeanalysis.log", "path to log file")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.code-analysis.yaml)")
+}
+
+func initializeLogger() {
+	// Initialize logger for all commands
+	log.Printf("using log path: %v", logPath)
+	cfg := zap.NewDevelopmentConfig()
+	cfg.OutputPaths = append(cfg.OutputPaths, logPath)
+	cfg.DisableStacktrace = true
+	l, _ := cfg.Build()
+	logger = l.Sugar()
 }
 
 // initConfig reads in config file and ENV variables if set.

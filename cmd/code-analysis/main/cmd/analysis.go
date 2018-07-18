@@ -31,6 +31,7 @@ var analysisCmd = &cobra.Command{
 	Short: "Batch analysis of npm packages",
 	Long:  `...`,
 	Run: func(cmd *cobra.Command, args []string) {
+		initializeLogger()
 
 		var collector codeanalysispipeline.NameCollector
 		switch collectorFlag {

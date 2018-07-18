@@ -15,6 +15,8 @@ var usedDependenciesCmd = &cobra.Command{
 	Short: "Creates csv statistics for used dependency analysis results",
 	Long:  `...`,
 	Run: func(cmd *cobra.Command, args []string) {
+		initializeLogger()
+
 		dependenciesRatios, err := resultprocessing.CalculateUsedDependenciesRatio(usedDependenciesInput)
 		if err != nil {
 			logger.Fatal(err)
