@@ -46,13 +46,16 @@ class TernClient {
 
             if (this.debug) {
                 console.log(
-                    "\nCall at: %o \n .. goes to function defined at: \n %o",
+                    "\nCall at: %o \n .. goes to function defined at: \n %o \n Context: %s",
                     callExpression,
-                    data
+                    data,
+                    data.context
                 );
             }
 
-            const moduleName = requiredModules[callExpression.receiver] || requiredModules[callExpression.name];
+
+
+            const moduleName = requiredModules[data.start] || requiredModules[callExpression.receiver] || requiredModules[callExpression.name];
             calls.push(
                 new model.Call(
                     callExpression.file,

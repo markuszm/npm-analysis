@@ -134,3 +134,35 @@ func TestCallgraphMix(t *testing.T) {
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
 }
+
+func TestCallgraphScoping(t *testing.T) {
+	const analysisPath = "./callgraph-analysis/analysis"
+
+	logger := zap.NewNop().Sugar()
+	analysis := NewASTAnalysis(logger, analysisPath)
+	result, err := analysis.AnalyzePackage("./testfiles/callgraph/scoping")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	calls, err := transformToCalls(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedCalls := []resultprocessing.Call{
+		{"calls.js", "calls.js", "this", "", "", "require", []string{"foo"}},
+		{"calls.js", "calls.js", "this", "", "", "require", []string{"bar"}},
+		{"calls.js", "calls.js", "this", "", "", "require", []string{"foobar"}},
+		{"calls.js", "calls.js", "this", "", "", "require", []string{"foobar"}},
+		{"calls.js", "f", "this", "", "", "require", []string{"foo"}},
+		{"calls.js", "f", "this", "", "", "require", []string{"bar"}},
+		{"calls.js", "g", "foo", "foobar", "calls.js", "someMethod", []string{}},
+		{"calls.js", "g", "foobar", "foobar", "calls.js", "otherMethod", []string{}},
+		{"calls.js", "h", "bar", "", "calls.js", "someMethod", []string{}},
+		{"calls.js", "h", "fooVar", "", "calls.js", "someMethod", []string{}},
+	}
+
+	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
+}

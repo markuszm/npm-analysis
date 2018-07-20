@@ -15,7 +15,7 @@ function Visitors(callExpressions, requiredModules, debug) {
                 if (isRequireInit) {
                     const variableName = decl.id.name;
                     const moduleName = decl.init.arguments[0].value;
-                    requiredModules[variableName] = moduleName;
+                    requiredModules[decl.start] = moduleName;
                     if (debug) {
                         console.log("\nModule Declaration: \n", {
                             Variable: variableName,

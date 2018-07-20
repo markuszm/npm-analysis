@@ -54,7 +54,7 @@ if (stats.isDirectory()) {
     }
 } else {
     ternClient.AddFile(path, path);
-    if (debug) console.log(`Added file ${fileInfo.name} to tern`);
+    if (debug) console.log(`Added file ${path} to tern`);
 
     // for each call expression, find the function definition that the call resolves to
     for (let i = 0; i < callExpressions.length; i++) {
