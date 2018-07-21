@@ -2,8 +2,10 @@ package codeanalysis
 
 import (
 	"bytes"
+	"context"
 	"github.com/pkg/errors"
 	"os/exec"
+	"time"
 )
 
 type AnalysisExecutor interface {
@@ -11,12 +13,21 @@ type AnalysisExecutor interface {
 }
 
 func ExecuteCommand(path string, args ...string) (string, error) {
-	cmd := exec.Command(path, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, path, args...)
+
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
 	err := cmd.Run()
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", errors.New("command timed out")
+	}
+
 	if err != nil {
 		return "", errors.Wrapf(err, errOut.String())
 	}
