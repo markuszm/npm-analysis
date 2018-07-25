@@ -13,7 +13,7 @@
     "pkg": "^4.3.3"
   },
   "scripts": {
-    "pack": "pkg --output analysis ./index.js"
+    "pack": "pkg --output analysis --options max_old_space_size=8192,stack-size=10000 ./index.js"
   },
   "author": "",
   "license": "ISC"

@@ -11,7 +11,6 @@ import {
     Expression,
     FunctionExpression,
     Identifier,
-    Literal,
     LogicalExpression,
     MemberExpression,
     MetaProperty,
@@ -27,8 +26,8 @@ import {
     UnaryExpression,
     UpdateExpression,
     YieldExpression
-} from "estree";
-import { Export, Function } from "./traversal";
+} from "./@types/estree";
+import { Export, Function } from "./model";
 
 export function isDirectAssignment(left: Pattern): boolean {
     switch (left.type) {
@@ -294,7 +293,7 @@ export function extractFunctionInfo(
     for (let param of params) {
         paramsToString.push(patternToString(param));
     }
-    return new Function(functionName, paramsToString);
+    return new Function(functionName, id ? id.start :  baseFunc.start, paramsToString);
 }
 
 export function extractMethodsFromClassBody(body: ClassBody): Array<string> {

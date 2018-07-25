@@ -4,7 +4,9 @@ import * as process from "process";
 import readdirp from "readdirp";
 
 import * as parser from "./parser";
-import * as traversal from "./traversal";
+import { Traversal } from "./traversal";
+import { Export } from "./model";
+import { TernClient } from "./ternClient";
 
 let debug = false;
 
@@ -17,21 +19,30 @@ if (args.length > 1 && args[1] === "debug") {
 
 const stats = fs.statSync(path);
 
+const ternClient = new TernClient(debug);
+
 if (stats.isDirectory()) {
     try {
-        const definedExports: Array<traversal.Export> = [];
+        const definedExports: Array<Export> = [];
         readdirp(
             {
                 root: path,
                 fileFilter: ["*.ts", "*.js", "*.jsx"],
                 directoryFilter: ["!.git", "!node_modules", "!assets"]
             },
-            fileInfo => {
+            (fileInfo: any) => {
+                if (debug) console.log("now parsing:", fileInfo.fullPath);
+
                 const content = fs.readFileSync(fileInfo.fullPath, "utf-8");
+                ternClient.addFile(fileInfo.name, fileInfo.fullPath);
+                const traverse = new Traversal(ternClient, fileInfo.name, debug);
                 try {
-                    let ast = parser.parseAst(content);
-                    definedExports.push(...traversal.traverseAst(ast, debug));
+                    const ast = parser.parseAst(content);
+                    definedExports.push(...traverse.traverseAst(ast));
                 } catch (e) {
+                    if (debug) {
+                        console.error(e)
+                    }
                     // ignore errors in parsing for now
                 }
             },
@@ -46,7 +57,9 @@ if (stats.isDirectory()) {
     }
 } else {
     const content = fs.readFileSync(path, "utf-8");
+    ternClient.addFile(path, path);
     let ast = parser.parseAst(content);
-    const definedExports = traversal.traverseAst(ast, debug);
+    const traverse = new Traversal(ternClient, path, debug);
+    const definedExports = traverse.traverseAst(ast);
     console.log(JSON.stringify(definedExports));
 }

@@ -7,20 +7,20 @@
     "build": "tsc",
     "exec": "node ./dist/index.js",
     "start": "tsc && node ./dist/index.js",
-    "pack": "tsc && pkg --output analysis ./dist/index.js"
+    "pack": "tsc && pkg --output analysis --options max_old_space_size=8192,stack-size=10000 ./dist/index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@babel/parser": "^7.0.0-beta.51",
     "@babel/traverse": "^7.0.0-beta.51",
+    "tern": "^0.21.0",
     "readdirp": "^2.1.0"
   },
   "devDependencies": {
     "@types/babel-traverse": "^6.25.4",
-    "@types/estree": "0.0.39",
     "@types/node": "^10.5.1",
-    "typescript": "^2.9.2",
-    "pkg": "^4.3.3"
+    "pkg": "^4.3.3",
+    "typescript": "^2.9.2"
   }
 }

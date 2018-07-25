@@ -135,3 +135,26 @@ func TestExportES6(t *testing.T) {
 	}
 	assert.ElementsMatch(t, exports, expectedExports, fmt.Sprint(exports))
 }
+
+func TestExportScoping(t *testing.T) {
+	const analysisPath = "./exports-analysis/analysis"
+
+	logger := zap.NewNop().Sugar()
+	analysis := NewASTAnalysis(logger, analysisPath)
+	result, err := analysis.AnalyzePackage("./testfiles/export/scoping")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exports, err := transformToExports(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedExports := []resultprocessing.Export{
+		{"function", "foo()", "commonjs"},
+		{"const", "bar", "commonjs"},
+	}
+	assert.ElementsMatch(t, exports, expectedExports, fmt.Sprint(exports))
+}
