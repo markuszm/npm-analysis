@@ -11,3 +11,8 @@ cd codeanalysis/exports-analysis
 npm run pack
 cp ./analysis ../../bin/exports-analysis
 
+cd ../../
+
+cd codeanalysis/import-analysis
+npm run pack
+cp ./analysis ../../bin/import-analysis
