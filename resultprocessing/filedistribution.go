@@ -5,11 +5,56 @@ import (
 	"encoding/json"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/util"
+	"io/ioutil"
 	"log"
 	"os"
 	"sort"
 	"strconv"
 )
+
+func WriteCumulativeBinaryGraph(resultPath string, outputPath string) error {
+	file, err := os.Open(resultPath)
+	if err != nil {
+		return err
+	}
+
+	decoder := json.NewDecoder(file)
+
+	binaryFileCount := make([]int, 0)
+
+	for {
+		result := model.PackageResult{}
+		err := decoder.Decode(&result)
+		if err != nil {
+			if err.Error() == "EOF" {
+				log.Print("finished decoding result json")
+				break
+			} else {
+				return err
+			}
+		}
+
+		switch result.Result.(type) {
+		case map[string]interface{}:
+			extensionMap := result.Result.(map[string]interface{})
+			count := extensionMap["binary"]
+			if count == nil {
+				binaryFileCount = append(binaryFileCount, 0)
+			} else {
+				binaryFileCount = append(binaryFileCount, int(count.(float64)))
+			}
+		default:
+			continue
+		}
+	}
+
+	bytes, err := json.Marshal(binaryFileCount)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+}
 
 func MergeFileDistributionResult(resultPath string, filter int) ([]util.Pair, error) {
 	file, err := os.Open(resultPath)

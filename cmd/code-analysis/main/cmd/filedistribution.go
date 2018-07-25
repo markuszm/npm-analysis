@@ -32,6 +32,11 @@ var fileDistributionCmd = &cobra.Command{
 		if err != nil {
 			logger.Fatal(err)
 		}
+
+		err = resultprocessing.WriteCumulativeBinaryGraph(fileDistributionInput, path.Join(fileDistributionOutput, "binaryCount.json"))
+		if err != nil {
+			logger.Fatal(err)
+		}
 	},
 }
 
