@@ -2,7 +2,15 @@ import { default as traverse } from "@babel/traverse";
 // -- Need to use estree types because we use estree AST format instead of babel-parser format --
 import { NodePath } from "babel-traverse";
 import { Import } from "./model";
-import { ImportDeclaration, VariableDeclaration, Node } from "estree";
+import {
+    ImportDeclaration,
+    VariableDeclaration,
+    Node,
+    CallExpression,
+    MemberExpression,
+    Expression, Super
+} from "estree";
+import * as util from "./util";
 
 export class Traversal {
     BUNDLE_TYPE_ES6 = "es6";
@@ -19,18 +27,36 @@ export class Traversal {
             /* detect imports */
             VariableDeclaration(path: NodePath) {
                 const node = (path.node as Node) as VariableDeclaration;
+                if (self.debug) {
+                    console.log({ node });
+                }
                 for (let decl of node.declarations) {
-                    if (decl.init &&
-                        decl.init.type === "CallExpression" &&
-                        decl.init.callee.type === "Identifier" &&
-                        decl.init.callee.name === "require") {
-                        const moduleArg = decl.init.arguments[0];
-                        if(decl.id.type !== "Identifier" || moduleArg.type !== "Literal") {
-                            continue
+                    if (self.debug) {
+                        console.log(decl);
+                    }
+                    const declarator = decl.init;
+                    if (declarator) {
+                        const callExpr = Traversal.getRequireCallExpr(declarator);
+                        if (!callExpr) continue;
+
+                        const moduleArg = callExpr.arguments[0];
+                        if (decl.id.type !== "Identifier" || moduleArg.type !== "Literal") {
+                            continue;
                         }
                         const variableName = decl.id.name;
                         const moduleName = moduleArg.value || "unknown";
-                        definedImports.push(new Import(variableName, moduleName.toString(), self.BUNDLE_TYPE_COMMONJS)) ;
+                        const imported =
+                            declarator.type === "MemberExpression"
+                                ? util.expressionToString(declarator).replace(`require(${moduleName}).`, "")
+                                : undefined;
+                        definedImports.push(
+                            new Import(
+                                variableName,
+                                moduleName.toString(),
+                                self.BUNDLE_TYPE_COMMONJS,
+                                imported
+                            )
+                        );
                         if (self.debug) {
                             console.log("\nModule Declaration: \n", {
                                 Variable: variableName,
@@ -44,25 +70,60 @@ export class Traversal {
                 const node = (path.node as Node) as ImportDeclaration;
 
                 if (self.debug) {
-                    console.log({ImportDeclaration: node});
+                    console.log({ ImportDeclaration: node });
                 }
 
                 const moduleName = node.source.value || "unknown";
 
-                if(node.specifiers.length == 0) {
-                    definedImports.push(new Import(self.IMPORT_SIDE_EFFECT, moduleName.toString(), self.BUNDLE_TYPE_ES6))
+                if (node.specifiers.length == 0) {
+                    definedImports.push(
+                        new Import(
+                            self.IMPORT_SIDE_EFFECT,
+                            moduleName.toString(),
+                            self.BUNDLE_TYPE_ES6
+                        )
+                    );
                 }
 
                 for (let specifier of node.specifiers) {
                     if (specifier.type === "ImportSpecifier") {
-                        definedImports.push(new Import(specifier.local.name, moduleName.toString(), self.BUNDLE_TYPE_ES6, specifier.imported.name)) ;
+                        definedImports.push(
+                            new Import(
+                                specifier.local.name,
+                                moduleName.toString(),
+                                self.BUNDLE_TYPE_ES6,
+                                specifier.imported.name
+                            )
+                        );
                     } else {
-                        definedImports.push(new Import(specifier.local.name, moduleName.toString(), self.BUNDLE_TYPE_ES6)) ;
+                        definedImports.push(
+                            new Import(
+                                specifier.local.name,
+                                moduleName.toString(),
+                                self.BUNDLE_TYPE_ES6
+                            )
+                        );
                     }
                 }
-            },
+            }
         });
 
         return definedImports;
+    }
+
+    private static getRequireCallExpr(decl: Expression | Super): CallExpression | null {
+        switch (decl.type) {
+            case "CallExpression":
+                return decl &&
+                    decl.type === "CallExpression" &&
+                    decl.callee.type === "Identifier" &&
+                    decl.callee.name === "require"
+                    ? decl
+                    : null;
+            case "MemberExpression":
+                return Traversal.getRequireCallExpr(decl.object);
+            default:
+                return null;
+        }
     }
 }

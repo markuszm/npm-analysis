@@ -4,25 +4,42 @@ const util = require("./util");
 
 // register AST visitors that get called when tern parses the files
 function Visitors(callExpressions, requiredModules, debug) {
+    function getRequireCallExpr(decl) {
+        switch (decl.type) {
+            case "CallExpression":
+                return decl &&
+                decl.type === "CallExpression" &&
+                decl.callee.type === "Identifier" &&
+                decl.callee.name === "require"
+                    ? decl
+                    : null;
+            case "MemberExpression":
+                return getRequireCallExpr(decl.object);
+            default:
+                return null;
+        }
+    }
+
     return {
         /* detect imports */
         VariableDeclaration: function(declNode, _) {
             for (let decl of declNode.declarations) {
-                const isRequireInit =
-                    decl.init &&
-                    decl.init.type === "CallExpression" &&
-                    decl.init.callee.name === "require";
-                if (isRequireInit) {
-                    const variableName = decl.id.name;
-                    const moduleName = decl.init.arguments[0].value;
-                    requiredModules[decl.start] = moduleName;
-                    if (debug) {
-                        console.log("\nModule Declaration: \n", {
-                            Variable: variableName,
-                            ModuleName: moduleName
-                        });
+                const declarator = decl.init;
+                if (declarator) {
+                    const callExpr = getRequireCallExpr(declarator)
+                    if (callExpr) {
+                        const variableName = decl.id.name;
+                        const moduleName = callExpr.arguments[0].value;
+                        requiredModules[decl.start] = moduleName;
+                        if (debug) {
+                            console.log("\nModule Declaration: \n", {
+                                Variable: variableName,
+                                ModuleName: moduleName
+                            });
+                        }
                     }
                 }
+
             }
         },
 
@@ -90,5 +107,7 @@ function Visitors(callExpressions, requiredModules, debug) {
         }
     };
 }
+
+
 
 exports.Visitors = Visitors;

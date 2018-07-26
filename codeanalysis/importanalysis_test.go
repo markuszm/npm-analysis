@@ -59,6 +59,18 @@ func TestImportRequire(t *testing.T) {
 			"",
 		},
 		{
+			"OAuth",
+			"oauth",
+			"commonjs",
+			"OAuth",
+		},
+		{
+			"OAuthC",
+			"oauth",
+			"commonjs",
+			"OAuth.a.b.c",
+		},
+		{
 			"someNotInstalledModule",
 			"abc",
 			"commonjs",

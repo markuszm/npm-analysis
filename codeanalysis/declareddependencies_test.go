@@ -22,7 +22,7 @@ func TestRequireDetected(t *testing.T) {
 
 	a := assert.New(t)
 	a.ElementsMatch(dependencyResult.Dependencies, []string{"foo", "bar", "foobar"}, fmt.Sprint(dependencyResult.Dependencies))
-	a.ElementsMatch(dependencyResult.Required, []string{"foo", "bar", "abc"}, fmt.Sprint(dependencyResult.Required))
+	a.ElementsMatch(dependencyResult.Required, []string{"foo", "bar", "abc", "oauth"}, fmt.Sprint(dependencyResult.Required))
 	a.ElementsMatch(dependencyResult.Imported, []string{}, fmt.Sprint(dependencyResult.Imported))
 	a.ElementsMatch(dependencyResult.Used, []string{"foo", "bar"}, fmt.Sprint(dependencyResult.Used))
 }
