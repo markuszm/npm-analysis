@@ -313,28 +313,3 @@ export function extractMethodsFromClassBody(body: ClassBody): Array<string> {
     }
     return methods;
 }
-
-export function extractExportsFromObject(object: ObjectExpression): Array<Export> {
-    const exports: Array<Export> = [];
-    const properties = object.properties;
-    for (let property of properties) {
-        if (property.key.type === "Identifier") {
-            if (
-                property.value.type === "FunctionExpression" ||
-                property.value.type === "ArrowFunctionExpression"
-            ) {
-                const func = extractFunctionInfo(null, property.value);
-                exports.push(
-                    new Export(
-                        "function",
-                        createMethodSignatureString(property.key.name, func.params),
-                        "commonjs"
-                    )
-                );
-                continue;
-            }
-            exports.push(new Export("member", property.key.name, "commonjs"));
-        }
-    }
-    return exports;
-}

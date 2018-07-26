@@ -48,6 +48,9 @@ func (f *FileNameCollector) GetPackageNames() ([]model.PackageVersionPair, error
 
 	lines := strings.Split(string(bytes), "\n")
 	for _, l := range lines {
+		if l == "" {
+			continue
+		}
 		pair := strings.Split(l, ",")
 		if len(pair) != 2 {
 			return packages, errors.Errorf("cannot read file - wrong format on pair %v", pair)

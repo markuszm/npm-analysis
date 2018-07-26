@@ -1,5 +1,11 @@
 export class Export {
-    constructor(public type: string, public id: string, public bundleType: string) {}
+    constructor(
+        public type: string,
+        public id: string,
+        public bundleType: string,
+        public file: string,
+        public isDefault: boolean
+    ) {}
 }
 
 export class Function {

@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as path from "path"
 import * as process from "process";
 
 import readdirp from "readdirp";
@@ -12,12 +13,12 @@ let debug = false;
 
 // parse command arguments
 const args: Array<string> = process.argv.slice(2);
-const path = args[0];
+const filePath = args[0];
 if (args.length > 1 && args[1] === "debug") {
     debug = true;
 }
 
-const stats = fs.statSync(path);
+const stats = fs.statSync(filePath);
 
 const ternClient = new TernClient(debug);
 
@@ -26,7 +27,7 @@ if (stats.isDirectory()) {
         const definedExports: Array<Export> = [];
         readdirp(
             {
-                root: path,
+                root: filePath,
                 fileFilter: ["*.ts", "*.js", "*.jsx"],
                 directoryFilter: ["!.git", "!node_modules", "!assets"]
             },
@@ -56,10 +57,10 @@ if (stats.isDirectory()) {
         console.error("could not find any files");
     }
 } else {
-    const content = fs.readFileSync(path, "utf-8");
-    ternClient.addFile(path, path);
+    const content = fs.readFileSync(filePath, "utf-8");
+    ternClient.addFile(filePath, filePath);
     let ast = parser.parseAst(content);
-    const traverse = new Traversal(ternClient, path, debug);
+    const traverse = new Traversal(ternClient, filePath, debug);
     const definedExports = traverse.traverseAst(ast);
     console.log(JSON.stringify(definedExports));
 }
