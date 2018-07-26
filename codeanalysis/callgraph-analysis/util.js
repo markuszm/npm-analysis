@@ -130,7 +130,9 @@ function expressionToString(expression) {
                 )}`;
             }
         case "Literal":
-            return expression.value ? expression.value.toString() : "null";
+            return expression.value !== null && expression.value !== undefined
+                ? expression.value.toString()
+                : "null";
         case "Identifier":
             return expression.name;
     }
@@ -153,7 +155,6 @@ function methodExpressionToString(callee, args) {
 }
 
 function patternToString(pattern) {
-
     if (!pattern) {
         return "null";
     }
@@ -191,7 +192,7 @@ function patternToString(pattern) {
             patternString += "..." + patternToString(pattern.argument);
             break;
     }
-    return patternString
+    return patternString;
 }
 
 exports.expressionToString = expressionToString;

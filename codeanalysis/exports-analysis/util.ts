@@ -243,7 +243,9 @@ export function expressionToString(expression: Expression): string {
                 )}`;
             }
         case "Literal":
-            return expression.value ? expression.value.toString() : "null";
+            return expression.value !== null && expression.value !== undefined
+                ? expression.value.toString()
+                : "null";
         case "Identifier":
             return expression.name;
     }
@@ -293,7 +295,7 @@ export function extractFunctionInfo(
     for (let param of params) {
         paramsToString.push(patternToString(param));
     }
-    return new Function(functionName, id ? id.start :  baseFunc.start, paramsToString);
+    return new Function(functionName, id ? id.start : baseFunc.start, paramsToString);
 }
 
 export function extractMethodsFromClassBody(body: ClassBody): Array<string> {

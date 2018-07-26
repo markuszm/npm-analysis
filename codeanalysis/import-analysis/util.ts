@@ -72,7 +72,7 @@ export function expressionToString(expression: Expression): string {
                     property.value.type === "RestElement"
                         ? patternToString(property.value)
                         : expressionToString(property.value)
-                    }`;
+                }`;
                 if (i < expression.properties.length - 1) {
                     propertiesString += ",";
                 }
@@ -112,17 +112,17 @@ export function expressionToString(expression: Expression): string {
         case "BinaryExpression":
             return `${expressionToString(expression.left)} ${
                 expression.operator
-                } ${expressionToString(expression.right)}`;
+            } ${expressionToString(expression.right)}`;
         case "AssignmentExpression":
             return `${
                 expression.left.type === "MemberExpression"
                     ? expressionToString(expression.left)
                     : patternToString(expression.left)
-                } ${expression.operator} ${expressionToString(expression.right)}`;
+            } ${expression.operator} ${expressionToString(expression.right)}`;
         case "LogicalExpression":
             return `${expressionToString(expression.left)} ${
                 expression.operator
-                } ${expressionToString(expression.right)}`;
+            } ${expressionToString(expression.right)}`;
         case "ConditionalExpression":
             return `${expressionToString(expression.test)} ? \
              ${expressionToString(expression.consequent)} \ 
@@ -173,7 +173,9 @@ export function expressionToString(expression: Expression): string {
                 )}`;
             }
         case "Literal":
-            return expression.value ? expression.value.toString() : "null";
+            return expression.value !== null && expression.value !== undefined
+                ? expression.value.toString()
+                : "null";
         case "Identifier":
             return expression.name;
     }
