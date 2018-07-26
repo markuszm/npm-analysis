@@ -73,8 +73,6 @@ func TestCallgraphModule(t *testing.T) {
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"foo"}},
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"bar"}},
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"foobar"}},
-		{"calls.js", "calls.js", "this", "", "", "require", []string{"oauth"}},
-		{"calls.js", "calls.js", "OAuth", "oauth", "calls.js", "someMethod", []string{}},
 		{"calls.js", "calls.js", "f", "foo", "calls.js", "a", []string{}},
 		{"calls.js", "calls.js", "bar", "bar", "calls.js", "b", []string{"a"}},
 		{"calls.js", "calls.js", "foobar", "foobar", "calls.js", "func", []string{"a", "b"}},
