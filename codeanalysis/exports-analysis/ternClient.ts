@@ -28,6 +28,16 @@ export class TernClient {
         }
     }
 
+    public delFile(fileName: string) {
+        try {
+            this.ternServer.delFile(fileName);
+        } catch (e) {
+            if(this.debug) {
+                console.error(e)
+            }
+        }
+    }
+
     public requestDefinition(definitionQuery: DefinitionQuery, cb: (err:string, data: any) => void) {
         const queryFuncDef = {
             query: {

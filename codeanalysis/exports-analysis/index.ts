@@ -46,6 +46,7 @@ if (stats.isDirectory()) {
                     }
                     // ignore errors in parsing for now
                 }
+                ternClient.delFile(fileInfo.name)
             },
             // after file processing
             () => {
