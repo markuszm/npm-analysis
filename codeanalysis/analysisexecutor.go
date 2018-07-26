@@ -13,7 +13,7 @@ type AnalysisExecutor interface {
 }
 
 func ExecuteCommand(path string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, path, args...)
