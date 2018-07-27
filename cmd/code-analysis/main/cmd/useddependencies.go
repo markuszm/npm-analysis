@@ -17,12 +17,16 @@ var usedDependenciesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		initializeLogger()
 
-		dependenciesRatios, err := resultprocessing.CalculateUsedDependenciesRatio(usedDependenciesInput)
+		dependenciesRatios, dependencyRatiosWithoutZeroDependencies, err := resultprocessing.CalculateUsedDependenciesRatio(usedDependenciesInput)
 		if err != nil {
 			logger.Fatal(err)
 		}
 
 		err = resultprocessing.WriteUsedDependencyRatios(dependenciesRatios, path.Join(usedDependenciesOutput, "ratios.csv"))
+		if err != nil {
+			logger.Fatal(err)
+		}
+		err = resultprocessing.WriteUsedDependencyRatios(dependencyRatiosWithoutZeroDependencies, path.Join(usedDependenciesOutput, "ratiosWithoutZeroDeps.csv"))
 		if err != nil {
 			logger.Fatal(err)
 		}

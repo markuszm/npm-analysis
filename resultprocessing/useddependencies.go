@@ -6,18 +6,20 @@ import (
 	"github.com/markuszm/npm-analysis/model"
 	"log"
 	"os"
+	"path"
 	"strconv"
 )
 
-func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, error) {
+func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, map[string]float64, error) {
 	file, err := os.Open(resultPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	decoder := json.NewDecoder(file)
 
 	usedDependencyRatios := make(map[string]float64, 0)
+	usedDependencyRatiosWithoutZeroDependencies := make(map[string]float64, 0)
 
 	for {
 		result := model.PackageResult{}
@@ -27,7 +29,7 @@ func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, erro
 				log.Print("finished decoding result json")
 				break
 			} else {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 
@@ -39,8 +41,11 @@ func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, erro
 			ratio := 0.0
 			if dependencyCount > 0 {
 				ratio = float64(usedDependenciesCount) / float64(dependencyCount)
+				usedDependencyRatios[result.Name] = ratio
+				usedDependencyRatiosWithoutZeroDependencies[result.Name] = ratio
+			} else {
+				usedDependencyRatios[result.Name] = ratio
 			}
-			usedDependencyRatios[result.Name] = ratio
 
 		default:
 			continue
@@ -48,10 +53,15 @@ func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, erro
 
 	}
 
-	return usedDependencyRatios, nil
+	return usedDependencyRatios, usedDependencyRatiosWithoutZeroDependencies, nil
 }
 
 func WriteUsedDependencyRatios(dependencyRatios map[string]float64, filePath string) error {
+	err := os.MkdirAll(path.Dir(filePath), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err

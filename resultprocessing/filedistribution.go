@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"sort"
 	"strconv"
 )
@@ -105,6 +106,11 @@ func MergeFileDistributionResult(resultPath string, filter int) ([]util.Pair, er
 }
 
 func WriteFiledistributionResult(result []util.Pair, filePath string) error {
+	err := os.MkdirAll(path.Dir(filePath), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err
@@ -556,6 +562,11 @@ func WritePercentagesPerPackageForExtension(result []PercentDistribution, filePa
 			distributionMap[ext][percentageIndex]++
 
 		}
+	}
+
+	err := os.MkdirAll(path.Dir(filePath), os.ModePerm)
+	if err != nil {
+		return err
 	}
 
 	file, err := os.Create(filePath)
