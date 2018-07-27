@@ -2,18 +2,23 @@
   "name": "callgraph-analysis",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "dependencies": {
     "acorn": "^5.7.1",
     "readdirp": "^2.1.0",
     "tern": "^0.21.0"
   },
   "devDependencies": {
-    "@types/estree": "^0.0.39",
-    "pkg": "^4.3.3"
+    "@types/node": "^10.5.3",
+    "@types/acorn": "^4.0.3",
+    "pkg": "^4.3.3",
+    "typescript": "^2.9.2"
   },
   "scripts": {
-    "pack": "pkg --output analysis --options max_old_space_size=8192,stack-size=10000 ./index.js"
+    "build": "tsc",
+    "exec": "node ./dist/index.js",
+    "start": "tsc && node ./dist/index.js",
+    "pack": "tsc && pkg --output analysis --options max_old_space_size=8192,stack-size=10000 ./dist/index.js"
   },
   "author": "",
   "license": "ISC"

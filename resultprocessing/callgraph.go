@@ -7,5 +7,5 @@ type Call struct {
 	Module       string   `json:"module"`
 	ToFile       string   `json:"toFile"`
 	ToFunction   string   `json:"toFunction"`
-	Arguments    []string `json:"arguments"`
+	Arguments    []string `json:"args"`
 }
