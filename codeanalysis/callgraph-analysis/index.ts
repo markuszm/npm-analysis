@@ -51,6 +51,9 @@ if (stats.isDirectory()) {
                     const callExpression = callExpressions[i];
                     ternClient.requestCallExpression(callExpression, requiredModules, calls);
                 }
+
+                if (debug) console.log({requiredModules});
+
                 console.log(JSON.stringify(calls));
             }
         );
@@ -67,5 +70,8 @@ if (stats.isDirectory()) {
         const callExpression = callExpressions[i];
         ternClient.requestCallExpression(callExpression, requiredModules, calls);
     }
+
+    if (debug) console.log({requiredModules});
+
     console.log(JSON.stringify(calls));
 }

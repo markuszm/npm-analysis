@@ -46,33 +46,55 @@ export class TernClient {
             }
         };
 
-        this.ternServer.request(queryFuncDef, (err: any, data: any) => {
-            if (!data) return;
+        const queryRefs = {
+            query: {
+                type: "refs",
+                end: callExpression.start,
+                file: callExpression.file
+            }
+        };
+
+        this.ternServer.request(queryFuncDef, (_: any, dataFunc: any) => {
+            if (!dataFunc) return;
 
             if (this.debug) {
                 console.log(
-                    "\nCall at: %o \n .. goes to function defined at: \n %o \n Context: %s",
+                    "\nCall at: %o \n .. goes to function defined at: \n %o",
                     callExpression,
-                    data,
-                    data.context
+                    dataFunc
                 );
             }
 
-            const moduleName: string =
-                requiredModules[data.start] ||
-                requiredModules[callExpression.receiver] ||
-                requiredModules[callExpression.name];
-            calls.push(
-                new Call(
-                    callExpression.file,
-                    callExpression.outerMethod,
-                    callExpression.receiver,
-                    moduleName,
-                    data.origin,
-                    callExpression.name,
-                    callExpression.args
-                )
-            );
+            this.ternServer.request(queryRefs, (_: any, dataRefs: any) => {
+                if (this.debug) {
+                    console.log("\n All Refs of %o \n %o", callExpression, dataRefs);
+                }
+
+                let moduleName = "";
+
+                if(dataRefs) {
+                    for (let ref of dataRefs.refs) {
+                        moduleName = requiredModules[ref.start] || moduleName;
+                    }
+                }
+
+                moduleName =
+                    moduleName ||
+                    requiredModules[dataFunc.start] ||
+                    requiredModules[callExpression.receiver] ||
+                    requiredModules[callExpression.name];
+                calls.push(
+                    new Call(
+                        callExpression.file,
+                        callExpression.outerMethod,
+                        callExpression.receiver,
+                        moduleName,
+                        dataFunc.origin,
+                        callExpression.name,
+                        callExpression.args
+                    )
+                );
+            });
         });
     }
 }

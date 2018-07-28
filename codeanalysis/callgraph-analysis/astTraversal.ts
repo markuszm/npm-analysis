@@ -3,14 +3,18 @@ import * as model from "./model";
 
 import * as util from "./util";
 import {
+    AssignmentExpression,
     CallExpression,
     Expression,
     FunctionDeclaration,
     ImportDeclaration,
+    NewExpression,
     Node,
     Super,
-    VariableDeclaration
+    VariableDeclaration,
+    VariableDeclarator
 } from "./@types/estree";
+import { patternToString } from "./util";
 
 // register AST visitors that get called when tern parses the files
 export function Visitors(
@@ -34,9 +38,11 @@ export function Visitors(
         }
     }
 
+    var crossReferences: any = {};
+
     return {
         /* detect imports */
-        VariableDeclaration: function(declNode: VariableDeclaration, _: any) {
+        VariableDeclaration: function(declNode: VariableDeclaration, _: Array<Node>) {
             for (let decl of declNode.declarations) {
                 const declarator = decl.init;
                 if (declarator) {
@@ -46,6 +52,7 @@ export function Visitors(
                         const firstArg = callExpr.arguments[0];
                         const moduleName = firstArg.type === "Literal" ? firstArg.value : "";
                         requiredModules[decl.start] = moduleName;
+                        crossReferences[patternToString(decl.id)] = decl.start;
                         if (debug) {
                             console.log("\nModule Declaration: \n", {
                                 Variable: variableName,
@@ -57,7 +64,7 @@ export function Visitors(
             }
         },
 
-        ImportDeclaration: function(importDecl: ImportDeclaration, _: any) {
+        ImportDeclaration: function(importDecl: ImportDeclaration, _: Array<Node>) {
             if (debug) {
                 console.log({ ImportDeclaration: importDecl });
             }
@@ -69,7 +76,7 @@ export function Visitors(
             }
         },
 
-        FunctionDeclaration: function(functionDecl: FunctionDeclaration, _: any) {
+        FunctionDeclaration: function(functionDecl: FunctionDeclaration, _: Array<Node>) {
             if (debug && functionDecl.id) {
                 console.log("\nFunction Declaration: \n", {
                     FileName: functionDecl.sourceFile.name,
@@ -113,7 +120,7 @@ export function Visitors(
                     functionName = "super";
                     break;
                 default:
-                    receiver = "this";
+                    receiver = "";
                     functionName = util.expressionToString(callee);
             }
 
@@ -133,6 +140,81 @@ export function Visitors(
                     callNode.start,
                     callNode.end,
                     functionName,
+                    outerMethodName,
+                    receiver,
+                    args
+                )
+            );
+        },
+
+        NewExpression: function(newExpr: NewExpression, ancestors: Array<Node>) {
+            if (debug) console.log("\nNewExpression: \n", { newExpr, ancestors });
+            const outerMethod: FunctionDeclaration | undefined = ancestors
+                .filter(node => node.type === "FunctionDeclaration")
+                .pop() as FunctionDeclaration;
+            let outerMethodName = newExpr.sourceFile.name;
+            if (outerMethod) {
+                outerMethodName = outerMethod.id ? outerMethod.id.name : "default";
+            }
+
+            let functionName: string;
+            let receiver: string = "";
+
+            const callee = newExpr.callee;
+
+            switch (callee.type) {
+                case "Identifier":
+                    functionName = callee.name;
+                    break;
+                case "MemberExpression":
+                    functionName = util.expressionToString(callee.property);
+                    break;
+                case "Super":
+                    functionName = "super";
+                    break;
+                default:
+                    functionName = util.expressionToString(callee);
+            }
+
+            const args = [];
+
+            for (let argument of newExpr.arguments) {
+                const argumentAsString =
+                    argument.type === "SpreadElement"
+                        ? "..." + util.expressionToString(argument.argument)
+                        : util.expressionToString(argument);
+                args.push(argumentAsString);
+            }
+
+            // when functionName is module then add left side of new expression to requiredModules
+            if (crossReferences[functionName]) {
+                const outerDeclarator: VariableDeclarator = ancestors
+                    .filter(node => node.type === "VariableDeclarator")
+                    .pop() as VariableDeclarator;
+
+                const outerAssignment: AssignmentExpression = ancestors
+                    .filter(node => node.type === "AssignmentExpression")
+                    .pop() as AssignmentExpression;
+
+                if (outerDeclarator) {
+                    receiver = patternToString(outerDeclarator.id);
+                    requiredModules[outerDeclarator.start] =
+                        requiredModules[crossReferences[functionName]];
+                }
+
+                if (outerAssignment) {
+                    receiver = patternToString(outerAssignment.left);
+                    requiredModules[outerAssignment.start] =
+                        requiredModules[crossReferences[functionName]];
+                }
+            }
+
+            callExpressions.push(
+                new model.CallExpression(
+                    newExpr.sourceFile.name,
+                    newExpr.callee.start,
+                    newExpr.callee.end,
+                    "new " + functionName,
                     outerMethodName,
                     receiver,
                     args

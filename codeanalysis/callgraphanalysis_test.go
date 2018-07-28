@@ -30,20 +30,7 @@ func transformToCalls(result interface{}) ([]resultprocessing.Call, error) {
 }
 
 func TestCallgraphLocal(t *testing.T) {
-	const analysisPath = "./callgraph-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/callgraph/local")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	calls, err := transformToCalls(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	calls := getCallsFromPackagePath("./testfiles/callgraph/local", t)
 
 	expectedCalls := []resultprocessing.Call{
 		{"call.js", "call.js", "this", "", "fun.js", "myfun", []string{"2"}},
@@ -54,20 +41,7 @@ func TestCallgraphLocal(t *testing.T) {
 }
 
 func TestCallgraphModule(t *testing.T) {
-	const analysisPath = "./callgraph-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/callgraph/modules")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	calls, err := transformToCalls(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	calls := getCallsFromPackagePath("./testfiles/callgraph/modules", t)
 
 	expectedCalls := []resultprocessing.Call{
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"foo"}},
@@ -82,20 +56,7 @@ func TestCallgraphModule(t *testing.T) {
 }
 
 func TestCallgraphES6Module(t *testing.T) {
-	const analysisPath = "./callgraph-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/callgraph/es6modules")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	calls, err := transformToCalls(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	calls := getCallsFromPackagePath("./testfiles/callgraph/es6modules", t)
 
 	expectedCalls := []resultprocessing.Call{
 		{"call.js", "foo", "_", "underscore", "call.js", "map", []string{"aList", "(i) => {...}"}},
@@ -107,20 +68,7 @@ func TestCallgraphES6Module(t *testing.T) {
 }
 
 func TestCallgraphMix(t *testing.T) {
-	const analysisPath = "./callgraph-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/callgraph/mix")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	calls, err := transformToCalls(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	calls := getCallsFromPackagePath("./testfiles/callgraph/mix", t)
 
 	expectedCalls := []resultprocessing.Call{
 		{FromFile: "anotherFile.js", FromFunction: "aFnInAnotherFile", Receiver: "console", ToFunction: "log", Arguments: []string{"cool"}},
@@ -136,20 +84,7 @@ func TestCallgraphMix(t *testing.T) {
 }
 
 func TestCallgraphScoping(t *testing.T) {
-	const analysisPath = "./callgraph-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/callgraph/scoping")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	calls, err := transformToCalls(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	calls := getCallsFromPackagePath("./testfiles/callgraph/scoping", t)
 
 	expectedCalls := []resultprocessing.Call{
 		{"calls.js", "calls.js", "this", "", "", "require", []string{"foo"}},
@@ -165,4 +100,101 @@ func TestCallgraphScoping(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
+}
+
+func TestCallgraphEdgecases(t *testing.T) {
+	calls := getCallsFromPackagePath("./testfiles/callgraph/edgecases", t)
+
+	expectedCalls := []resultprocessing.Call{
+		{
+			"methodChaining.js",
+			"methodChaining.js",
+			"this",
+			"",
+			"methodChaining.js",
+			"a",
+			[]string{},
+		},
+		{
+			"methodChaining.js",
+			"methodChaining.js",
+			"a",
+			"",
+			"methodChaining.js",
+			"b",
+			[]string{},
+		},
+		{
+			"methodChaining.js",
+			"methodChaining.js",
+			"a.b",
+			"",
+			"methodChaining.js",
+			"c",
+			[]string{},
+		},
+		{
+			"moduleClass.js",
+			"moduleClass.js",
+			"this",
+			"",
+			"",
+			"require",
+			[]string{"oauth"},
+		},
+		{
+			"moduleClass.js",
+			"moduleClass.js",
+			"oauth",
+			"oauth",
+			"moduleClass.js",
+			"new OAuth",
+			[]string{"a"},
+		},
+		{
+			"moduleClass.js",
+			"moduleClass.js",
+			"oauth",
+			"oauth",
+			"moduleClass.js",
+			"someMethod",
+			[]string{},
+		},
+		{
+			"moduleClass.js",
+			"moduleClass.js",
+			"foo",
+			"oauth",
+			"moduleClass.js",
+			"new OAuth",
+			[]string{"b"},
+		},
+		{
+			"moduleClass.js",
+			"moduleClass.js",
+			"foo",
+			"oauth",
+			"moduleClass.js",
+			"someMethod",
+			[]string{},
+		},
+	}
+
+	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
+}
+
+func getCallsFromPackagePath(packagePath string, t *testing.T) []resultprocessing.Call {
+	const analysisPath = "./callgraph-analysis/analysis"
+	logger := zap.NewNop().Sugar()
+	analysis := NewASTAnalysis(logger, analysisPath)
+	result, err := analysis.AnalyzePackage(packagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls, err := transformToCalls(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return calls
 }
