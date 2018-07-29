@@ -33,9 +33,9 @@ func TestCallgraphLocal(t *testing.T) {
 	calls := getCallsFromPackagePath("./testfiles/callgraph/local", t)
 
 	expectedCalls := []resultprocessing.Call{
-		{"call.js", "call.js", "this", "", "fun.js", "myfun", []string{"2"}},
-		{"fun.js", "myfun", "this", "", "fun.js", "otherfun", []string{"x"}},
-		{"fun.js", "otherfun", "this", "", "fun.js", "anotherfun", []string{"y"}},
+		{FromFile: "call.js", FromFunction: "call.js", Receiver: "this", Module: []string{}, ToFile: "fun.js", ToFunction: "myfun", Arguments: []string{"2"}},
+		{FromFile: "fun.js", FromFunction: "myfun", Receiver: "this", Module: []string{}, ToFile: "fun.js", ToFunction: "otherfun", Arguments: []string{"x"}},
+		{FromFile: "fun.js", FromFunction: "otherfun", Receiver: "this", Module: []string{}, ToFile: "fun.js", ToFunction: "anotherfun", Arguments: []string{"y"}},
 	}
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
 }
@@ -44,12 +44,12 @@ func TestCallgraphModule(t *testing.T) {
 	calls := getCallsFromPackagePath("./testfiles/callgraph/modules", t)
 
 	expectedCalls := []resultprocessing.Call{
-		{"calls.js", "calls.js", "this", "", "", "require", []string{"foo"}},
-		{"calls.js", "calls.js", "this", "", "", "require", []string{"bar"}},
-		{"calls.js", "calls.js", "this", "", "", "require", []string{"foobar"}},
-		{"calls.js", "calls.js", "f", "foo", "calls.js", "a", []string{}},
-		{"calls.js", "calls.js", "bar", "bar", "calls.js", "b", []string{"a"}},
-		{"calls.js", "calls.js", "foobar", "foobar", "calls.js", "func", []string{"a", "b"}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"foo"}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"bar"}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"foobar"}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "f", Module: []string{"foo"}, ToFile: "calls.js", ToFunction: "a", Arguments: []string{}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "bar", Module: []string{"bar"}, ToFile: "calls.js", ToFunction: "b", Arguments: []string{"a"}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "foobar", Module: []string{"foobar"}, ToFile: "calls.js", ToFunction: "func", Arguments: []string{"a", "b"}},
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
@@ -59,9 +59,9 @@ func TestCallgraphES6Module(t *testing.T) {
 	calls := getCallsFromPackagePath("./testfiles/callgraph/es6modules", t)
 
 	expectedCalls := []resultprocessing.Call{
-		{"call.js", "foo", "_", "underscore", "call.js", "map", []string{"aList", "(i) => {...}"}},
-		{"call.js", "foo", "bar", "foobar", "call.js", "add", []string{"i"}},
-		{"call.js", "foo", "this", "b", "call.js", "a", []string{"mappedList"}},
+		{FromFile: "call.js", FromFunction: "foo", Receiver: "_", Module: []string{"underscore"}, ToFile: "call.js", ToFunction: "map", Arguments: []string{"aList", "(i) => {...}"}},
+		{FromFile: "call.js", FromFunction: "foo", Receiver: "bar", Module: []string{"foobar"}, ToFile: "call.js", ToFunction: "add", Arguments: []string{"i"}},
+		{FromFile: "call.js", FromFunction: "foo", Receiver: "this", Module: []string{"b"}, ToFile: "call.js", ToFunction: "a", Arguments: []string{"mappedList"}},
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
@@ -71,13 +71,13 @@ func TestCallgraphMix(t *testing.T) {
 	calls := getCallsFromPackagePath("./testfiles/callgraph/mix", t)
 
 	expectedCalls := []resultprocessing.Call{
-		{FromFile: "anotherFile.js", FromFunction: "aFnInAnotherFile", Receiver: "console", ToFunction: "log", Arguments: []string{"cool"}},
-		{FromFile: "file.js", FromFunction: "file.js", Receiver: "this", ToFunction: "require", Arguments: []string{"./anotherFile"}},
-		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "_", ToFunction: "curry", Arguments: []string{"libVar.referencedFn"}},
-		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "async", ToFunction: "series", Arguments: []string{"[_.curry(libVar.referencedFn)]"}},
-		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "libVar", Module: "./anotherFile", ToFile: "file.js", ToFunction: "aFnInAnotherFile", Arguments: []string{"n + 1"}},
-		{FromFile: "file.js", FromFunction: "file.js", Receiver: "libVar", Module: "./anotherFile", ToFile: "file.js", ToFunction: "aFnInAnotherFile", Arguments: []string{"2"}},
-		{FromFile: "file.js", FromFunction: "file.js", Receiver: "this", ToFile: "file.js", ToFunction: "aFunction", Arguments: []string{}},
+		{FromFile: "anotherFile.js", FromFunction: "aFnInAnotherFile", Receiver: "console", Module: []string{}, ToFunction: "log", Arguments: []string{"cool"}},
+		{FromFile: "file.js", FromFunction: "file.js", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"./anotherFile"}},
+		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "_", Module: []string{}, ToFunction: "curry", Arguments: []string{"libVar.referencedFn"}},
+		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "async", Module: []string{}, ToFunction: "series", Arguments: []string{"[_.curry(libVar.referencedFn)]"}},
+		{FromFile: "file.js", FromFunction: "aFunction", Receiver: "libVar", Module: []string{"./anotherFile"}, ToFile: "file.js", ToFunction: "aFnInAnotherFile", Arguments: []string{"n + 1"}},
+		{FromFile: "file.js", FromFunction: "file.js", Receiver: "libVar", Module: []string{"./anotherFile"}, ToFile: "file.js", ToFunction: "aFnInAnotherFile", Arguments: []string{"2"}},
+		{FromFile: "file.js", FromFunction: "file.js", Receiver: "this", Module: []string{}, ToFile: "file.js", ToFunction: "aFunction", Arguments: []string{}},
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
@@ -87,16 +87,16 @@ func TestCallgraphScoping(t *testing.T) {
 	calls := getCallsFromPackagePath("./testfiles/callgraph/scoping", t)
 
 	expectedCalls := []resultprocessing.Call{
-		{"calls.js", "calls.js", "this", "", "", "require", []string{"foo"}},
-		{"calls.js", "calls.js", "this", "", "", "require", []string{"bar"}},
-		{"calls.js", "calls.js", "this", "", "", "require", []string{"foobar"}},
-		{"calls.js", "calls.js", "this", "", "", "require", []string{"foobar"}},
-		{"calls.js", "f", "this", "", "", "require", []string{"foo"}},
-		{"calls.js", "f", "this", "", "", "require", []string{"bar"}},
-		{"calls.js", "g", "foo", "foobar", "calls.js", "someMethod", []string{}},
-		{"calls.js", "g", "foobar", "foobar", "calls.js", "otherMethod", []string{}},
-		{"calls.js", "h", "bar", "", "calls.js", "someMethod", []string{}},
-		{"calls.js", "h", "fooVar", "", "calls.js", "someMethod", []string{}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"foo"}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"bar"}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"foobar"}},
+		{FromFile: "calls.js", FromFunction: "calls.js", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"foobar"}},
+		{FromFile: "calls.js", FromFunction: "f", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"foo"}},
+		{FromFile: "calls.js", FromFunction: "f", Receiver: "this", Module: []string{}, ToFunction: "require", Arguments: []string{"bar"}},
+		{FromFile: "calls.js", FromFunction: "g", Receiver: "foo", Module: []string{"foobar", "foo", "bar"}, ToFile: "calls.js", ToFunction: "someMethod", Arguments: []string{}},
+		{FromFile: "calls.js", FromFunction: "g", Receiver: "foobar", Module: []string{"foobar"}, ToFile: "calls.js", ToFunction: "otherMethod", Arguments: []string{}},
+		{FromFile: "calls.js", FromFunction: "h", Receiver: "bar", Module: []string{"foo", "bar"}, ToFile: "calls.js", ToFunction: "someMethod", Arguments: []string{}},
+		{FromFile: "calls.js", FromFunction: "h", Receiver: "fooVar", Module: []string{"foo"}, ToFile: "calls.js", ToFunction: "someMethod", Arguments: []string{}},
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
@@ -107,76 +107,84 @@ func TestCallgraphEdgecases(t *testing.T) {
 
 	expectedCalls := []resultprocessing.Call{
 		{
-			"methodChaining.js",
-			"methodChaining.js",
-			"this",
-			"",
-			"methodChaining.js",
-			"a",
-			[]string{},
+			FromFile:     "methodChaining.js",
+			FromFunction: "methodChaining.js",
+			Receiver:     "this",
+			Module:       []string{},
+			ToFile:       "methodChaining.js",
+			ToFunction:   "a",
+			Arguments:    []string{},
 		},
 		{
-			"methodChaining.js",
-			"methodChaining.js",
-			"a",
-			"",
-			"methodChaining.js",
-			"b",
-			[]string{},
+			FromFile:     "methodChaining.js",
+			FromFunction: "methodChaining.js",
+			Receiver:     "a",
+			Module:       []string{},
+			ToFile:       "methodChaining.js",
+			ToFunction:   "b",
+			Arguments:    []string{},
 		},
 		{
-			"methodChaining.js",
-			"methodChaining.js",
-			"a.b",
-			"",
-			"methodChaining.js",
-			"c",
-			[]string{},
+			FromFile:     "methodChaining.js",
+			FromFunction: "methodChaining.js",
+			Receiver:     "a.b",
+			Module:       []string{},
+			ToFile:       "methodChaining.js",
+			ToFunction:   "c",
+			Arguments:    []string{},
 		},
 		{
-			"moduleClass.js",
-			"moduleClass.js",
-			"this",
-			"",
-			"",
-			"require",
-			[]string{"oauth"},
+			FromFile:     "moduleClass.js",
+			FromFunction: "moduleClass.js",
+			Receiver:     "this",
+			Module:       []string{},
+			ToFunction:   "require",
+			Arguments:    []string{"oauth"},
 		},
 		{
-			"moduleClass.js",
-			"moduleClass.js",
-			"oauth",
-			"oauth",
-			"moduleClass.js",
-			"new OAuth",
-			[]string{"a"},
+			FromFile:     "moduleClass.js",
+			FromFunction: "moduleClass.js",
+			Receiver:     "oauth",
+			Module:       []string{"oauth"},
+			ToFile:       "moduleClass.js",
+			ToFunction:   "new OAuth",
+			Arguments:    []string{"a"},
 		},
 		{
-			"moduleClass.js",
-			"moduleClass.js",
-			"oauth",
-			"oauth",
-			"moduleClass.js",
-			"someMethod",
-			[]string{},
+			FromFile:     "moduleClass.js",
+			FromFunction: "moduleClass.js",
+			Receiver:     "oauth",
+			Module:       []string{"oauth"},
+			ToFile:       "moduleClass.js",
+			ToFunction:   "someMethod",
+			Arguments:    []string{},
 		},
 		{
-			"moduleClass.js",
-			"moduleClass.js",
-			"foo",
-			"oauth",
-			"moduleClass.js",
-			"new OAuth",
-			[]string{"b"},
+			FromFile:     "moduleClass.js",
+			FromFunction: "moduleClass.js",
+			Receiver:     "foo",
+			Module:       []string{"oauth"},
+			ToFile:       "moduleClass.js",
+			ToFunction:   "new OAuth",
+			Arguments:    []string{"b"},
 		},
 		{
-			"moduleClass.js",
-			"moduleClass.js",
-			"foo",
-			"oauth",
-			"moduleClass.js",
-			"someMethod",
-			[]string{},
+			FromFile:     "moduleClass.js",
+			FromFunction: "moduleClass.js",
+			Receiver:     "this",
+			Module:       []string{},
+			ToFunction:   "require",
+			Arguments:    []string{"auth0"},
+		},
+
+		{
+			FromFile:     "moduleClass.js",
+			FromFunction: "moduleClass.js",
+			Receiver:     "foo",
+			Module:       []string{"oauth", "auth0"},
+			ToFile:       "moduleClass.js",
+			ToFunction:   "someMethod",
+			Arguments:    []string{},
 		},
 	}
 

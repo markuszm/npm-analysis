@@ -17,7 +17,7 @@ export class Call {
         public fromFile: string,
         public fromFunction: string,
         public receiver: string,
-        public module: string,
+        public modules: Array<string>,
         public toFile: string,
         public toFunction: string,
         public args: Array<string>

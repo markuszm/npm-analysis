@@ -70,25 +70,26 @@ export class TernClient {
                     console.log("\n All Refs of %o \n %o", callExpression, dataRefs);
                 }
 
-                let moduleName = "";
+                const modules: Set<string> = new Set<string>();
 
-                if(dataRefs) {
+                if (dataRefs) {
                     for (let ref of dataRefs.refs) {
-                        moduleName = requiredModules[ref.start] || moduleName;
+                        pushNotUndefined(modules, requiredModules[ref.start])
                     }
                 }
 
-                moduleName =
-                    moduleName ||
-                    requiredModules[dataFunc.start] ||
-                    requiredModules[callExpression.receiver] ||
-                    requiredModules[callExpression.name];
+                pushNotUndefined(
+                    modules,
+                    requiredModules[dataFunc.start],
+                    requiredModules[callExpression.receiver],
+                    requiredModules[callExpression.name]
+                );
                 calls.push(
                     new Call(
                         callExpression.file,
                         callExpression.outerMethod,
                         callExpression.receiver,
-                        moduleName,
+                        Array.of(...modules.values()),
                         dataFunc.origin,
                         callExpression.name,
                         callExpression.args
@@ -96,5 +97,13 @@ export class TernClient {
                 );
             });
         });
+    }
+}
+
+function pushNotUndefined<T>(array: Set<T>, ...items: Array<T>) {
+    for (let item of items) {
+        if (item) {
+            array.add(item);
+        }
     }
 }

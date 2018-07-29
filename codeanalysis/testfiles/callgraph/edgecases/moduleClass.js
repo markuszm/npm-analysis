@@ -5,5 +5,10 @@ var foo;
 var oauth = new OAuth("a");
 oauth.someMethod();
 
-foo = new OAuth("b");
+if (oauth) {
+    foo = new OAuth("b");
+} else {
+    foo = require("auth0");
+}
+
 foo.someMethod();

@@ -1,7 +1,7 @@
 // Author: Michael Pradel, Markus Zimmermann
 import * as model from "./model";
 
-import * as util from "./util";
+import { patternToString, expressionToString } from "./util";
 import {
     AssignmentExpression,
     CallExpression,
@@ -14,7 +14,6 @@ import {
     VariableDeclaration,
     VariableDeclarator
 } from "./@types/estree";
-import { patternToString } from "./util";
 
 // register AST visitors that get called when tern parses the files
 export function Visitors(
@@ -48,18 +47,47 @@ export function Visitors(
                 if (declarator) {
                     const callExpr = getRequireCallExpr(declarator);
                     if (callExpr) {
-                        const variableName = util.patternToString(decl.id);
+                        const variableName = patternToString(decl.id);
                         const firstArg = callExpr.arguments[0];
                         const moduleName = firstArg.type === "Literal" ? firstArg.value : "";
                         requiredModules[decl.start] = moduleName;
-                        crossReferences[patternToString(decl.id)] = decl.start;
+                        crossReferences[variableName] = decl.start;
                         if (debug) {
                             console.log("\nModule Declaration: \n", {
                                 Variable: variableName,
                                 ModuleName: moduleName
                             });
                         }
+                    } else {
+                        const rightSideExpr = expressionToString(declarator);
+                        if (crossReferences[rightSideExpr]) {
+                            requiredModules[decl.start] =
+                                requiredModules[crossReferences[rightSideExpr]];
+                        }
                     }
+                }
+            }
+        },
+
+        AssignmentExpression: function(assignmentExpr: AssignmentExpression, _: Array<Node>) {
+            const callExpr = getRequireCallExpr(assignmentExpr.right);
+            if (callExpr) {
+                const variableName = patternToString(assignmentExpr.left);
+                const firstArg = callExpr.arguments[0];
+                const moduleName = firstArg.type === "Literal" ? firstArg.value : "";
+                requiredModules[assignmentExpr.left.start] = moduleName;
+                crossReferences[variableName] = assignmentExpr.left.start;
+                if (debug) {
+                    console.log("\nModule Declaration: \n", {
+                        Variable: variableName,
+                        ModuleName: moduleName
+                    });
+                }
+            } else {
+                const rightSideExpr = expressionToString(assignmentExpr.right);
+                if (crossReferences[rightSideExpr]) {
+                    requiredModules[assignmentExpr.left.start] =
+                        requiredModules[crossReferences[rightSideExpr]];
                 }
             }
         },
@@ -109,11 +137,11 @@ export function Visitors(
                     functionName = callee.name;
                     break;
                 case "MemberExpression":
-                    functionName = util.expressionToString(callee.property);
+                    functionName = expressionToString(callee.property);
                     receiver =
                         callee.object.type === "Super"
                             ? "super"
-                            : util.expressionToString(callee.object);
+                            : expressionToString(callee.object);
                     break;
                 case "Super":
                     receiver = "";
@@ -121,7 +149,7 @@ export function Visitors(
                     break;
                 default:
                     receiver = "";
-                    functionName = util.expressionToString(callee);
+                    functionName = expressionToString(callee);
             }
 
             const args = [];
@@ -129,8 +157,8 @@ export function Visitors(
             for (let argument of callNode.arguments) {
                 const argumentAsString =
                     argument.type === "SpreadElement"
-                        ? "..." + util.expressionToString(argument.argument)
-                        : util.expressionToString(argument);
+                        ? "..." + expressionToString(argument.argument)
+                        : expressionToString(argument);
                 args.push(argumentAsString);
             }
 
@@ -167,13 +195,13 @@ export function Visitors(
                     functionName = callee.name;
                     break;
                 case "MemberExpression":
-                    functionName = util.expressionToString(callee.property);
+                    functionName = expressionToString(callee.property);
                     break;
                 case "Super":
                     functionName = "super";
                     break;
                 default:
-                    functionName = util.expressionToString(callee);
+                    functionName = expressionToString(callee);
             }
 
             const args = [];
@@ -181,8 +209,8 @@ export function Visitors(
             for (let argument of newExpr.arguments) {
                 const argumentAsString =
                     argument.type === "SpreadElement"
-                        ? "..." + util.expressionToString(argument.argument)
-                        : util.expressionToString(argument);
+                        ? "..." + expressionToString(argument.argument)
+                        : expressionToString(argument);
                 args.push(argumentAsString);
             }
 
