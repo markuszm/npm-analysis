@@ -8,7 +8,9 @@ import {
     Node,
     CallExpression,
     MemberExpression,
-    Expression, Super
+    Expression,
+    Super,
+    AssignmentExpression
 } from "estree";
 import * as util from "./util";
 
@@ -47,7 +49,9 @@ export class Traversal {
                         const moduleName = moduleArg.value || "unknown";
                         const imported =
                             declarator.type === "MemberExpression"
-                                ? util.expressionToString(declarator).replace(`require(${moduleName}).`, "")
+                                ? util
+                                      .expressionToString(declarator)
+                                      .replace(`require(${moduleName}).`, "")
                                 : undefined;
                         definedImports.push(
                             new Import(
@@ -66,6 +70,45 @@ export class Traversal {
                     }
                 }
             },
+
+            AssignmentExpression: function(path: NodePath) {
+                const assignmentExpr = (path.node as Node) as AssignmentExpression;
+
+                if (self.debug) {
+                    console.log(assignmentExpr);
+                }
+
+                const callExpr = Traversal.getRequireCallExpr(assignmentExpr.right);
+                if (!callExpr) return;
+
+                const moduleArg = callExpr.arguments[0];
+                if (assignmentExpr.left.type !== "Identifier" || moduleArg.type !== "Literal") {
+                    return;
+                }
+                const variableName = assignmentExpr.left.name;
+                const moduleName = moduleArg.value || "unknown";
+                const imported =
+                    assignmentExpr.right.type === "MemberExpression"
+                        ? util
+                              .expressionToString(assignmentExpr.right)
+                              .replace(`require(${moduleName}).`, "")
+                        : undefined;
+                definedImports.push(
+                    new Import(
+                        variableName,
+                        moduleName.toString(),
+                        self.BUNDLE_TYPE_COMMONJS,
+                        imported
+                    )
+                );
+                if (self.debug) {
+                    console.log("\nModule Declaration: \n", {
+                        Variable: variableName,
+                        ModuleName: moduleName
+                    });
+                }
+            },
+
             ImportDeclaration(path: NodePath) {
                 const node = (path.node as Node) as ImportDeclaration;
 

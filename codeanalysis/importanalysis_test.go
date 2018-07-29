@@ -30,20 +30,7 @@ func transformToImports(result interface{}) ([]resultprocessing.Import, error) {
 }
 
 func TestImportRequire(t *testing.T) {
-	const analysisPath = "./import-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/import/requiretest")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	imports, err := transformToImports(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	imports := getImportsFromPackagePath("./testfiles/import/requiretest", t)
 
 	expectedImports := []resultprocessing.Import{
 		{
@@ -100,20 +87,7 @@ func TestImportRequire(t *testing.T) {
 }
 
 func TestImportRequireMinified(t *testing.T) {
-	const analysisPath = "./import-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/import/requireminifiedtest")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	imports, err := transformToImports(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	imports := getImportsFromPackagePath("./testfiles/import/requireminifiedtest", t)
 
 	expectedImports := []resultprocessing.Import{
 		{
@@ -158,20 +132,7 @@ func TestImportRequireMinified(t *testing.T) {
 }
 
 func TestImportES6(t *testing.T) {
-	const analysisPath = "./import-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/import/importtest")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	imports, err := transformToImports(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	imports := getImportsFromPackagePath("./testfiles/import/importtest", t)
 
 	expectedImports := []resultprocessing.Import{
 		{
@@ -294,20 +255,7 @@ func TestImportES6(t *testing.T) {
 }
 
 func TestImportES6Minified(t *testing.T) {
-	const analysisPath = "./import-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/import/importminifiedtest")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	imports, err := transformToImports(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	imports := getImportsFromPackagePath("./testfiles/import/importminifiedtest", t)
 
 	expectedImports := []resultprocessing.Import{
 		{
@@ -430,20 +378,7 @@ func TestImportES6Minified(t *testing.T) {
 }
 
 func TestImportTypescript(t *testing.T) {
-	const analysisPath = "./import-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/import/typescripttest")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	imports, err := transformToImports(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	imports := getImportsFromPackagePath("./testfiles/import/typescripttest", t)
 
 	expectedImports := []resultprocessing.Import{
 		{
@@ -472,4 +407,59 @@ func TestImportTypescript(t *testing.T) {
 		}}
 
 	assert.ElementsMatch(t, imports, expectedImports, fmt.Sprint(imports))
+}
+
+func TestImportReassignments(t *testing.T) {
+	imports := getImportsFromPackagePath("./testfiles/callgraph/scoping/calls.js", t)
+
+	expectedImports := []resultprocessing.Import{
+		{
+			Identifier: "foo",
+			ModuleName: "foobar",
+			BundleType: "commonjs",
+		},
+		{
+			Identifier: "foo",
+			ModuleName: "foo",
+			BundleType: "commonjs",
+		},
+		{
+			Identifier: "bar",
+			ModuleName: "bar",
+			BundleType: "commonjs",
+		},
+		{
+			Identifier: "foobar",
+			ModuleName: "foobar",
+			BundleType: "commonjs",
+		},
+		{
+			Identifier: "foobar",
+			ModuleName: "foo",
+			BundleType: "commonjs",
+		},
+		{
+			Identifier: "foo",
+			ModuleName: "bar",
+			BundleType: "commonjs",
+		},
+	}
+
+	assert.ElementsMatch(t, imports, expectedImports, fmt.Sprint(imports))
+}
+
+func getImportsFromPackagePath(packagePath string, t *testing.T) []resultprocessing.Import {
+	const analysisPath = "./import-analysis/analysis"
+	logger := zap.NewNop().Sugar()
+	analysis := NewASTAnalysis(logger, analysisPath)
+	result, err := analysis.AnalyzePackage(packagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imports, err := transformToImports(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return imports
 }
