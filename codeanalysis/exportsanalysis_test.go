@@ -87,12 +87,12 @@ func TestExportCommonJS(t *testing.T) {
 		{"function", "add32(a)", "commonjs", "objectExport.js", true},
 		{"function", "addAll(a,...b)", "commonjs", "objectExport.js", true},
 		{"member", "theSolution", "commonjs", "objectExport.js", true},
-		{"object", "foo", "commonjs", "objectExport.js", false},
+		{"var", "foo", "commonjs", "objectExport.js", false},
 		{"function", "foo.sub2(a)", "commonjs", "objectExport.js", false},
 		{"function", "foo.sub4(a)", "commonjs", "objectExport.js", false},
 		{"function", "foo.sub8(a)", "commonjs", "objectExport.js", false},
 		{"function", "foo.sub16(a)", "commonjs", "objectExport.js", false},
-		{"member", "foo.theSolution", "commonjs", "objectExport.js", false},
+		{"var", "foo.theSolution", "commonjs", "objectExport.js", false},
 	}
 	assert.ElementsMatch(t, exports, expectedExports, fmt.Sprint(exports))
 }
@@ -124,7 +124,7 @@ func TestExportES6(t *testing.T) {
 		{"function", "cube(x)", "es6", "namedExport.js", false},
 		{"const", "foo", "es6", "namedExport.js", false},
 		{"var", "graph.options", "es6", "namedExport.js", false},
-		{"function", "graph.draw", "es6", "namedExport.js", false},
+		{"function", "graph.draw()", "es6", "namedExport.js", false},
 		{"let", "graph", "es6", "namedExport.js", false},
 		{"const", "sqrt", "es6", "namedExportDirect.js", false},
 		{"function", "square(x)", "es6", "namedExportDirect.js", false},
@@ -154,6 +154,7 @@ func TestExportScoping(t *testing.T) {
 	expectedExports := []resultprocessing.Export{
 		{"function", "foo()", "commonjs", "scopingtest.js", false},
 		{"const", "bar", "commonjs", "scopingtest.js", false},
+		{"var", "foobar", "commonjs", "scopingtest.js", false},
 	}
 	assert.ElementsMatch(t, exports, expectedExports, fmt.Sprint(exports))
 }

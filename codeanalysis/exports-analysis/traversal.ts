@@ -134,7 +134,7 @@ export class Traversal {
                             exports.push(
                                 new Export(
                                     this.EXPORT_TYPE_FUNCTION,
-                                    declaredFunction.id,
+                                    util.createMethodSignatureString(declaredFunction.id,declaredFunction.params),
                                     bundleType,
                                     this.fileName,
                                     isDefault
