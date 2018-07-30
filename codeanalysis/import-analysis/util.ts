@@ -164,7 +164,7 @@ export function expressionToString(expression: Expression): string {
             return "this";
         case "MemberExpression":
             if (expression.object.type === "Super") {
-                return `${expressionToString(expression)}.${expressionToString(
+                return `super.${expressionToString(
                     expression.property
                 )}`;
             } else {

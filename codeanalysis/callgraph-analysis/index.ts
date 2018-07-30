@@ -32,6 +32,16 @@ const ternClient = new TernClient(visitors, debug);
 
 const stats = fs.statSync(entryPath);
 
+function getFileNameInsidePackage(fileInfo: any) {
+    const fullPath: string = fileInfo.fullPath;
+    const regexFileName = /(?:\/?.+)(?:\/package\/)(.+)/;
+    if (fullPath.indexOf("package") != -1) {
+        let [, fileName]: RegExpMatchArray = fullPath.match(regexFileName) || [];
+        return fileName;
+    }
+    return fileInfo.name;
+}
+
 if (stats.isDirectory()) {
     /* process files from folder */
     try {
@@ -46,8 +56,9 @@ if (stats.isDirectory()) {
                 directoryFilter: ["!.git", "!node_modules", "!assets"]
             },
             (fileInfo: any) => {
-                ternClient.addFile(fileInfo.name, fileInfo.fullPath);
-                if (debug) console.log(`Added file ${fileInfo.name} to tern`);
+                const fileName = getFileNameInsidePackage(fileInfo);
+                ternClient.addFile(fileName, fileInfo.fullPath);
+                if (debug) console.log(`Added file ${fileName} to tern`);
             },
             () => {
                 if (debug) console.log(`Finished AST walking`);
