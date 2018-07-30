@@ -21,6 +21,16 @@ const stats = fs.statSync(filePath);
 
 const ternClient = new TernClient(debug);
 
+function getFileNameInsidePackage(fileInfo: any) {
+    const fullPath: string = fileInfo.fullPath;
+    const regexFileName = /(?:\/?.+)(?:\/package\/)(.+)/;
+    if (fullPath.indexOf("package") != -1) {
+        let [, fileName]: RegExpMatchArray = fullPath.match(regexFileName) || [];
+        return fileName;
+    }
+    return fileInfo.name;
+}
+
 if (stats.isDirectory()) {
     try {
         const definedExports: Array<Export> = [];
@@ -34,8 +44,9 @@ if (stats.isDirectory()) {
                 if (debug) console.log("now parsing:", fileInfo.fullPath);
 
                 const content = fs.readFileSync(fileInfo.fullPath, "utf-8");
-                ternClient.addFile(fileInfo.name, fileInfo.fullPath);
-                const traverse = new Traversal(ternClient, fileInfo.name, debug);
+                const fileNameInsidePackage = getFileNameInsidePackage(fileInfo);
+                ternClient.addFile(fileNameInsidePackage, fileInfo.fullPath);
+                const traverse = new Traversal(ternClient, fileNameInsidePackage, debug);
                 try {
                     const ast = parser.parseAst(content);
                     definedExports.push(...traverse.traverseAst(ast));
@@ -45,7 +56,7 @@ if (stats.isDirectory()) {
                     }
                     // ignore errors in parsing for now
                 }
-                ternClient.delFile(fileInfo.name)
+                ternClient.delFile(fileNameInsidePackage)
             },
             // after file processing
             () => {
