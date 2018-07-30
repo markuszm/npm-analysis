@@ -10,6 +10,7 @@ import readdirp from "readdirp";
 
 import { TernClient } from "./ternClient";
 import { Visitors } from "./astTraversal";
+import * as path from "path";
 
 /* argument parsing */
 let debug = false;
@@ -17,7 +18,7 @@ const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("missing folder path");
 }
-const path = args[0];
+const entryPath = args[0];
 if (args.length > 1 && args[1] === "debug") {
     debug = true;
 }
@@ -29,15 +30,19 @@ const requiredModules = {}; // map global variable name -> module name
 const visitors = Visitors(callExpressions, requiredModules, debug);
 const ternClient = new TernClient(visitors, debug);
 
-const stats = fs.statSync(path);
+const stats = fs.statSync(entryPath);
 
 if (stats.isDirectory()) {
     /* process files from folder */
     try {
         readdirp(
             {
-                root: path,
-                fileFilter: "*.js",
+                root: entryPath,
+                fileFilter: function(fileInfo: any) {
+                    const fileName = fileInfo.name;
+                    const ext = path.extname(fileName);
+                    return ext === ".js" || ext === "";
+                },
                 directoryFilter: ["!.git", "!node_modules", "!assets"]
             },
             (fileInfo: any) => {
@@ -62,8 +67,8 @@ if (stats.isDirectory()) {
         console.error("could not find any files");
     }
 } else {
-    ternClient.addFile(path, path);
-    if (debug) console.log(`Added file ${path} to tern`);
+    ternClient.addFile(entryPath, entryPath);
+    if (debug) console.log(`Added file ${entryPath} to tern`);
 
     // for each call expression, find the function definition that the call resolves to
     for (let i = 0; i < callExpressions.length; i++) {

@@ -7,17 +7,18 @@ import * as parser from "./parser";
 import { Traversal } from "./traversal";
 import { Export } from "./model";
 import { TernClient } from "./ternClient";
+import * as path from "path";
 
 let debug = false;
 
 // parse command arguments
 const args: Array<string> = process.argv.slice(2);
-const filePath = args[0];
+const entryPath = args[0];
 if (args.length > 1 && args[1] === "debug") {
     debug = true;
 }
 
-const stats = fs.statSync(filePath);
+const stats = fs.statSync(entryPath);
 
 const ternClient = new TernClient(debug);
 
@@ -36,8 +37,12 @@ if (stats.isDirectory()) {
         const definedExports: Array<Export> = [];
         readdirp(
             {
-                root: filePath,
-                fileFilter: ["*.ts", "*.js", "*.jsx"],
+                root: entryPath,
+                fileFilter: function(fileInfo: any) {
+                    const fileName = fileInfo.name;
+                    const ext = path.extname(fileName);
+                    return ext === ".js" || ext === ".ts" || ext === ".jsx" || ext === "";
+                },
                 directoryFilter: ["!.git", "!node_modules", "!assets"]
             },
             (fileInfo: any) => {
@@ -68,10 +73,10 @@ if (stats.isDirectory()) {
         console.error("could not find any files");
     }
 } else {
-    const content = fs.readFileSync(filePath, "utf-8");
-    ternClient.addFile(filePath, filePath);
+    const content = fs.readFileSync(entryPath, "utf-8");
+    ternClient.addFile(entryPath, entryPath);
     let ast = parser.parseAst(content);
-    const traverse = new Traversal(ternClient, filePath, debug);
+    const traverse = new Traversal(ternClient, entryPath, debug);
     const definedExports = traverse.traverseAst(ast);
     console.log(JSON.stringify(definedExports));
 }
