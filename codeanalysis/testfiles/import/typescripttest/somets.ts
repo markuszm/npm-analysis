@@ -1,4 +1,3 @@
-import foo = require("foo");
 import { bar } from "bar";
 import $ from "JQuery";
 import "abc"

@@ -9,7 +9,7 @@ import * as process from "process";
 import readdirp from "readdirp";
 
 import { TernClient } from "./ternClient";
-import { Visitors } from "./astTraversal";
+import { Visitors } from "./traversal";
 import * as path from "path";
 
 /* argument parsing */

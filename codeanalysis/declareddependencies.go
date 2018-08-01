@@ -3,6 +3,7 @@ package codeanalysis
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"io/ioutil"
@@ -13,26 +14,25 @@ import (
 )
 
 type UsedDependenciesAnalysis struct {
-	logger *zap.SugaredLogger
+	logger             *zap.SugaredLogger
+	importAnalysisPath string
 }
 
-func NewUsedDependenciesAnalysis(logger *zap.SugaredLogger) *UsedDependenciesAnalysis {
-	return &UsedDependenciesAnalysis{logger}
+func NewUsedDependenciesAnalysis(logger *zap.SugaredLogger, importAnalysisPath string) *UsedDependenciesAnalysis {
+	return &UsedDependenciesAnalysis{logger, importAnalysisPath}
 }
 
 func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface{}, error) {
-	requiredResult, err := ExecuteCommand("grep", "-ohrP", "--include=*.js", "--include=*.ts", "--exclude-dir=node_modules", `(?<=require\().+?(?=\))`, packagePath)
+	importAnalysisResult, err := ExecuteCommand(d.importAnalysisPath, packagePath)
 	if err != nil {
-		if !strings.Contains(err.Error(), "exit status 1") {
-			return nil, errors.Wrap(err, "error retrieving required packages")
-		}
+		return nil, errors.Wrap(err, "error executing ast analysis")
 	}
 
-	importResult, err := ExecuteCommand("grep", "-ohrP", "--include=*.js", "--include=*.ts", "--exclude-dir=node_modules", `^import .*(("|').+("|'));?`, packagePath)
+	var analysisResult []resultprocessing.Import
+	err = json.Unmarshal([]byte(importAnalysisResult), &analysisResult)
 	if err != nil {
-		if !strings.Contains(err.Error(), "exit status 1") {
-			return nil, errors.Wrap(err, "error retrieving imported packages")
-		}
+		d.logger.Error(importAnalysisResult)
+		return nil, errors.Wrap(err, "error parsing result")
 	}
 
 	packageMetadata, err := d.parsePackageJSON(packagePath)
@@ -40,9 +40,6 @@ func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing package json")
 	}
-
-	requiredPackages := strings.Split(requiredResult, "\n")
-	importedPackages := strings.Split(importResult, "\n")
 
 	requiredSet := make(map[string]bool, 0)
 	importedSet := make(map[string]bool, 0)
@@ -64,27 +61,16 @@ func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface
 		dependencySet[d] = true
 	}
 
-	for _, r := range requiredPackages {
-		module := stripQuotes(r)
-		if module != "" && !IsLocalImport(module) && !requiredSet[module] {
-			requiredSet[module] = true
-
-			if dependencySet[module] {
-				used = append(used, module)
+	for _, i := range analysisResult {
+		module := i.ModuleName
+		if module != "" && !IsLocalImport(module) && !requiredSet[module] && !importedSet[module] {
+			if i.BundleType == "es6" {
+				importedSet[module] = true
+			} else {
+				requiredSet[module] = true
 			}
-		}
-	}
 
-	for _, i := range importedPackages {
-		if i == "" {
-			continue
-		}
-		module := d.parseModuleFromImportStmt(i)
-
-		if module != "" && !IsLocalImport(module) && !importedSet[module] && !requiredSet[module] {
-			importedSet[module] = true
-
-			if dependencySet[module] {
+			if dependencySet[module] || isSubmodule(dependencySet, module) {
 				used = append(used, module)
 			}
 		}
@@ -120,36 +106,20 @@ func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface
 
 	return result, nil
 }
-
-func (d *UsedDependenciesAnalysis) parseModuleFromImportStmt(i string) string {
-	defer func() {
-		if r := recover(); r != nil {
-			d.logger.Errorf("could not parse import %v with panic \n %v", i, r)
-		}
-	}()
-
-	startIndex := strings.Index(i, "\"")
-	endIndex := strings.LastIndex(i, "\"")
-	if startIndex == -1 || endIndex == -1 || startIndex == endIndex {
-		startIndex = strings.Index(i, "'")
-		endIndex = strings.LastIndex(i, "'")
-		if startIndex == -1 || endIndex == -1 {
-			d.logger.Errorf("could not parse import %v", i)
-			return ""
+func isSubmodule(dependencies map[string]bool, module string) bool {
+	for d, ok := range dependencies {
+		if ok {
+			if strings.HasPrefix(module, d) {
+				return true
+			}
 		}
 	}
-
-	module := i[startIndex+1 : endIndex]
-	return module
+	return false
 }
 
 func IsLocalImport(path string) bool {
 	return path == "." || path == ".." ||
 		strings.HasPrefix(path, "/") || strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../")
-}
-
-func stripQuotes(s string) string {
-	return strings.Trim(s, `"'`)
 }
 
 func (d *UsedDependenciesAnalysis) parsePackageJSON(packagePath string) (MinimalPackage, error) {

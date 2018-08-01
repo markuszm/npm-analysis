@@ -72,8 +72,8 @@ var analysisCmd = &cobra.Command{
 			log.Print("executing file distribution analysis")
 			analysis = codeanalysis.NewFileDistributionAnalysis(logger)
 		case "used_dependencies":
-			log.Print("executing used dependencies analysis")
-			analysis = codeanalysis.NewUsedDependenciesAnalysis(logger)
+			log.Print("executing used dependencies analysis - needs path to import analysis")
+			analysis = codeanalysis.NewUsedDependenciesAnalysis(logger, analysisExecPath)
 		case "ast":
 			log.Print("executing ast analysis")
 			analysis = codeanalysis.NewASTAnalysis(logger, analysisExecPath)

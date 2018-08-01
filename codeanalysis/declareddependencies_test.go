@@ -7,9 +7,11 @@ import (
 	"testing"
 )
 
+const analysisPath = "./import-analysis/analysis"
+
 func TestRequireDetected(t *testing.T) {
 	logger := zap.NewNop().Sugar()
-	analysis := NewUsedDependenciesAnalysis(logger)
+	analysis := NewUsedDependenciesAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/import/requiretest")
 
 	if err != nil {
@@ -29,7 +31,7 @@ func TestRequireDetected(t *testing.T) {
 
 func TestRequireMinified(t *testing.T) {
 	logger := zap.NewNop().Sugar()
-	analysis := NewUsedDependenciesAnalysis(logger)
+	analysis := NewUsedDependenciesAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/import/requireminifiedtest")
 
 	if err != nil {
@@ -49,7 +51,7 @@ func TestRequireMinified(t *testing.T) {
 
 func TestImportDetected(t *testing.T) {
 	logger := zap.NewNop().Sugar()
-	analysis := NewUsedDependenciesAnalysis(logger)
+	analysis := NewUsedDependenciesAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/import/importtest")
 
 	if err != nil {
@@ -68,11 +70,8 @@ func TestImportDetected(t *testing.T) {
 }
 
 func TestImportMinified(t *testing.T) {
-	// skip this test for now as this can not be solved by grep regex
-	t.Skip()
-
 	logger := zap.NewNop().Sugar()
-	analysis := NewUsedDependenciesAnalysis(logger)
+	analysis := NewUsedDependenciesAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/import/importminifiedtest")
 
 	if err != nil {
@@ -90,27 +89,9 @@ func TestImportMinified(t *testing.T) {
 	a.ElementsMatch(dependencyResult.Required, []string{}, fmt.Sprint(dependencyResult.Required))
 }
 
-func TestParsePackageImport(t *testing.T) {
-	tests := []struct {
-		value, expected string
-	}{
-		{`import * as mediaTestHelpers from '@atlaskit/media-test-helpers'"`, "@atlaskit/media-test-helpers"},
-		{"import hbs from 'htmlbars-inline-precompile';\nvar compiled = hbs`hello`;", "htmlbars-inline-precompile"},
-	}
-
-	for _, test := range tests {
-		logger := zap.NewNop().Sugar()
-		analysis := NewUsedDependenciesAnalysis(logger)
-		t.Run(fmt.Sprintf("Value: %v Expected: %v", test.value, test.expected), func(t *testing.T) {
-			assert.Equal(t, test.expected, analysis.parseModuleFromImportStmt(test.value))
-		})
-	}
-
-}
-
 func TestTypescript(t *testing.T) {
 	logger := zap.NewNop().Sugar()
-	analysis := NewUsedDependenciesAnalysis(logger)
+	analysis := NewUsedDependenciesAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackage("./testfiles/import/typescripttest")
 
 	if err != nil {
@@ -124,6 +105,6 @@ func TestTypescript(t *testing.T) {
 	a := assert.New(t)
 	a.ElementsMatch(dependencyResult.Dependencies, []string{"foo", "bar", "foobar"}, fmt.Sprint(dependencyResult.Dependencies))
 	a.ElementsMatch(dependencyResult.Imported, []string{"abc", "bar", "JQuery"}, fmt.Sprint(dependencyResult.Imported))
-	a.ElementsMatch(dependencyResult.Used, []string{"foo", "bar"}, fmt.Sprint(dependencyResult.Used))
-	a.ElementsMatch(dependencyResult.Required, []string{"foo"}, fmt.Sprint(dependencyResult.Required))
+	a.ElementsMatch(dependencyResult.Used, []string{"bar"}, fmt.Sprint(dependencyResult.Used))
+	a.ElementsMatch(dependencyResult.Required, []string{}, fmt.Sprint(dependencyResult.Required))
 }
