@@ -19,7 +19,7 @@
     "@types/estree": "^0.0.39",
     "@types/node": "^10.5.1",
     "pkg": "^4.3.3",
-    "typescript": "^2.9.2"
+    "typescript": "^3.0.1"
   },
   "author": "",
   "license": "ISC"
