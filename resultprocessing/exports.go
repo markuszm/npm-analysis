@@ -6,4 +6,5 @@ type Export struct {
 	BundleType string `json:"bundleType"`
 	File       string `json:"file"`
 	IsDefault  bool   `json:"isDefault"`
+	Local      string `json:"local"`
 }

@@ -4,12 +4,13 @@ export class Export {
         public id: string,
         public bundleType: string,
         public file: string,
-        public isDefault: boolean
+        public isDefault: boolean,
+        public local?: string,
     ) {}
 }
 
 export class Function {
-    constructor(public id: string, public start: number, public params: Array<string>) {}
+    constructor(public id: string, public start: number, public params: string[]) {}
 }
 
 export class Variable {
@@ -24,7 +25,15 @@ export class Variable {
 export class Class {
     constructor(
         public id: string,
-        public methods: Array<string>,
+        public methods: string[],
         public superClass: string | null
     ) {}
+}
+
+export class ObjectExpr{
+    constructor(
+        public id: string,
+        public methods: Function[],
+        public variables: Variable[]
+    ){}
 }

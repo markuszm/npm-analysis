@@ -1,4 +1,4 @@
 export class Calculator {
     add(a,b) { return a + b }
-    substract(a,b) { return a - b }
+    subtract(a,b) { return a - b }
 }

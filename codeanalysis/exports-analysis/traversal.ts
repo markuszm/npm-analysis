@@ -1,4 +1,10 @@
 import * as util from "./util";
+import {
+    createMethodSignatureString,
+    expressionToString,
+    extractFunctionInfo,
+    patternToString
+} from "./util";
 import { default as traverse } from "@babel/traverse";
 // -- Need to use estree types because we use estree AST format instead of babel-parser format --
 import {
@@ -9,27 +15,25 @@ import {
     ExportNamedDeclaration,
     FunctionDeclaration,
     Identifier,
-    Node,
     MemberExpression,
+    Node,
+    ObjectExpression,
     VariableDeclaration,
-    VariableDeclarator,
-    ObjectExpression
+    VariableDeclarator
 } from "./@types/estree";
 import { NodePath } from "babel-traverse";
-import { expressionToString } from "./util";
-import { Class, Variable, Function, Export } from "./model";
+import { Class, Export, Function, ObjectExpr, Variable } from "./model";
 import { DefinitionQuery, TernClient } from "./ternClient";
-import { extractFunctionInfo } from "./util";
-import { createMethodSignatureString } from "./util";
 
 export class Traversal {
     BUNDLE_TYPE_ES6 = "es6";
     BUNDLE_TYPE_COMMONJS = "commonjs";
     EXPORT_TYPE_FUNCTION = "function";
 
-    private declaredFunctions: Array<Function> = [];
-    private declaredVariables: Array<Variable> = [];
-    private declaredClasses: Array<Class> = [];
+    private declaredFunctions: Function[] = [];
+    private declaredVariables: Variable[] = [];
+    private declaredClasses: Class[] = [];
+    private declaredObjects: ObjectExpr[] = [];
 
     constructor(private ternClient: TernClient, private fileName: string, private debug: boolean) {}
 
@@ -85,6 +89,7 @@ export class Traversal {
         name: string,
         bundleType: string,
         isDefault: boolean,
+        local: string,
         exports: Array<Export>
     ) {
         const start = identifier.start;
@@ -106,44 +111,50 @@ export class Traversal {
                             : value.id === identifier.name
                 );
                 if (variable) {
-                    for (let declaredVariable of this.declaredVariables) {
-                        if (
-                            data
-                                ? declaredVariable.id.startsWith(`${variable.id}.`) &&
-                                  declaredVariable.start === data.start
-                                : declaredVariable.id.startsWith(`${variable.id}.`)
-                        ) {
+                    const obj = this.declaredObjects.find(value => value.id === identifier.name);
+
+                    if (obj) {
+                        for (let declaredVariable of obj.variables) {
                             exports.push(
                                 new Export(
                                     declaredVariable.kind,
-                                    declaredVariable.id,
+                                    `${name}.${declaredVariable.id}`,
                                     bundleType,
                                     this.fileName,
-                                    isDefault
+                                    isDefault,
+                                    `${local || obj.id}.${declaredVariable.id}`
                                 )
                             );
                         }
-                    }
-                    for (let declaredFunction of this.declaredFunctions) {
-                        if (
-                            data
-                                ? declaredFunction.id.startsWith(`${variable.id}.`) &&
-                                  declaredFunction.start === data.start
-                                : declaredFunction.id.startsWith(`${variable.id}.`)
-                        ) {
+                        for (let declaredFunction of obj.methods) {
                             exports.push(
                                 new Export(
                                     this.EXPORT_TYPE_FUNCTION,
-                                    util.createMethodSignatureString(declaredFunction.id,declaredFunction.params),
+                                    `${name}.${util.createMethodSignatureString(
+                                        declaredFunction.id,
+                                        declaredFunction.params
+                                    )}`,
                                     bundleType,
                                     this.fileName,
-                                    isDefault
+                                    isDefault,
+                                    `${local || obj.id}.${util.createMethodSignatureString(
+                                        declaredFunction.id,
+                                        declaredFunction.params
+                                    )}`
                                 )
                             );
                         }
                     }
+
                     exports.push(
-                        new Export(variable.kind, name, bundleType, this.fileName, isDefault)
+                        new Export(
+                            variable.kind,
+                            name,
+                            bundleType,
+                            this.fileName,
+                            isDefault,
+                            local || identifier.name
+                        )
                     );
                     return;
                 }
@@ -161,13 +172,24 @@ export class Traversal {
                             util.createMethodSignatureString(name, method.params),
                             bundleType,
                             this.fileName,
-                            isDefault
+                            isDefault,
+                            local ||
+                                util.createMethodSignatureString(identifier.name, method.params)
                         )
                     );
                     return;
                 }
 
-                exports.push(new Export("unknown", name, bundleType, this.fileName, isDefault));
+                exports.push(
+                    new Export(
+                        "unknown",
+                        name,
+                        bundleType,
+                        this.fileName,
+                        isDefault,
+                        local || identifier.name
+                    )
+                );
             }
         );
     }
@@ -177,6 +199,9 @@ export class Traversal {
             return;
         }
 
+        const methods: Function[] = [];
+        const variables: Variable[] = [];
+
         const properties = decl.init.properties;
         for (let property of properties) {
             if (property.key.type === "Identifier") {
@@ -185,17 +210,11 @@ export class Traversal {
                     property.value.type === "ArrowFunctionExpression"
                 ) {
                     const func = util.extractFunctionInfo(null, property.value);
-                    this.declaredFunctions.push(
-                        new Function(
-                            `${util.patternToString(decl.id)}.${property.key.name}`,
-                            decl.id.start,
-                            func.params
-                        )
-                    );
+                    methods.push(new Function(property.key.name, decl.id.start, func.params));
                 } else {
-                    this.declaredVariables.push(
+                    variables.push(
                         new Variable(
-                            `${util.patternToString(decl.id)}.${property.key.name}`,
+                            property.key.name,
                             decl.start,
                             "var",
                             util.expressionToString(decl.init)
@@ -204,6 +223,8 @@ export class Traversal {
                 }
             }
         }
+
+        this.declaredObjects.push(new ObjectExpr(patternToString(decl.id), methods, variables));
     }
 
     public traverseAst(ast: any): Array<Export> {
@@ -330,10 +351,11 @@ export class Traversal {
                 const specifiers = node.specifiers;
                 for (let specifier of specifiers) {
                     self.findExportsForIdentifer(
-                        specifier.exported,
+                        specifier.local,
                         specifier.exported.name,
                         self.BUNDLE_TYPE_ES6,
                         false,
+                        specifier.local.name,
                         definedExports
                     );
                 }
@@ -352,6 +374,7 @@ export class Traversal {
                                 declaration.name,
                                 self.BUNDLE_TYPE_ES6,
                                 true,
+                                "",
                                 definedExports
                             );
                             break;
@@ -387,10 +410,7 @@ export class Traversal {
                             definedExports.push(
                                 new Export(
                                     self.EXPORT_TYPE_FUNCTION,
-                                    `${util.createMethodSignatureString(
-                                        func.id,
-                                        func.params
-                                    )}`,
+                                    `${util.createMethodSignatureString(func.id, func.params)}`,
                                     self.BUNDLE_TYPE_ES6,
                                     self.fileName,
                                     true
@@ -448,7 +468,8 @@ export class Traversal {
                                     right.id ? right.id.name : "default",
                                     self.BUNDLE_TYPE_COMMONJS,
                                     self.fileName,
-                                    true
+                                    true,
+                                    right.id ? right.id.name : ""
                                 )
                             );
                             const methods = util.extractMethodsFromClassBody(right.body);
@@ -462,7 +483,8 @@ export class Traversal {
                                         method,
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
-                                        true
+                                        true,
+                                        `${right.id ? right.id.name : ""}.${method}`
                                     )
                                 );
                             }
@@ -499,6 +521,7 @@ export class Traversal {
                                 right.name,
                                 self.BUNDLE_TYPE_COMMONJS,
                                 true,
+                                "",
                                 definedExports
                             );
                             break;
@@ -530,6 +553,7 @@ export class Traversal {
                                     memberExpr.property.name,
                                     self.BUNDLE_TYPE_COMMONJS,
                                     false,
+                                    "",
                                     definedExports
                                 );
                                 break;
@@ -545,7 +569,8 @@ export class Traversal {
                                         ),
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
-                                        false
+                                        false,
+                                        ""
                                     )
                                 );
                                 break;
@@ -560,7 +585,7 @@ export class Traversal {
                                         false
                                     )
                                 );
-                                const exports = self.extractExportsFromObject(right,false);
+                                const exports = self.extractExportsFromObject(right, false);
                                 for (let exp of exports) {
                                     definedExports.push(
                                         new Export(
@@ -580,7 +605,8 @@ export class Traversal {
                                         `${memberExpr.property.name}`,
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
-                                        false
+                                        false,
+                                        right.id ? right.id.name : ""
                                     )
                                 );
                                 const methods = util.extractMethodsFromClassBody(right.body);
@@ -594,7 +620,8 @@ export class Traversal {
                                             `${memberExpr.property.name}.${method}`,
                                             self.BUNDLE_TYPE_COMMONJS,
                                             self.fileName,
-                                            false
+                                            false,
+                                            `${right.id ? right.id.name : ""}.${method}`
                                         )
                                     );
                                 }
@@ -606,7 +633,8 @@ export class Traversal {
                                         `${memberExpr.property.name}`,
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
-                                        false
+                                        false,
+                                        expressionToString(right)
                                     )
                                 );
                                 break;
@@ -617,7 +645,8 @@ export class Traversal {
                                         memberExpr.property.name,
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
-                                        false
+                                        false,
+                                        expressionToString(right)
                                     )
                                 );
                                 if (self.debug) {
@@ -635,7 +664,8 @@ export class Traversal {
             console.log({
                 declaredFunctions: self.declaredFunctions,
                 declaredVariables: self.declaredVariables,
-                declaredClasses: self.declaredClasses
+                declaredClasses: self.declaredClasses,
+                declaredObjects: self.declaredObjects
             });
         }
 

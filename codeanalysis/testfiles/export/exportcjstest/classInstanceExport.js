@@ -8,7 +8,7 @@ class Calculator extends Base {
     add(a, b) {
         return a + b;
     }
-    substract(a, b) {
+    subtract(a, b) {
         return a - b;
     }
 }

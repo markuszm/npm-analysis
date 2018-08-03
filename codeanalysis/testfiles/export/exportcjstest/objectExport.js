@@ -20,7 +20,7 @@ module.exports = {
     theSolution: 42
 };
 
-var foo = {
+var bar = {
     sub2(a) {
         return a - 2;
     },
@@ -36,4 +36,4 @@ var foo = {
     theSolution: 42
 };
 
-module.exports.foo = foo;
+module.exports.foo = bar;
