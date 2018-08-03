@@ -15,6 +15,7 @@ import {
     VariableDeclarator
 } from "./@types/estree";
 
+
 // register AST visitors that get called when tern parses the files
 export function Visitors(
     callExpressions: Array<model.CallExpression>,
@@ -121,7 +122,7 @@ export function Visitors(
             const outerMethod: FunctionDeclaration | undefined = ancestors
                 .filter(node => node.type === "FunctionDeclaration")
                 .pop() as FunctionDeclaration;
-            let outerMethodName = callNode.sourceFile.name;
+            let outerMethodName = ".root";
             if (outerMethod) {
                 outerMethodName = outerMethod.id ? outerMethod.id.name : "default";
             }
@@ -180,7 +181,7 @@ export function Visitors(
             const outerMethod: FunctionDeclaration | undefined = ancestors
                 .filter(node => node.type === "FunctionDeclaration")
                 .pop() as FunctionDeclaration;
-            let outerMethodName = newExpr.sourceFile.name;
+            let outerMethodName = ".root";
             if (outerMethod) {
                 outerMethodName = outerMethod.id ? outerMethod.id.name : "default";
             }
