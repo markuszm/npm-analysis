@@ -1,6 +1,6 @@
 // Author: Michael Pradel, Markus Zimmermann
 
-import { Call, CallExpression } from "./model";
+import { Call, CallExpression, Function } from "./model";
 
 import * as fs from "fs";
 
@@ -11,7 +11,6 @@ import readdirp from "readdirp";
 import { TernClient } from "./ternClient";
 import { Visitors } from "./traversal";
 import * as path from "path";
-import {Function} from "../exports-analysis/model";
 
 /* argument parsing */
 let debug = false;

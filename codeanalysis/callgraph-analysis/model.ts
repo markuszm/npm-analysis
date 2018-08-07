@@ -26,8 +26,8 @@ export class Call {
         public fromFunction: string,
         public receiver: string,
         public modules: string[],
-        public toFile: string,
         public toFunction: string,
-        public args: string[]
+        public args: string[],
+        public isLocal: boolean
     ) {}
 }

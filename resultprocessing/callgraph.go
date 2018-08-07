@@ -5,7 +5,7 @@ type Call struct {
 	FromFunction string   `json:"fromFunction"`
 	Receiver     string   `json:"receiver"`
 	Module       []string `json:"modules"`
-	ToFile       string   `json:"toFile"`
 	ToFunction   string   `json:"toFunction"`
 	Arguments    []string `json:"args"`
+	IsLocal      bool     `json:"isLocal"`
 }
