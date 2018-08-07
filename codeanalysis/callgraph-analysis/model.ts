@@ -8,7 +8,15 @@ export class CallExpression {
         public name: string,
         public outerMethod: string,
         public receiver: string,
-        public args: Array<string>
+        public args: string[]
+    ) {}
+}
+
+export class Function {
+    constructor(
+        public id: string,
+        public start: number,
+        public params: string[]
     ) {}
 }
 
@@ -17,9 +25,9 @@ export class Call {
         public fromFile: string,
         public fromFunction: string,
         public receiver: string,
-        public modules: Array<string>,
+        public modules: string[],
         public toFile: string,
         public toFunction: string,
-        public args: Array<string>
+        public args: string[]
     ) {}
 }

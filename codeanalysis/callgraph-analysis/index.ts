@@ -11,6 +11,7 @@ import readdirp from "readdirp";
 import { TernClient } from "./ternClient";
 import { Visitors } from "./traversal";
 import * as path from "path";
+import {Function} from "../exports-analysis/model";
 
 /* argument parsing */
 let debug = false;
@@ -24,10 +25,11 @@ if (args.length > 1 && args[1] === "debug") {
 }
 
 /* create resources */
-const calls: Array<Call> = [];
-const callExpressions: Array<CallExpression> = [];
+const calls: Call[] = [];
+const callExpressions: CallExpression[] = [];
+const declaredFunctions: Function[] = [];
 const requiredModules = {}; // map global variable name -> module name
-const visitors = Visitors(callExpressions, requiredModules, debug);
+const visitors = Visitors(callExpressions, requiredModules, declaredFunctions,  debug);
 const ternClient = new TernClient(visitors, debug);
 
 const stats = fs.statSync(entryPath);
@@ -65,10 +67,10 @@ if (stats.isDirectory()) {
                 // for each call expression, find the function definition that the call resolves to
                 for (let i = 0; i < callExpressions.length; i++) {
                     const callExpression = callExpressions[i];
-                    ternClient.requestCallExpression(callExpression, requiredModules, calls);
+                    ternClient.requestCallExpression(callExpression, requiredModules, declaredFunctions, calls);
                 }
 
-                if (debug) console.log({requiredModules});
+                if (debug) console.log({requiredModules, declaredFunctions});
 
                 console.log(JSON.stringify(calls));
             }
@@ -84,7 +86,7 @@ if (stats.isDirectory()) {
     // for each call expression, find the function definition that the call resolves to
     for (let i = 0; i < callExpressions.length; i++) {
         const callExpression = callExpressions[i];
-        ternClient.requestCallExpression(callExpression, requiredModules, calls);
+        ternClient.requestCallExpression(callExpression, requiredModules,declaredFunctions, calls);
     }
 
     if (debug) console.log({requiredModules});

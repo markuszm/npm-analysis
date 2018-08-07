@@ -1,4 +1,5 @@
-import { Expression, Pattern, SpreadElement, Super } from "./@types/estree";
+import { Expression, Pattern, SpreadElement, Super, BaseFunction, ClassBody, Identifier } from "./@types/estree";
+import {Function} from "./model";
 
 export function patternToString(pattern: Pattern): string {
     if (!pattern) {
@@ -198,4 +199,50 @@ function methodExpressionToString(
         }
     }
     return `${calleeString}(${argumentsString})`;
+}
+
+export function createMethodSignatureString(id: string, params: Array<String>) {
+    let signature = id;
+    if (params.length > 0) {
+        signature += "(";
+        for (let i = 0; i < params.length; i++) {
+            signature += i < params.length - 1 ? params[i] + "," : params[i];
+        }
+        signature += ")";
+    } else {
+        signature += "()";
+    }
+    return signature;
+}
+
+export function extractFunctionInfo(
+    id: Identifier | null | undefined,
+    baseFunc: BaseFunction
+): Function {
+    const functionName = id ? id.name : "default function";
+    const params = baseFunc.params;
+
+    const paramsToString: string[] = [];
+    for (let param of params) {
+        paramsToString.push(patternToString(param));
+    }
+    return new Function(functionName, id ? id.start : baseFunc.start, paramsToString);
+}
+
+export function extractMethodsFromClassBody(body: ClassBody): Array<string> {
+    const methods: Array<string> = [];
+    const bodyElements = body.body;
+    for (let element of bodyElements) {
+        if (element.type === "MethodDefinition") {
+            const classMethod = extractFunctionInfo(element.value.id, element.value);
+            if (element.key.type === "Identifier") {
+                const methodSignature = createMethodSignatureString(
+                    element.key.name,
+                    classMethod.params
+                );
+                methods.push(methodSignature);
+            }
+        }
+    }
+    return methods;
 }

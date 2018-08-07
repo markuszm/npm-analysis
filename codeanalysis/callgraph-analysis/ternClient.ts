@@ -6,7 +6,7 @@ import * as ternModule from "tern";
 
 import * as acornWalk from "acorn/dist/walk";
 
-import { Call, CallExpression } from "./model";
+import { Call, CallExpression, Function } from "./model";
 
 export class TernClient {
     private ternServer: any;
@@ -36,6 +36,7 @@ export class TernClient {
     requestCallExpression(
         callExpression: CallExpression,
         requiredModules: any,
+        definedFunctions: Function[],
         calls: Array<Call>
     ): void {
         const queryFuncDef = {
@@ -74,11 +75,11 @@ export class TernClient {
 
                 if (dataRefs) {
                     for (let ref of dataRefs.refs) {
-                        pushNotUndefined(modules, requiredModules[ref.start])
+                        safePush(modules, requiredModules[ref.start])
                     }
                 }
 
-                pushNotUndefined(
+                safePush(
                     modules,
                     requiredModules[dataFunc.start],
                     requiredModules[callExpression.receiver],
@@ -100,7 +101,7 @@ export class TernClient {
     }
 }
 
-function pushNotUndefined<T>(array: Set<T>, ...items: Array<T>) {
+function safePush<T>(array: Set<T>, ...items: Array<T>) {
     for (let item of items) {
         if (item) {
             array.add(item);

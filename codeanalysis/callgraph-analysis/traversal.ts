@@ -1,7 +1,7 @@
 // Author: Michael Pradel, Markus Zimmermann
 import * as model from "./model";
 
-import { patternToString, expressionToString } from "./util";
+import {patternToString, expressionToString, extractFunctionInfo} from "./util";
 import {
     AssignmentExpression,
     CallExpression,
@@ -14,12 +14,13 @@ import {
     VariableDeclaration,
     VariableDeclarator
 } from "./@types/estree";
-
+import {Function} from "./model";
 
 // register AST visitors that get called when tern parses the files
 export function Visitors(
-    callExpressions: Array<model.CallExpression>,
+    callExpressions: model.CallExpression[],
     requiredModules: any,
+    definedFunctions: Function[],
     debug: boolean
 ): any {
     function getRequireCallExpr(decl: Expression | Super): CallExpression | null {
@@ -42,7 +43,7 @@ export function Visitors(
 
     return {
         /* detect imports */
-        VariableDeclaration: function(declNode: VariableDeclaration, _: Array<Node>) {
+        VariableDeclaration: function(declNode: VariableDeclaration, _: Node[]) {
             for (let decl of declNode.declarations) {
                 const declarator = decl.init;
                 if (declarator) {
@@ -70,7 +71,21 @@ export function Visitors(
             }
         },
 
-        AssignmentExpression: function(assignmentExpr: AssignmentExpression, _: Array<Node>) {
+        /* --- Collecting Declared Members ---*/
+        FunctionDeclaration: function(declNode: FunctionDeclaration, _: Node[]) {
+            if (debug && declNode.id) {
+                console.log("\nFunction Declaration: \n", {
+                    FileName: declNode.sourceFile.name,
+                    Start: declNode.id.start,
+                    End: declNode.id.end,
+                    Name: declNode.id.name
+                });
+            }
+            const func = extractFunctionInfo(declNode.id, declNode);
+            definedFunctions.push(func);
+        },
+
+        AssignmentExpression: function(assignmentExpr: AssignmentExpression, _: Node[]) {
             const callExpr = getRequireCallExpr(assignmentExpr.right);
             if (callExpr) {
                 const variableName = patternToString(assignmentExpr.left);
@@ -93,7 +108,7 @@ export function Visitors(
             }
         },
 
-        ImportDeclaration: function(importDecl: ImportDeclaration, _: Array<Node>) {
+        ImportDeclaration: function(importDecl: ImportDeclaration, _: Node[]) {
             if (debug) {
                 console.log({ ImportDeclaration: importDecl });
             }
@@ -105,22 +120,11 @@ export function Visitors(
             }
         },
 
-        FunctionDeclaration: function(functionDecl: FunctionDeclaration, _: Array<Node>) {
-            if (debug && functionDecl.id) {
-                console.log("\nFunction Declaration: \n", {
-                    FileName: functionDecl.sourceFile.name,
-                    Start: functionDecl.id.start,
-                    End: functionDecl.id.end,
-                    Name: functionDecl.id.name
-                });
-            }
-        },
-
         /* track function calls */
-        CallExpression: function(callNode: CallExpression, ancestors: Array<Node>) {
+        CallExpression: function(callNode: CallExpression, ancestors: Node[]) {
             if (debug) console.log("\nCallExpression: \n", { callNode, ancestors });
             const outerMethod: FunctionDeclaration | undefined = ancestors
-                .filter(node => node.type === "FunctionDeclaration")
+                .filter((node: Node) => node.type === "FunctionDeclaration")
                 .pop() as FunctionDeclaration;
             let outerMethodName = ".root";
             if (outerMethod) {
@@ -176,7 +180,7 @@ export function Visitors(
             );
         },
 
-        NewExpression: function(newExpr: NewExpression, ancestors: Array<Node>) {
+        NewExpression: function(newExpr: NewExpression, ancestors: Node[]) {
             if (debug) console.log("\nNewExpression: \n", { newExpr, ancestors });
             const outerMethod: FunctionDeclaration | undefined = ancestors
                 .filter(node => node.type === "FunctionDeclaration")
