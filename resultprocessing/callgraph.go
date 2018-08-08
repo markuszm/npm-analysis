@@ -1,7 +1,7 @@
 package resultprocessing
 
 type Call struct {
-	FromFile     string   `json:"fromFile"`
+	FromModule   string   `json:"fromModule"`
 	FromFunction string   `json:"fromFunction"`
 	Receiver     string   `json:"receiver"`
 	Module       []string `json:"modules"`

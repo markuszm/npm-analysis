@@ -22,7 +22,7 @@ export class Function {
 
 export class Call {
     constructor(
-        public fromFile: string,
+        public fromModule: string,
         public fromFunction: string,
         public receiver: string,
         public modules: string[],

@@ -23,13 +23,7 @@ if (args.length > 1 && args[1] === "debug") {
     debug = true;
 }
 
-/* create resources */
 const calls: Call[] = [];
-const callExpressions: CallExpression[] = [];
-const declaredFunctions: Function[] = [];
-const requiredModules = {}; // map global variable name -> module name
-const visitors = Visitors(callExpressions, requiredModules, declaredFunctions,  debug);
-const ternClient = new TernClient(visitors, debug);
 
 const stats = fs.statSync(entryPath);
 
@@ -57,12 +51,15 @@ if (stats.isDirectory()) {
                 directoryFilter: ["!.git", "!node_modules", "!assets"]
             },
             (fileInfo: any) => {
+                const callExpressions: CallExpression[] = [];
+                const declaredFunctions: Function[] = [];
+                const requiredModules = {}; // map global variable name -> module name
+                const visitors = Visitors(callExpressions, requiredModules, declaredFunctions,  debug);
+                const ternClient = new TernClient(visitors, debug);
+
                 const fileName = getFileNameInsidePackage(fileInfo);
                 ternClient.addFile(fileName, fileInfo.fullPath);
-                if (debug) console.log(`Added file ${fileName} to tern`);
-            },
-            () => {
-                if (debug) console.log(`Finished AST walking`);
+
                 // for each call expression, find the function definition that the call resolves to
                 for (let i = 0; i < callExpressions.length; i++) {
                     const callExpression = callExpressions[i];
@@ -70,7 +67,8 @@ if (stats.isDirectory()) {
                 }
 
                 if (debug) console.log({requiredModules, declaredFunctions});
-
+            },
+            () => {
                 console.log(JSON.stringify(calls));
             }
         );
@@ -79,6 +77,12 @@ if (stats.isDirectory()) {
         console.error("could not find any files");
     }
 } else {
+    const callExpressions: CallExpression[] = [];
+    const declaredFunctions: Function[] = [];
+    const requiredModules = {}; // map global variable name -> module name
+    const visitors = Visitors(callExpressions, requiredModules, declaredFunctions,  debug);
+    const ternClient = new TernClient(visitors, debug);
+
     ternClient.addFile(entryPath, entryPath);
     if (debug) console.log(`Added file ${entryPath} to tern`);
 

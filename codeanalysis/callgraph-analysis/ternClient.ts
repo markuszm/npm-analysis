@@ -87,7 +87,7 @@ export class TernClient {
                 );
                 calls.push(
                     new Call(
-                        callExpression.file,
+                        trimExt(callExpression.file),
                         callExpression.outerMethod,
                         callExpression.receiver,
                         Array.of(...modules.values()),
@@ -108,4 +108,8 @@ function safePush<T>(array: Set<T>, ...items: Array<T>) {
             array.add(item);
         }
     }
+}
+
+function trimExt(fileName: string): string {
+    return fileName.replace(".js", "")
 }
