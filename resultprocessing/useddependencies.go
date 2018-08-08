@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 )
 
 func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, map[string]float64, error) {
@@ -36,8 +37,19 @@ func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, map[
 		switch result.Result.(type) {
 		case map[string]interface{}:
 			dependencyResult := result.Result.(map[string]interface{})
-			dependencyCount := len(dependencyResult["Dependencies"].([]interface{}))
-			usedDependenciesCount := len(dependencyResult["Used"].([]interface{}))
+
+			dependencies := dependencyResult["Dependencies"].([]interface{})
+			usedDependencies := dependencyResult["Used"].([]interface{})
+			dependencyCount := len(dependencies)
+			usedDependenciesCount := 0
+			for _, d := range dependencies {
+				for _, u := range usedDependencies {
+					if strings.Contains(u.(string), d.(string)) {
+						usedDependenciesCount++
+						break
+					}
+				}
+			}
 			ratio := 0.0
 			if dependencyCount > 0 {
 				ratio = float64(usedDependenciesCount) / float64(dependencyCount)
