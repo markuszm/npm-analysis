@@ -19,6 +19,16 @@ if (args.length > 1 && args[1] === "debug") {
 
 const stats = fs.statSync(entryPath);
 
+function getModuleName(fileInfo: any) {
+    const fullPath: string = fileInfo.fullPath;
+    const regexFileName = /(?:\/?.+)(?:\/package\/)(.+)/;
+    if (fullPath.indexOf("package") != -1) {
+        let [, fileName]: RegExpMatchArray = fullPath.match(regexFileName) || [];
+        return fileName;
+    }
+    return fileInfo.name.replace(".js", "");
+}
+
 if (stats.isDirectory()) {
     try {
         const definedImports: Array<Import> = [];
@@ -35,11 +45,13 @@ if (stats.isDirectory()) {
             (fileInfo: any) => {
                 if (debug) console.log("now parsing:", fileInfo.fullPath);
 
+                const fileName = getModuleName(fileInfo);
+
                 const content = fs.readFileSync(fileInfo.fullPath, "utf-8");
                 const traverse = new Traversal(debug);
                 try {
                     const ast = parser.parseAst(content);
-                    definedImports.push(...traverse.traverseAst(ast));
+                    definedImports.push(...traverse.traverseAst(ast, fileName));
                 } catch (e) {
                     if (debug) {
                         console.error(e);
@@ -60,6 +72,6 @@ if (stats.isDirectory()) {
     const content = fs.readFileSync(entryPath, "utf-8");
     let ast = parser.parseAst(content);
     const traverse = new Traversal(debug);
-    const definedImports = traverse.traverseAst(ast);
+    const definedImports = traverse.traverseAst(ast, entryPath.replace(".js", ""));
     console.log(JSON.stringify(definedImports));
 }

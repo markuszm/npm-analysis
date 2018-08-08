@@ -21,7 +21,7 @@ export class Traversal {
 
     constructor(private debug: boolean) {}
 
-    public traverseAst(ast: any): Array<Import> {
+    public traverseAst(ast: any, fileName: string): Array<Import> {
         const definedImports: Array<Import> = [];
         const self = this;
 
@@ -56,6 +56,7 @@ export class Traversal {
                         definedImports.push(
                             new Import(
                                 variableName,
+                                fileName,
                                 moduleName.toString(),
                                 self.BUNDLE_TYPE_COMMONJS,
                                 imported
@@ -96,6 +97,7 @@ export class Traversal {
                 definedImports.push(
                     new Import(
                         variableName,
+                        fileName,
                         moduleName.toString(),
                         self.BUNDLE_TYPE_COMMONJS,
                         imported
@@ -122,6 +124,7 @@ export class Traversal {
                     definedImports.push(
                         new Import(
                             self.IMPORT_SIDE_EFFECT,
+                            fileName,
                             moduleName.toString(),
                             self.BUNDLE_TYPE_ES6
                         )
@@ -133,6 +136,7 @@ export class Traversal {
                         definedImports.push(
                             new Import(
                                 specifier.local.name,
+                                fileName,
                                 moduleName.toString(),
                                 self.BUNDLE_TYPE_ES6,
                                 specifier.imported.name
@@ -142,6 +146,7 @@ export class Traversal {
                         definedImports.push(
                             new Import(
                                 specifier.local.name,
+                                fileName,
                                 moduleName.toString(),
                                 self.BUNDLE_TYPE_ES6
                             )
