@@ -46,7 +46,15 @@ if (stats.isDirectory()) {
                 fileFilter: function(fileInfo: any) {
                     const fileName = fileInfo.name;
                     const ext = path.extname(fileName);
-                    return ext === ".js" || ext === "";
+                    switch (ext) {
+                        case ".js":
+                            return true;
+                        case "":
+                            const file = fs.readFileSync(fileInfo.fullPath, { encoding: "utf8" });
+                            return file.startsWith("#!/usr/bin/env node");
+                        default:
+                            return false;
+                    }
                 },
                 directoryFilter: ["!.git", "!node_modules", "!assets"]
             },
@@ -54,7 +62,12 @@ if (stats.isDirectory()) {
                 const callExpressions: CallExpression[] = [];
                 const declaredFunctions: Function[] = [];
                 const requiredModules = {}; // map global variable name -> module name
-                const visitors = Visitors(callExpressions, requiredModules, declaredFunctions,  debug);
+                const visitors = Visitors(
+                    callExpressions,
+                    requiredModules,
+                    declaredFunctions,
+                    debug
+                );
                 const ternClient = new TernClient(visitors, debug);
 
                 const fileName = getFileNameInsidePackage(fileInfo);
@@ -63,10 +76,15 @@ if (stats.isDirectory()) {
                 // for each call expression, find the function definition that the call resolves to
                 for (let i = 0; i < callExpressions.length; i++) {
                     const callExpression = callExpressions[i];
-                    ternClient.requestCallExpression(callExpression, requiredModules, declaredFunctions, calls);
+                    ternClient.requestCallExpression(
+                        callExpression,
+                        requiredModules,
+                        declaredFunctions,
+                        calls
+                    );
                 }
 
-                if (debug) console.log({requiredModules, declaredFunctions});
+                if (debug) console.log({ requiredModules, declaredFunctions });
             },
             () => {
                 console.log(JSON.stringify(calls));
@@ -80,7 +98,7 @@ if (stats.isDirectory()) {
     const callExpressions: CallExpression[] = [];
     const declaredFunctions: Function[] = [];
     const requiredModules = {}; // map global variable name -> module name
-    const visitors = Visitors(callExpressions, requiredModules, declaredFunctions,  debug);
+    const visitors = Visitors(callExpressions, requiredModules, declaredFunctions, debug);
     const ternClient = new TernClient(visitors, debug);
 
     ternClient.addFile(entryPath, entryPath);
@@ -89,10 +107,10 @@ if (stats.isDirectory()) {
     // for each call expression, find the function definition that the call resolves to
     for (let i = 0; i < callExpressions.length; i++) {
         const callExpression = callExpressions[i];
-        ternClient.requestCallExpression(callExpression, requiredModules,declaredFunctions, calls);
+        ternClient.requestCallExpression(callExpression, requiredModules, declaredFunctions, calls);
     }
 
-    if (debug) console.log({requiredModules});
+    if (debug) console.log({ requiredModules });
 
     console.log(JSON.stringify(calls));
 }

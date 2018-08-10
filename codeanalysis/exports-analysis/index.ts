@@ -41,7 +41,17 @@ if (stats.isDirectory()) {
                 fileFilter: function(fileInfo: any) {
                     const fileName = fileInfo.name;
                     const ext = path.extname(fileName);
-                    return ext === ".js" || ext === ".ts" || ext === ".jsx" || ext === "";
+                    switch (ext) {
+                        case ".js":
+                        case ".ts":
+                        case ".jsx":
+                            return true;
+                        case "":
+                            const file = fs.readFileSync(fileInfo.fullPath, { encoding: "utf8" });
+                            return file.startsWith("#!/usr/bin/env node");
+                        default:
+                            return false;
+                    }
                 },
                 directoryFilter: ["!.git", "!node_modules", "!assets"]
             },
