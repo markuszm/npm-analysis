@@ -36,6 +36,9 @@ func TestCallgraphLocal(t *testing.T) {
 		{FromModule: "call", FromFunction: ".root", Receiver: "this", Module: []string{}, ToFunction: "myfun", Arguments: []string{"2"}, IsLocal: false},
 		{FromModule: "fun", FromFunction: "myfun", Receiver: "this", Module: []string{}, ToFunction: "otherfun", Arguments: []string{"x"}, IsLocal: true},
 		{FromModule: "fun", FromFunction: "otherfun", Receiver: "this", Module: []string{}, ToFunction: "anotherfun", Arguments: []string{"y"}, IsLocal: true},
+		{FromModule: "fun", FromFunction: ".root", Receiver: "this", Module: []string{}, ToFunction: "myfun", Arguments: []string{"2"}, IsLocal: true},
+		{FromModule: "fun", FromFunction: ".root", Receiver: "console", Module: []string{}, ToFunction: "log", Arguments: []string{"myfun(2)"}, IsLocal: false},
+		{FromModule: "fun", FromFunction: ".root", Receiver: "", Module: []string{}, ToFunction: "function() {...}", Arguments: []string{}, IsLocal: false},
 	}
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
 }
