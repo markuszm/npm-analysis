@@ -7,12 +7,12 @@ import {
     VariableDeclaration,
     Node,
     CallExpression,
-    MemberExpression,
     Expression,
     Super,
     AssignmentExpression
 } from "estree";
 import * as util from "./util";
+import { patternToString } from "./util";
 
 export class Traversal {
     BUNDLE_TYPE_ES6 = "es6";
@@ -83,10 +83,10 @@ export class Traversal {
                 if (!callExpr) return;
 
                 const moduleArg = callExpr.arguments[0];
-                if (assignmentExpr.left.type !== "Identifier" || moduleArg.type !== "Literal") {
+                if (moduleArg.type !== "Literal") {
                     return;
                 }
-                const variableName = assignmentExpr.left.name;
+                const variableName = patternToString(assignmentExpr.left);
                 const moduleName = moduleArg.value || "unknown";
                 const imported =
                     assignmentExpr.right.type === "MemberExpression"
