@@ -1,6 +1,5 @@
 import * as util from "./util";
 import {
-    createMethodSignatureString,
     expressionToString,
     extractFunctionInfo,
     patternToString
@@ -37,13 +36,13 @@ export class Traversal {
 
     constructor(private ternClient: TernClient, private fileName: string, private debug: boolean) {}
 
-    collectAllMethodsFromClasses(className: string): Array<string> {
+    collectAllMethodsFromClasses(className: string): Array<Function> {
         const classDecl = this.declaredClasses.find(value => value.id === className);
 
         if (classDecl) {
-            const methods: Array<string> = [];
+            const methods: Array<Function> = [];
             for (let method of classDecl.methods) {
-                methods.push(`${classDecl.id}.${method}`);
+                methods.push(new Function(`${classDecl.id}.${method.id}`, 0, method.params));
             }
             if (classDecl.superClass) {
                 methods.push(...this.collectAllMethodsFromClasses(classDecl.superClass));
@@ -78,7 +77,8 @@ export class Traversal {
                     exports.push(
                         new Export(
                             "function",
-                            createMethodSignatureString(property.key.name, func.params),
+                            property.key.name,
+                            func.params,
                             "commonjs",
                             this.fileName,
                             isDefault
@@ -87,7 +87,14 @@ export class Traversal {
                     continue;
                 }
                 exports.push(
-                    new Export("member", property.key.name, "commonjs", this.fileName, isDefault)
+                    new Export(
+                        "member",
+                        property.key.name,
+                        [],
+                        "commonjs",
+                        this.fileName,
+                        isDefault
+                    )
                 );
             }
         }
@@ -129,6 +136,7 @@ export class Traversal {
                                 new Export(
                                     declaredVariable.kind,
                                     `${name}.${declaredVariable.id}`,
+                                    [],
                                     bundleType,
                                     this.fileName,
                                     isDefault,
@@ -140,17 +148,12 @@ export class Traversal {
                             exports.push(
                                 new Export(
                                     this.EXPORT_TYPE_FUNCTION,
-                                    `${name}.${util.createMethodSignatureString(
-                                        declaredFunction.id,
-                                        declaredFunction.params
-                                    )}`,
+                                    `${name}.${declaredFunction.id}`,
+                                    declaredFunction.params,
                                     bundleType,
                                     this.fileName,
                                     isDefault,
-                                    `${local || obj.id}.${util.createMethodSignatureString(
-                                        declaredFunction.id,
-                                        declaredFunction.params
-                                    )}`
+                                    `${local || obj.id}.${declaredFunction.id}`
                                 )
                             );
                         }
@@ -160,6 +163,7 @@ export class Traversal {
                         new Export(
                             variable.kind,
                             name,
+                            [],
                             bundleType,
                             this.fileName,
                             isDefault,
@@ -179,12 +183,12 @@ export class Traversal {
                     exports.push(
                         new Export(
                             this.EXPORT_TYPE_FUNCTION,
-                            util.createMethodSignatureString(name, method.params),
+                            name,
+                            method.params,
                             bundleType,
                             this.fileName,
                             isDefault,
-                            local ||
-                                util.createMethodSignatureString(identifier.name, method.params)
+                            local || identifier.name
                         )
                     );
                     return;
@@ -195,6 +199,7 @@ export class Traversal {
                         new Export(
                             "unknown",
                             name,
+                            [],
                             bundleType,
                             this.fileName,
                             isDefault,
@@ -291,7 +296,7 @@ export class Traversal {
                 const id = node.source.value ? node.source.value.toString() : "unknown";
 
                 definedExports.push(
-                    new Export("all", id, self.BUNDLE_TYPE_ES6, self.fileName, false)
+                    new Export("all", id, [], self.BUNDLE_TYPE_ES6, self.fileName, false)
                 );
             },
             ExportNamedDeclaration(path: NodePath) {
@@ -309,6 +314,7 @@ export class Traversal {
                                 new Export(
                                     "class",
                                     `${name}`,
+                                    [],
                                     self.BUNDLE_TYPE_ES6,
                                     self.fileName,
                                     name === "default"
@@ -322,7 +328,8 @@ export class Traversal {
                                 definedExports.push(
                                     new Export(
                                         self.EXPORT_TYPE_FUNCTION,
-                                        `${name}.${method}`,
+                                        `${name}.${method.id}`,
+                                        method.params,
                                         self.BUNDLE_TYPE_ES6,
                                         self.fileName,
                                         name === "default"
@@ -335,7 +342,8 @@ export class Traversal {
                             definedExports.push(
                                 new Export(
                                     self.EXPORT_TYPE_FUNCTION,
-                                    util.createMethodSignatureString(func.id, func.params),
+                                    func.id,
+                                    func.params,
                                     self.BUNDLE_TYPE_ES6,
                                     self.fileName,
                                     false
@@ -349,6 +357,7 @@ export class Traversal {
                                     new Export(
                                         kind,
                                         util.patternToString(varDecl.id),
+                                        [],
                                         self.BUNDLE_TYPE_ES6,
                                         self.fileName,
                                         false
@@ -396,6 +405,7 @@ export class Traversal {
                                 new Export(
                                     "class",
                                     `${name}`,
+                                    [],
                                     self.BUNDLE_TYPE_ES6,
                                     self.fileName,
                                     true
@@ -409,7 +419,8 @@ export class Traversal {
                                 definedExports.push(
                                     new Export(
                                         self.EXPORT_TYPE_FUNCTION,
-                                        `${name}.${method}`,
+                                        `${name}.${method.id}`,
+                                        method.params,
                                         self.BUNDLE_TYPE_ES6,
                                         self.fileName,
                                         true
@@ -422,7 +433,8 @@ export class Traversal {
                             definedExports.push(
                                 new Export(
                                     self.EXPORT_TYPE_FUNCTION,
-                                    `${util.createMethodSignatureString(func.id, func.params)}`,
+                                    func.id,
+                                    func.params,
                                     self.BUNDLE_TYPE_ES6,
                                     self.fileName,
                                     true
@@ -436,6 +448,7 @@ export class Traversal {
                                     new Export(
                                         kind,
                                         `${util.patternToString(varDecl.id)}`,
+                                        [],
                                         self.BUNDLE_TYPE_ES6,
                                         self.fileName,
                                         true
@@ -448,6 +461,7 @@ export class Traversal {
                                 new Export(
                                     "expression",
                                     `${util.expressionToString(declaration)}`,
+                                    [],
                                     self.BUNDLE_TYPE_ES6,
                                     self.fileName,
                                     true
@@ -478,6 +492,7 @@ export class Traversal {
                                 new Export(
                                     "class",
                                     right.id ? right.id.name : "default",
+                                    [],
                                     self.BUNDLE_TYPE_COMMONJS,
                                     self.fileName,
                                     true,
@@ -492,11 +507,12 @@ export class Traversal {
                                 definedExports.push(
                                     new Export(
                                         self.EXPORT_TYPE_FUNCTION,
-                                        method,
+                                        method.id,
+                                        method.params,
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
                                         true,
-                                        `${right.id ? right.id.name : ""}.${method}`
+                                        `${right.id ? right.id.name : ""}.${method.id}`
                                     )
                                 );
                             }
@@ -508,6 +524,7 @@ export class Traversal {
                                     new Export(
                                         "class",
                                         callee.name,
+                                        [],
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
                                         true
@@ -518,7 +535,8 @@ export class Traversal {
                                     definedExports.push(
                                         new Export(
                                             self.EXPORT_TYPE_FUNCTION,
-                                            method,
+                                            method.id,
+                                            method.params,
                                             self.BUNDLE_TYPE_COMMONJS,
                                             self.fileName,
                                             true
@@ -546,6 +564,7 @@ export class Traversal {
                                 new Export(
                                     "unknown",
                                     expression,
+                                    [],
                                     self.BUNDLE_TYPE_COMMONJS,
                                     self.fileName,
                                     true
@@ -575,6 +594,7 @@ export class Traversal {
                                         new Export(
                                             "unknown",
                                             memberExpr.property.name,
+                                            [],
                                             self.BUNDLE_TYPE_COMMONJS,
                                             self.fileName,
                                             false,
@@ -599,10 +619,8 @@ export class Traversal {
                                 definedExports.push(
                                     new Export(
                                         self.EXPORT_TYPE_FUNCTION,
-                                        util.createMethodSignatureString(
-                                            memberExpr.property.name,
-                                            func.params
-                                        ),
+                                        memberExpr.property.name,
+                                        func.params,
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
                                         false,
@@ -616,6 +634,7 @@ export class Traversal {
                                     new Export(
                                         "object",
                                         `${memberExpr.property.name}`,
+                                        [],
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
                                         false
@@ -627,9 +646,11 @@ export class Traversal {
                                         new Export(
                                             exp.type,
                                             `${memberExpr.property.name}.${exp.id}`,
-                                            self.BUNDLE_TYPE_COMMONJS,
-                                            self.fileName,
-                                            false
+                                            exp.args,
+                                            exp.bundleType,
+                                            exp.file,
+                                            false,
+                                            exp.local
                                         )
                                     );
                                 }
@@ -639,6 +660,7 @@ export class Traversal {
                                     new Export(
                                         "class",
                                         `${memberExpr.property.name}`,
+                                        [],
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
                                         false,
@@ -653,11 +675,12 @@ export class Traversal {
                                     definedExports.push(
                                         new Export(
                                             self.EXPORT_TYPE_FUNCTION,
-                                            `${memberExpr.property.name}.${method}`,
+                                            `${memberExpr.property.name}.${method.id}`,
+                                            method.params,
                                             self.BUNDLE_TYPE_COMMONJS,
                                             self.fileName,
                                             false,
-                                            `${right.id ? right.id.name : ""}.${method}`
+                                            `${right.id ? right.id.name : ""}.${method.id}`
                                         )
                                     );
                                 }
@@ -667,6 +690,7 @@ export class Traversal {
                                     new Export(
                                         "member",
                                         `${memberExpr.property.name}`,
+                                        [],
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
                                         false,
@@ -679,6 +703,7 @@ export class Traversal {
                                     new Export(
                                         "unknown",
                                         memberExpr.property.name,
+                                        [],
                                         self.BUNDLE_TYPE_COMMONJS,
                                         self.fileName,
                                         false,

@@ -2,6 +2,7 @@ export class Export {
     constructor(
         public type: string,
         public id: string,
+        public args: string[],
         public bundleType: string,
         public file: string,
         public isDefault: boolean,
@@ -25,7 +26,7 @@ export class Variable {
 export class Class {
     constructor(
         public id: string,
-        public methods: string[],
+        public methods: Function[],
         public superClass: string | null
     ) {}
 }

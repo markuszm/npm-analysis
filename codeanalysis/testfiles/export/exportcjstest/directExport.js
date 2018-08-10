@@ -9,5 +9,4 @@ const foo = {
 };
 
 module.exports = addThree;
-module.exports = foo.subThree();
-
+module.exports = foo.subThree;

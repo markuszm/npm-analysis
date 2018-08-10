@@ -28,6 +28,7 @@ import {
     YieldExpression
 } from "./@types/estree";
 import { Export, Function } from "./model";
+import { Method } from "babel-types";
 
 export function isDirectAssignment(left: Pattern): boolean {
     switch (left.type) {
@@ -298,18 +299,15 @@ export function extractFunctionInfo(
     return new Function(functionName, id ? id.start : baseFunc.start, paramsToString);
 }
 
-export function extractMethodsFromClassBody(body: ClassBody): Array<string> {
-    const methods: Array<string> = [];
+export function extractMethodsFromClassBody(body: ClassBody): Array<Function> {
+    const methods: Array<Function> = [];
     const bodyElements = body.body;
     for (let element of bodyElements) {
         if (element.type === "MethodDefinition") {
             const classMethod = extractFunctionInfo(element.value.id, element.value);
             if (element.key.type === "Identifier") {
-                const methodSignature = createMethodSignatureString(
-                    element.key.name,
-                    classMethod.params
-                );
-                methods.push(methodSignature);
+                const func : Function = new Function(element.key.name, 0, classMethod.params)
+                methods.push(func);
             }
         }
     }
