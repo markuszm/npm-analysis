@@ -55,6 +55,16 @@ export class Traversal {
         return [];
     }
 
+    getIdentifierInAssignmentChain(right: Node): Identifier | null {
+        switch (right.type) {
+            case "AssignmentExpression":
+                return this.getIdentifierInAssignmentChain(right.right);
+            case "Identifier":
+                return right;
+        }
+        return null;
+    }
+
     extractExportsFromObject(object: ObjectExpression, isDefault: boolean): Array<Export> {
         const exports: Array<Export> = [];
         const properties = object.properties;
@@ -180,16 +190,18 @@ export class Traversal {
                     return;
                 }
 
-                exports.push(
-                    new Export(
-                        "unknown",
-                        name,
-                        bundleType,
-                        this.fileName,
-                        isDefault,
-                        local || identifier.name
-                    )
-                );
+                if (identifier.name !== "undefined" && identifier.name !== "null") {
+                    exports.push(
+                        new Export(
+                            "unknown",
+                            name,
+                            bundleType,
+                            this.fileName,
+                            isDefault,
+                            local || identifier.name
+                        )
+                    );
+                }
             }
         );
     }
@@ -547,6 +559,30 @@ export class Traversal {
                     const memberExpr = left as MemberExpression;
                     if (memberExpr.property.type === "Identifier") {
                         switch (right.type) {
+                            case "AssignmentExpression":
+                                const identifier = self.getIdentifierInAssignmentChain(right);
+                                if (identifier) {
+                                    self.findExportsForIdentifer(
+                                        identifier,
+                                        memberExpr.property.name,
+                                        self.BUNDLE_TYPE_COMMONJS,
+                                        false,
+                                        "",
+                                        definedExports
+                                    );
+                                } else {
+                                    definedExports.push(
+                                        new Export(
+                                            "unknown",
+                                            memberExpr.property.name,
+                                            self.BUNDLE_TYPE_COMMONJS,
+                                            self.fileName,
+                                            false,
+                                            expressionToString(right)
+                                        )
+                                    );
+                                }
+                                break;
                             case "Identifier":
                                 self.findExportsForIdentifer(
                                     right,
