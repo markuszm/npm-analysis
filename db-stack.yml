@@ -13,16 +13,28 @@ services:
       - 3306:3306
 
   graph:
-    image: neo4j:3.3
+    image: neo4j:3.4.5
     restart: always
     ports:
       - 7474:7474
       - 7687:7687
     volumes:
-      - ./db-data/neo4j/data:/data
-      - ./db-data/neo4j/plugins:/plugins
+      - ./db-data/neo4j-packages/data:/data
+      - ./db-data/neo4j-packages/plugins:/plugins
     environment:
-      - NEO4J_dbms_memory_heap_initialSize=2G
+      - NEO4J_dbms_memory_heap_maxSize=2G
+      - NEO4J_dbms_security_procedures_unrestricted=algo.*,apoc.\\\*
+
+  callgraph:
+    image: neo4j:3.4.5
+    restart: always
+    ports:
+      - 7475:7474
+      - 7688:7687
+    volumes:
+      - ./db-data/neo4j-callgraph/data:/data
+      - ./db-data/neo4j-callgraph/plugins:/plugins
+    environment:
       - NEO4J_dbms_memory_heap_maxSize=2G
       - NEO4J_dbms_security_procedures_unrestricted=algo.*,apoc.\\\*
 
