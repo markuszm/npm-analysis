@@ -265,11 +265,11 @@ export class Traversal {
 
                     const variable = decl.init
                         ? new Variable(
-                              util.patternToString(decl.id),
-                              decl.start,
-                              node.kind,
-                              util.expressionToString(decl.init)
-                          )
+                            util.patternToString(decl.id),
+                            decl.start,
+                            node.kind,
+                            util.expressionToString(decl.init)
+                        )
                         : new Variable(util.patternToString(decl.id), decl.start, node.kind);
                     self.declaredVariables.push(variable);
                 }
@@ -286,7 +286,9 @@ export class Traversal {
                     new Class(className, util.extractMethodsFromClassBody(node.body), superClass)
                 );
             },
+        });
 
+        traverse(ast, {
             /* --- ES6 Handling --- */
             ExportAllDeclaration(path: NodePath) {
                 const node = (path.node as Node) as ExportAllDeclaration;
