@@ -1,33 +1,12 @@
 package codeanalysis
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
 )
-
-func transformToCalls(result interface{}) ([]resultprocessing.Call, error) {
-	objs := result.([]interface{})
-
-	var calls []resultprocessing.Call
-
-	for _, value := range objs {
-		call := resultprocessing.Call{}
-		bytes, err := json.Marshal(value)
-		if err != nil {
-			return calls, err
-		}
-		err = json.Unmarshal(bytes, &call)
-		if err != nil {
-			return calls, err
-		}
-		calls = append(calls, call)
-	}
-	return calls, nil
-}
 
 func TestCallgraphLocal(t *testing.T) {
 	calls := getCallsFromPackagePath("./testfiles/callgraph/local", t)
@@ -196,7 +175,7 @@ func getCallsFromPackagePath(packagePath string, t *testing.T) []resultprocessin
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls, err := transformToCalls(result)
+	calls, err := resultprocessing.TransformToCalls(result)
 	if err != nil {
 		t.Fatal(err)
 	}
