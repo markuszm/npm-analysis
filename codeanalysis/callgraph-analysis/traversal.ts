@@ -132,13 +132,13 @@ export function Visitors(
             }
 
             let functionName: string;
-            let receiver: string;
+            let receiver: string = "";
+
 
             const callee = callNode.callee;
 
             switch (callee.type) {
                 case "Identifier":
-                    receiver = "this";
                     functionName = callee.name;
                     break;
                 case "MemberExpression":
@@ -149,11 +149,9 @@ export function Visitors(
                             : expressionToString(callee.object);
                     break;
                 case "Super":
-                    receiver = "";
                     functionName = "super";
                     break;
                 default:
-                    receiver = "";
                     functionName = expressionToString(callee);
             }
 

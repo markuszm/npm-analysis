@@ -94,7 +94,7 @@ export class TernClient {
                         callExpression.name,
                         callExpression.args,
                         declaredFunctions.some(declFunc => declFunc.id === callExpression.name) &&
-                            callExpression.receiver === "this"
+                        ( callExpression.receiver === "" || callExpression.receiver === "this")
                     )
                 );
             });
