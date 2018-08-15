@@ -27,9 +27,17 @@ function getFileNameInsidePackage(fileInfo: any) {
     const regexFileName = /(?:\/?.+)(?:\/package\/)(.+)/;
     if (fullPath.indexOf("package") != -1) {
         let [, fileName]: RegExpMatchArray = fullPath.match(regexFileName) || [];
-        return fileName;
+        if (fileName == "") {
+            return trimExt(fileInfo.name);
+        }
+        return trimExt(fileName);
     }
-    return fileInfo.name;
+
+    return trimExt(fileInfo.name);
+}
+
+function trimExt(fileName: string): string {
+    return fileName.replace(path.extname(fileName), "");
 }
 
 if (stats.isDirectory()) {
@@ -67,11 +75,11 @@ if (stats.isDirectory()) {
                     definedExports.push(...traverse.traverseAst(ast));
                 } catch (e) {
                     if (debug) {
-                        console.error(e)
+                        console.error(e);
                     }
                     // ignore errors in parsing for now
                 }
-                ternClient.delFile(fileNameInsidePackage)
+                ternClient.delFile(fileNameInsidePackage);
             },
             // after file processing
             () => {

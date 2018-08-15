@@ -7,6 +7,7 @@ import * as ternModule from "tern";
 import * as acornWalk from "acorn/dist/walk";
 
 import { Call, CallExpression, Function } from "./model";
+import * as path from "path";
 
 export class TernClient {
     private ternServer: any;
@@ -94,7 +95,7 @@ export class TernClient {
                         callExpression.name,
                         callExpression.args,
                         declaredFunctions.some(declFunc => declFunc.id === callExpression.name) &&
-                        ( callExpression.receiver === "" || callExpression.receiver === "this")
+                            (callExpression.receiver === "" || callExpression.receiver === "this")
                     )
                 );
             });
@@ -111,5 +112,5 @@ function safePush<T>(array: Set<T>, ...items: Array<T>) {
 }
 
 function trimExt(fileName: string): string {
-    return fileName.replace(".js", "")
+    return fileName.replace(path.extname(fileName), "");
 }

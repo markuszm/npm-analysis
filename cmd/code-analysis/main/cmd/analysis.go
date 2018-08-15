@@ -5,7 +5,6 @@ import (
 	"github.com/markuszm/npm-analysis/codeanalysis"
 	"github.com/markuszm/npm-analysis/codeanalysispipeline"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 var parallel bool
@@ -69,13 +68,13 @@ var analysisCmd = &cobra.Command{
 		var analysis codeanalysis.AnalysisExecutor
 		switch analysisFlag {
 		case "file_distribution":
-			log.Print("executing file distribution analysis")
+			logger.Info("executing file distribution analysis")
 			analysis = codeanalysis.NewFileDistributionAnalysis(logger)
 		case "used_dependencies":
-			log.Print("executing used dependencies analysis - needs path to import analysis")
+			logger.Info("executing used dependencies analysis - needs path to import analysis")
 			analysis = codeanalysis.NewUsedDependenciesAnalysis(logger, analysisExecPath)
 		case "ast":
-			log.Print("executing ast analysis")
+			logger.Info("executing ast analysis")
 			analysis = codeanalysis.NewASTAnalysis(logger, analysisExecPath)
 		}
 

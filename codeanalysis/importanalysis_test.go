@@ -435,28 +435,28 @@ func TestImportTypescript(t *testing.T) {
 	expectedImports := []resultprocessing.Import{
 		{
 			"bar",
-			"somets.ts",
+			"somets",
 			"bar",
 			"es6",
 			"bar",
 		},
 		{
 			"$",
-			"somets.ts",
+			"somets",
 			"JQuery",
 			"es6",
 			"",
 		},
 		{
 			"@side-effect",
-			"somets.ts",
+			"somets",
 			"abc",
 			"es6",
 			"",
 		},
 		{
 			"ZCV",
-			"somets.ts",
+			"somets",
 			"./ZipCodeValidator",
 			"es6",
 			"ZipCodeValidator",

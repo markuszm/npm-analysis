@@ -24,9 +24,16 @@ function getModuleName(fileInfo: any) {
     const regexFileName = /(?:\/?.+)(?:\/package\/)(.+)/;
     if (fullPath.indexOf("package") != -1) {
         let [, fileName]: RegExpMatchArray = fullPath.match(regexFileName) || [];
-        return fileName;
+        if (fileName == "") {
+            return trimExt(fileInfo.name);
+        }
+        return trimExt(fileName);
     }
-    return fileInfo.name.replace(".js", "");
+    return trimExt(fileInfo.name);
+}
+
+function trimExt(fileName: string): string {
+    return fileName.replace(path.extname(fileName), '')
 }
 
 if (stats.isDirectory()) {
