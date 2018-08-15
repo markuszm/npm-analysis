@@ -191,7 +191,7 @@ func (g *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 			if err != nil {
 				return errors.Wrapf(err, "error inserting localfunction call %s in package %s", call, pkgName)
 			}
-		} else {
+		} else if call.Receiver != "" {
 			_, err = database.Exec(`
 				MERGE (m1:Module {name: {fullModuleName}})
 				MERGE (m2:Module {name: {receiver}})
@@ -207,6 +207,21 @@ func (g *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"fromFunctionName":       fromFunctionFullName,
 					"fullCalledFunctionName": fmt.Sprintf("%s|%s", call.Receiver, call.ToFunction),
 					"calledFunctionName":     call.ToFunction,
+				})
+			if err != nil {
+				return errors.Wrapf(err, "error inserting call %s in package %s", call, pkgName)
+			}
+		} else {
+			_, err = database.Exec(`
+				MERGE (m1:Module {name: {fullModuleName}})
+				MERGE (from:LocalFunction {name: {fromFunctionName}})
+				MERGE (called:ExportedFunction {name: {calledFunctionName}, functionName: {calledFunctionName}})
+				MERGE (from)-[:CALL]->(called)
+				`,
+				map[string]interface{}{
+					"fullModuleName":     fmt.Sprintf("%s|%s", pkgName, call.FromModule),
+					"fromFunctionName":   fromFunctionFullName,
+					"calledFunctionName": call.ToFunction,
 				})
 			if err != nil {
 				return errors.Wrapf(err, "error inserting call %s in package %s", call, pkgName)
