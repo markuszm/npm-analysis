@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/packagecallgraph"
 	"github.com/spf13/cobra"
 )
@@ -10,6 +12,10 @@ var callgraphInputExports string
 var callgraphNeo4jUrl string
 var callgraphWorkerNumber int
 
+const MYSQL_USER = "root"
+
+const MYSQL_PW = "npm-analysis"
+
 // callgraphCmd represents the callgraph command
 var callgraphCmd = &cobra.Command{
 	Use:   "callgraph",
@@ -18,12 +24,21 @@ var callgraphCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		initializeLogger()
 
+		var mysqlUrl = fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW)
+
+		mysqlInitializer := &database.Mysql{}
+		mysql, databaseInitErr := mysqlInitializer.InitDB(mysqlUrl)
+		defer mysql.Close()
+		if databaseInitErr != nil {
+			logger.Fatal(databaseInitErr)
+		}
+
 		err := packagecallgraph.InitSchema(callgraphNeo4jUrl)
 		if err != nil {
 			logger.Fatal(err)
 		}
 
-		callEdgeCreator := packagecallgraph.NewCallEdgeCreator(callgraphNeo4jUrl, callgraphInputCallgraph, callgraphWorkerNumber, logger)
+		callEdgeCreator := packagecallgraph.NewCallEdgeCreator(callgraphNeo4jUrl, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
 		err = callEdgeCreator.Exec()
 		if err != nil {
 			logger.Fatal(err)

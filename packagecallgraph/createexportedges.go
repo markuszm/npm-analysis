@@ -99,11 +99,14 @@ func (e *ExportEdgeCreator) addExportEdges(pkgName string, export resultprocessi
 		MERGE (l:LocalFunction {name: {fullLocalFunctionName}, functionName: {fromFunction}})
 		MERGE (e:ExportedFunction {name: {fullExportedFunctionName}, functionName: {exportedFunction}})
 		MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
+		MERGE (p:Package {name: {packageName}})
 		MERGE (l)-[:EXPORT_AS]->(e)
+		MERGE (p)-[:CONTAINS_MODULE]->(m)
 		MERGE (m)-[:CONTAINS_FUNCTION]->(e)
 		MERGE (m)-[:CONTAINS_FUNCTION]->(l)
 		`,
 		map[string]interface{}{
+			"packageName":              pkgName,
 			"fullModuleName":           fmt.Sprintf("%s|%s", pkgName, export.File),
 			"moduleName":               export.File,
 			"fullLocalFunctionName":    fmt.Sprintf("%s|%s|%s", pkgName, export.File, e.getLocalName(export)),

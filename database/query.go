@@ -28,6 +28,26 @@ func FindPackage(db *sql.DB, packageName string) (string, error) {
 	return pkg, nil
 }
 
+func MainFileForPackage(db *sql.DB, packageName string) (string, error) {
+	var mainFile sql.NullString
+	rows, err := db.Query("SELECT main FROM packages WHERE name = ?", packageName)
+	if err != nil {
+		return mainFile.String, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&mainFile)
+		if err != nil {
+			return mainFile.String, err
+		}
+	}
+	err = rows.Err()
+	if err != nil {
+		return mainFile.String, err
+	}
+	return mainFile.String, nil
+}
+
 // unrolls the rows from db to an array to avoid timeouts on large number of rows
 func GetDependencies(db *sql.DB, depType string) ([]model.Dependency, error) {
 	var dependencies []model.Dependency
