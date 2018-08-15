@@ -32,7 +32,7 @@ function getFileNameInsidePackage(fileInfo: any) {
     const regexFileName = /(?:\/?.+)(?:\/package\/)(.+)/;
     if (fullPath.indexOf("package") != -1) {
         let [, fileName]: RegExpMatchArray = fullPath.match(regexFileName) || [];
-        return fileName;
+        return !fileName || fileName === "" ? fileInfo.name : fileName;
     }
     return fileInfo.name;
 }
