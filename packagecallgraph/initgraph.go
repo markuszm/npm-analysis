@@ -32,24 +32,5 @@ func InitSchema(neo4jUrl string) error {
 		return err
 	}
 
-	_, err = database.Exec("CREATE INDEX ON :Package(name)", nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = database.Exec("CREATE INDEX ON :Module(name)", nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = database.Exec("CREATE INDEX ON :LocalFunction(name)", nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = database.Exec("CREATE INDEX ON :ExportedFunction(name)", nil)
-	if err != nil {
-		return err
-	}
 	return nil
 }

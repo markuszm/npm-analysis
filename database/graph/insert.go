@@ -17,21 +17,6 @@ func Init(database Database) error {
 	if err != nil {
 		return err
 	}
-
-	_, err = database.Exec("CREATE INDEX ON :Package(name)", nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = database.Exec("CREATE INDEX ON :Maintainer(name)", nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = database.Exec("CREATE INDEX ON :Author(name)", nil)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
