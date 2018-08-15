@@ -233,6 +233,8 @@ func untarFile(tr *tar.Reader, header *tar.Header, destination string) error {
 		return writeNewFile(destpath, tr, header.FileInfo().Mode())
 	case tar.TypeSymlink:
 		return writeNewSymbolicLink(destpath, header.Linkname)
+	case tar.TypeXGlobalHeader:
+		return nil
 	case tar.TypeLink:
 		return writeNewHardLink(destpath, filepath.Join(destination, header.Linkname))
 	default:
