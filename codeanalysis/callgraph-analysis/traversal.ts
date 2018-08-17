@@ -169,6 +169,9 @@ export function Visitors(
                     break;
                 case "MemberExpression":
                     functionName = expressionToString(callee.property);
+                    if (callee.object.type !== "Identifier" && callee.object.type !== "MemberExpression" && callee.object.type !== "Super")
+                        // ignore other expressions for now
+                        return;
                     receiver =
                         callee.object.type === "Super"
                             ? "super"
@@ -178,7 +181,9 @@ export function Visitors(
                     functionName = "super";
                     break;
                 default:
-                    functionName = expressionToString(callee);
+                    // ignore other expressions for now
+                    // functionName = expressionToString(callee);
+                    return
             }
 
             const args = [];
@@ -230,7 +235,9 @@ export function Visitors(
                     functionName = "super";
                     break;
                 default:
-                    functionName = expressionToString(callee);
+                    // calls on other other expressions - ignore for now
+                    // functionName = expressionToString(callee);
+                    return
             }
 
             const args = [];
