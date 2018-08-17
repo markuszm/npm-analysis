@@ -200,6 +200,14 @@ func TestCallgraphEdgecases(t *testing.T) {
 			ToFunction:   "bar",
 			Arguments:    []string{},
 		},
+		{
+			FromModule:   "dynamicAccess",
+			FromFunction: ".root",
+			Receiver:     "console",
+			Modules:      []string{},
+			ToFunction:   "log",
+			Arguments:    []string{},
+		},
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
