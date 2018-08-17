@@ -29,8 +29,8 @@ func NewCallEdgeCreator(neo4jUrl, callgraphInput string, workerNumber int, sql *
 	return &CallEdgeCreator{neo4jUrl: neo4jUrl, inputFile: callgraphInput, workers: workerNumber, logger: logger, mysqlDatabase: sql}
 }
 
-func (g *CallEdgeCreator) Exec() error {
-	file, err := os.Open(g.inputFile)
+func (c *CallEdgeCreator) Exec() error {
+	file, err := os.Open(c.inputFile)
 	if err != nil {
 		return errors.Wrap(err, "error opening callgraph result file - does it exist in input folder?")
 	}
@@ -41,9 +41,9 @@ func (g *CallEdgeCreator) Exec() error {
 
 	jobs := make(chan model.PackageResult, 100)
 
-	for w := 1; w <= g.workers; w++ {
+	for w := 1; w <= c.workers; w++ {
 		workerWait.Add(1)
-		go g.worker(w, jobs, &workerWait)
+		go c.worker(w, jobs, &workerWait)
 	}
 
 	for {
@@ -51,7 +51,7 @@ func (g *CallEdgeCreator) Exec() error {
 		err := decoder.Decode(&result)
 		if err != nil {
 			if err.Error() == "EOF" {
-				g.logger.Debug("finished decoding result json")
+				c.logger.Debug("finished decoding result json")
 				break
 			} else {
 				return errors.Wrap(err, "error processing package results")
@@ -67,42 +67,46 @@ func (g *CallEdgeCreator) Exec() error {
 	return err
 }
 
-func (g *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, workerWait *sync.WaitGroup) {
+func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, workerWait *sync.WaitGroup) {
 	neo4JDatabase := graph.NewNeo4JDatabase()
 	defer neo4JDatabase.Close()
-	err := neo4JDatabase.InitDB(g.neo4jUrl)
+	err := neo4JDatabase.InitDB(c.neo4jUrl)
 
 	if err != nil {
-		g.logger.Fatal(err)
+		c.logger.Fatal(err)
 	}
 
 	for j := range jobs {
 		pkg := j.Name
 		_, err := neo4JDatabase.Exec(`MERGE (:Package {name: {pkgName}})`, map[string]interface{}{"pkgName": pkg})
 		if err != nil {
-			g.logger.Fatalw("error creating package node", "package", pkg, "error", err)
+			c.logger.Fatalw("error creating package node", "package", pkg, "error", err)
 		}
 
 		calls, err := resultprocessing.TransformToCalls(j.Result)
 		if err != nil {
-			g.logger.Fatal(err)
+			c.logger.Fatal(err)
 		}
 
+		receiverModuleMap := make(map[string][]string, 0)
+
 		for _, call := range calls {
-			err := g.insertCallIntoGraph(pkg, call, neo4JDatabase)
+			if len(call.Modules) > 0 {
+				receiverModuleMap[call.FromModule+call.Receiver] = call.Modules
+			}
+
+			err := c.insertCallIntoGraph(pkg, call, receiverModuleMap, neo4JDatabase)
 			if err != nil {
-				g.logger.Fatalw("error inserting call", "call", call, "error", err)
+				c.logger.Fatalw("error inserting call", "call", call, "error", err)
 			}
 		}
 
-		g.logger.Debugf("Worker: %v, Package: %s, Calls %v", workerId, j.Name, len(calls))
+		c.logger.Debugf("Worker: %v, Package: %s, Calls %v", workerId, j.Name, len(calls))
 	}
 	workerWait.Done()
 }
 
-func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocessing.Call, database graph.Database) error {
-	// TODO: check if imported name exists for functionName - needs imports somewhere stored
-
+func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocessing.Call, receiverModuleMap map[string][]string, database graph.Database) error {
 	fromFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, call.FromModule, call.FromFunction)
 	_, err := database.Exec(`
 		MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
@@ -121,9 +125,15 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 		return errors.Wrap(err, "error inserting module node")
 	}
 
-	// TODO: store receiver module relation for calls to same module when modules empty
+	modules := call.Modules
+	if len(modules) == 0 {
+		refModules, exists := receiverModuleMap[call.FromModule+call.Receiver]
+		if exists {
+			modules = refModules
+		}
+	}
 
-	for _, m := range call.Modules {
+	for _, m := range modules {
 		if codeanalysis.IsLocalImport(m) {
 			_, err = database.Exec(fmt.Sprintf(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
@@ -181,7 +191,7 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 	}
 
 	// special case where modules is empty
-	if len(call.Modules) == 0 {
+	if len(modules) == 0 {
 		if call.IsLocal || call.Receiver == "this" {
 			_, err = database.Exec(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
