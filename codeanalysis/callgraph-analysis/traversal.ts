@@ -1,7 +1,7 @@
 // Author: Michael Pradel, Markus Zimmermann
 import * as model from "./model";
 
-import {patternToString, expressionToString, extractFunctionInfo} from "./util";
+import { patternToString, expressionToString, extractFunctionInfo } from "./util";
 import {
     AssignmentExpression,
     CallExpression,
@@ -14,7 +14,7 @@ import {
     VariableDeclaration,
     VariableDeclarator
 } from "./@types/estree";
-import {Function} from "./model";
+import { Function } from "./model";
 
 // register AST visitors that get called when tern parses the files
 export function Visitors(
@@ -67,24 +67,10 @@ export function Visitors(
                                 requiredModules[crossReferences[rightSideExpr]];
                         }
                     }
+
                 }
             }
         },
-
-        /* --- Collecting Declared Members ---*/
-        FunctionDeclaration: function(declNode: FunctionDeclaration, _: Node[]) {
-            if (debug && declNode.id) {
-                console.log("\nFunction Declaration: \n", {
-                    FileName: declNode.sourceFile.name,
-                    Start: declNode.id.start,
-                    End: declNode.id.end,
-                    Name: declNode.id.name
-                });
-            }
-            const func = extractFunctionInfo(declNode.id, declNode);
-            definedFunctions.push(func);
-        },
-
         AssignmentExpression: function(assignmentExpr: AssignmentExpression, _: Node[]) {
             const callExpr = getRequireCallExpr(assignmentExpr.right);
             if (callExpr) {
@@ -107,7 +93,6 @@ export function Visitors(
                 }
             }
         },
-
         ImportDeclaration: function(importDecl: ImportDeclaration, _: Node[]) {
             if (debug) {
                 console.log({ ImportDeclaration: importDecl });
@@ -118,6 +103,20 @@ export function Visitors(
             for (let specifier of importDecl.specifiers) {
                 requiredModules[specifier.local.name] = moduleName;
             }
+        },
+
+        /* collecting declared functions */
+        FunctionDeclaration: function(declNode: FunctionDeclaration, _: Node[]) {
+            if (debug && declNode.id) {
+                console.log("\nFunction Declaration: \n", {
+                    FileName: declNode.sourceFile.name,
+                    Start: declNode.id.start,
+                    End: declNode.id.end,
+                    Name: declNode.id.name
+                });
+            }
+            const func = extractFunctionInfo(declNode.id, declNode);
+            definedFunctions.push(func);
         },
 
         /* track function calls */
@@ -133,7 +132,6 @@ export function Visitors(
 
             let functionName: string;
             let receiver: string = "";
-
 
             const callee = callNode.callee;
 
