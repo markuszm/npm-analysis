@@ -62,10 +62,12 @@ if (stats.isDirectory()) {
                 const callExpressions: CallExpression[] = [];
                 const declaredFunctions: Function[] = [];
                 const requiredModules = {}; // map global variable name -> module name
+                const importedMethods = {}; // map local import name to imported name
                 const visitors = Visitors(
                     callExpressions,
                     requiredModules,
                     declaredFunctions,
+                    importedMethods,
                     debug
                 );
                 const ternClient = new TernClient(visitors, debug);
@@ -80,6 +82,7 @@ if (stats.isDirectory()) {
                         callExpression,
                         requiredModules,
                         declaredFunctions,
+                        importedMethods,
                         calls
                     );
                 }
@@ -98,7 +101,9 @@ if (stats.isDirectory()) {
     const callExpressions: CallExpression[] = [];
     const declaredFunctions: Function[] = [];
     const requiredModules = {}; // map global variable name -> module name
-    const visitors = Visitors(callExpressions, requiredModules, declaredFunctions, debug);
+    const importedMethods = {}; // map local import name to imported name
+
+    const visitors = Visitors(callExpressions, requiredModules, declaredFunctions, importedMethods, debug);
     const ternClient = new TernClient(visitors, debug);
 
     ternClient.addFile(entryPath, entryPath);
@@ -107,10 +112,10 @@ if (stats.isDirectory()) {
     // for each call expression, find the function definition that the call resolves to
     for (let i = 0; i < callExpressions.length; i++) {
         const callExpression = callExpressions[i];
-        ternClient.requestCallExpression(callExpression, requiredModules, declaredFunctions, calls);
+        ternClient.requestCallExpression(callExpression, requiredModules, declaredFunctions, importedMethods, calls);
     }
 
-    if (debug) console.log({ requiredModules });
+    if (debug) console.log({requiredModules, importedMethods});
 
     console.log(JSON.stringify(calls));
 }

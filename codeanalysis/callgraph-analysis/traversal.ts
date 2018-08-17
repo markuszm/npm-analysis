@@ -21,6 +21,7 @@ export function Visitors(
     callExpressions: model.CallExpression[],
     requiredModules: any,
     definedFunctions: Function[],
+    importedMethods: any,
     debug: boolean
 ): any {
     function getRequireCallExpr(decl: Expression | Super): CallExpression | null {
@@ -60,6 +61,16 @@ export function Visitors(
                                 ModuleName: moduleName
                             });
                         }
+
+                        const imported =
+                            declarator.type === "MemberExpression"
+                                ? expressionToString(declarator)
+                                      .replace(`require(${moduleName}).`, "")
+                                : undefined;
+
+                        if (imported) {
+                            importedMethods[variableName] = imported;
+                        }
                     } else {
                         const rightSideExpr = expressionToString(declarator);
                         if (crossReferences[rightSideExpr]) {
@@ -85,6 +96,15 @@ export function Visitors(
                         ModuleName: moduleName
                     });
                 }
+                const imported =
+                    assignmentExpr.right.type === "MemberExpression"
+                        ? expressionToString(assignmentExpr.right)
+                              .replace(`require(${moduleName}).`, "")
+                        : undefined;
+
+                if (imported) {
+                    importedMethods[variableName] = imported;
+                }
             } else {
                 const rightSideExpr = expressionToString(assignmentExpr.right);
                 if (crossReferences[rightSideExpr]) {
@@ -102,6 +122,14 @@ export function Visitors(
 
             for (let specifier of importDecl.specifiers) {
                 requiredModules[specifier.local.name] = moduleName;
+
+                if (
+                    specifier.type === "ImportSpecifier" &&
+                    specifier.imported.name &&
+                    specifier.imported.name != specifier.local.name
+                ) {
+                    importedMethods[specifier.local.name] = specifier.imported.name
+                }
             }
         },
 

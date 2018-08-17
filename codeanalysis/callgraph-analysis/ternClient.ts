@@ -38,6 +38,7 @@ export class TernClient {
         callExpression: CallExpression,
         requiredModules: any,
         declaredFunctions: Function[],
+        importedMethods: any,
         calls: Array<Call>
     ): void {
         const queryFuncDef = {
@@ -79,6 +80,12 @@ export class TernClient {
                         safePush(modules, requiredModules[ref.start]);
                     }
                 }
+                
+                let toFunction = callExpression.name;
+                let importedName = importedMethods[callExpression.name];
+                if (importedName) {
+                    toFunction = importedName;
+                }
 
                 safePush(
                     modules,
@@ -92,7 +99,7 @@ export class TernClient {
                         callExpression.outerMethod,
                         callExpression.receiver,
                         Array.of(...modules.values()),
-                        callExpression.name,
+                        toFunction,
                         callExpression.args,
                         declaredFunctions.some(declFunc => declFunc.id === callExpression.name) &&
                             (callExpression.receiver === "" || callExpression.receiver === "this")
