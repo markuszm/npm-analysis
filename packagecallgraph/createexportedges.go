@@ -26,7 +26,7 @@ func NewExportEdgeCreator(neo4jUrl, inputFile string, workerNumber int, logger *
 func (e *ExportEdgeCreator) Exec() error {
 	file, err := os.Open(e.inputFile)
 	if err != nil {
-		return errors.Wrap(err, "error opening export result file - does it exist in input folder?")
+		return errors.Wrap(err, "error opening export result file - does it exist?")
 	}
 
 	decoder := json.NewDecoder(file)

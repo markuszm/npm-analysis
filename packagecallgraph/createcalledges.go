@@ -32,7 +32,7 @@ func NewCallEdgeCreator(neo4jUrl, callgraphInput string, workerNumber int, sql *
 func (c *CallEdgeCreator) Exec() error {
 	file, err := os.Open(c.inputFile)
 	if err != nil {
-		return errors.Wrap(err, "error opening callgraph result file - does it exist in input folder?")
+		return errors.Wrap(err, "error opening callgraph result file - does it exist?")
 	}
 
 	decoder := json.NewDecoder(file)
