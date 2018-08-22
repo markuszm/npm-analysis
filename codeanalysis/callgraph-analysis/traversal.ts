@@ -64,8 +64,10 @@ export function Visitors(
 
                         const imported =
                             declarator.type === "MemberExpression"
-                                ? expressionToString(declarator)
-                                      .replace(`require(${moduleName}).`, "")
+                                ? expressionToString(declarator).replace(
+                                      `require(${moduleName}).`,
+                                      ""
+                                  )
                                 : undefined;
 
                         if (imported) {
@@ -78,7 +80,6 @@ export function Visitors(
                                 requiredModules[crossReferences[rightSideExpr]];
                         }
                     }
-
                 }
             }
         },
@@ -98,8 +99,10 @@ export function Visitors(
                 }
                 const imported =
                     assignmentExpr.right.type === "MemberExpression"
-                        ? expressionToString(assignmentExpr.right)
-                              .replace(`require(${moduleName}).`, "")
+                        ? expressionToString(assignmentExpr.right).replace(
+                              `require(${moduleName}).`,
+                              ""
+                          )
                         : undefined;
 
                 if (imported) {
@@ -128,7 +131,7 @@ export function Visitors(
                     specifier.imported.name &&
                     specifier.imported.name != specifier.local.name
                 ) {
-                    importedMethods[specifier.local.name] = specifier.imported.name
+                    importedMethods[specifier.local.name] = specifier.imported.name;
                 }
             }
         },
@@ -169,7 +172,11 @@ export function Visitors(
                     break;
                 case "MemberExpression":
                     functionName = expressionToString(callee.property);
-                    if (callee.object.type !== "Identifier" && callee.object.type !== "MemberExpression" && callee.object.type !== "Super")
+                    if (
+                        callee.object.type !== "Identifier" &&
+                        callee.object.type !== "MemberExpression" &&
+                        callee.object.type !== "Super"
+                    )
                         // ignore other expressions for now
                         return;
                     receiver =
@@ -183,7 +190,7 @@ export function Visitors(
                 default:
                     // ignore other expressions for now
                     // functionName = expressionToString(callee);
-                    return
+                    return;
             }
 
             const args = [];
@@ -237,7 +244,7 @@ export function Visitors(
                 default:
                     // calls on other other expressions - ignore for now
                     // functionName = expressionToString(callee);
-                    return
+                    return;
             }
 
             const args = [];

@@ -208,6 +208,30 @@ func TestCallgraphEdgecases(t *testing.T) {
 			ToFunction:   "log",
 			Arguments:    []string{},
 		},
+		{
+			FromModule:   "redefinitions",
+			FromFunction: ".root",
+			Receiver:     "",
+			Modules:      []string{},
+			ToFunction:   "require",
+			Arguments:    []string{"foo"},
+		},
+		{
+			FromModule:   "redefinitions",
+			FromFunction: "x",
+			Receiver:     "bar2",
+			Modules:      []string{"foo"},
+			ToFunction:   "api",
+			Arguments:    []string{},
+		},
+		{
+			FromModule:   "redefinitions",
+			FromFunction: "x",
+			Receiver:     "bar3",
+			Modules:      []string{"foo"},
+			ToFunction:   "api",
+			Arguments:    []string{},
+		},
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
