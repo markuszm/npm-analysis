@@ -1,9 +1,5 @@
 import * as util from "./util";
-import {
-    expressionToString,
-    extractFunctionInfo,
-    patternToString
-} from "./util";
+import { expressionToString, extractFunctionInfo, patternToString } from "./util";
 import { default as traverse } from "@babel/traverse";
 // -- Need to use estree types because we use estree AST format instead of babel-parser format --
 import {
@@ -265,11 +261,11 @@ export class Traversal {
 
                     const variable = decl.init
                         ? new Variable(
-                            util.patternToString(decl.id),
-                            decl.start,
-                            node.kind,
-                            util.expressionToString(decl.init)
-                        )
+                              util.patternToString(decl.id),
+                              decl.start,
+                              node.kind,
+                              util.expressionToString(decl.init)
+                          )
                         : new Variable(util.patternToString(decl.id), decl.start, node.kind);
                     self.declaredVariables.push(variable);
                 }
@@ -285,7 +281,7 @@ export class Traversal {
                 self.declaredClasses.push(
                     new Class(className, util.extractMethodsFromClassBody(node.body), superClass)
                 );
-            },
+            }
         });
 
         traverse(ast, {
@@ -486,6 +482,30 @@ export class Traversal {
 
                 if (util.isDirectAssignment(left)) {
                     switch (right.type) {
+                        case "AssignmentExpression":
+                            const identifier = self.getIdentifierInAssignmentChain(right);
+                            if (identifier) {
+                                self.findExportsForIdentifer(
+                                    identifier,
+                                    identifier.name,
+                                    self.BUNDLE_TYPE_COMMONJS,
+                                    true,
+                                    "",
+                                    definedExports
+                                );
+                            } else {
+                                definedExports.push(
+                                    new Export(
+                                        "unknown",
+                                        expressionToString(right),
+                                        [],
+                                        self.BUNDLE_TYPE_COMMONJS,
+                                        self.fileName,
+                                        true
+                                    )
+                                );
+                            }
+                            break;
                         case "ObjectExpression":
                             definedExports.push(...self.extractExportsFromObject(right, true));
                             break;
@@ -555,6 +575,38 @@ export class Traversal {
                                 true,
                                 "",
                                 definedExports
+                            );
+                            break;
+                        case "ArrowFunctionExpression":
+                        case "FunctionExpression":
+                            const func = util.extractFunctionInfo(null, right);
+                            definedExports.push(
+                                new Export(
+                                    self.EXPORT_TYPE_FUNCTION,
+                                    "default",
+                                    func.params,
+                                    self.BUNDLE_TYPE_COMMONJS,
+                                    self.fileName,
+                                    true,
+                                    ""
+                                )
+                            );
+                            break;
+                        case "MemberExpression":
+                            const memberExprToString = expressionToString(right);
+                            if (memberExprToString === "module.exports") {
+                                break;
+                            }
+                            definedExports.push(
+                                new Export(
+                                    "member",
+                                    "default",
+                                    [],
+                                    self.BUNDLE_TYPE_COMMONJS,
+                                    self.fileName,
+                                    true,
+                                    memberExprToString
+                                )
                             );
                             break;
                         default:

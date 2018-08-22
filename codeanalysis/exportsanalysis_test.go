@@ -9,20 +9,7 @@ import (
 )
 
 func TestExportCommonJS(t *testing.T) {
-	const analysisPath = "./exports-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/export/exportcjstest")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	exports, err := resultprocessing.TransformToExports(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	exports := getExportsFromPackagePath("./testfiles/export/exportcjstest", t)
 
 	expectedExports := []resultprocessing.Export{
 		{"class", "Calculator", []string{}, "commonjs", "classExport", true, "Calculator"},
@@ -40,7 +27,8 @@ func TestExportCommonJS(t *testing.T) {
 		{"const", "max", []string{}, "commonjs", "constantExport", false, "max"},
 		{"member", "min", []string{}, "commonjs", "constantExport", false, "Number.MIN_VALUE"},
 		{"function", "addThree", []string{"a", "b", "c"}, "commonjs", "directExport", true, "addThree"},
-		{"unknown", "foo.subThree", []string{}, "commonjs", "directExport", true, ""},
+		{"member", "default", []string{}, "commonjs", "directExport", true, "foo.subThree"},
+		{"function", "default", []string{"a"}, "commonjs", "directExport", true, ""},
 		{"function", "add", []string{"a", "b"}, "commonjs", "indirectExport", false, "add"},
 		{"function", "divide", []string{"a", "b"}, "commonjs", "indirectExport", false, ""},
 		{"function", "multiply", []string{"a", "b"}, "commonjs", "indirectExport", false, ""},
@@ -77,20 +65,7 @@ func TestExportCommonJS(t *testing.T) {
 }
 
 func TestExportES6(t *testing.T) {
-	const analysisPath = "./exports-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/export/exportes6test")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	exports, err := resultprocessing.TransformToExports(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	exports := getExportsFromPackagePath("./testfiles/export/exportes6test", t)
 
 	expectedExports := []resultprocessing.Export{
 		{"function", "abs", []string{}, "es6", "defaultExport", true, ""},
@@ -117,20 +92,7 @@ func TestExportES6(t *testing.T) {
 }
 
 func TestExportScoping(t *testing.T) {
-	const analysisPath = "./exports-analysis/analysis"
-
-	logger := zap.NewNop().Sugar()
-	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage("./testfiles/export/scoping")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	exports, err := resultprocessing.TransformToExports(result)
-	if err != nil {
-		t.Fatal(err)
-	}
+	exports := getExportsFromPackagePath("./testfiles/export/scoping", t)
 
 	expectedExports := []resultprocessing.Export{
 		{"function", "foo", []string{}, "commonjs", "scopingtest", false, "foo"},
@@ -138,4 +100,93 @@ func TestExportScoping(t *testing.T) {
 		{"var", "foobar", []string{}, "commonjs", "scopingtest", false, "bar"},
 	}
 	assert.ElementsMatch(t, exports, expectedExports, fmt.Sprint(exports))
+}
+
+func TestExportEdgecases(t *testing.T) {
+	exports := getExportsFromPackagePath("./testfiles/export/edgecases", t)
+
+	expectedExports := []resultprocessing.Export{
+		{
+			ExportType: "const",
+			Identifier: "c",
+			Arguments:  []string{},
+			BundleType: "commonjs",
+			File:       "assignmentChain",
+			IsDefault:  true,
+			Local:      "c",
+		},
+		{
+			ExportType: "const",
+			Identifier: "a",
+			Arguments:  []string{},
+			BundleType: "commonjs",
+			File:       "assignmentChain",
+			Local:      "c",
+		},
+		{
+			ExportType: "const",
+			Identifier: "b",
+			Arguments:  []string{},
+			BundleType: "commonjs",
+			File:       "assignmentChain",
+			Local:      "c",
+		},
+		{
+			ExportType: "const",
+			Identifier: "c",
+			Arguments:  []string{},
+			BundleType: "commonjs",
+			File:       "assignmentChain",
+			Local:      "c",
+		},
+		{
+			ExportType: "unknown",
+			Identifier: "foo",
+			Arguments:  []string{},
+			BundleType: "commonjs",
+			File:       "assignmentChain",
+			Local:      "module.exports.bar = null",
+		},
+		{
+			ExportType: "unknown",
+			Identifier: "bar",
+			Arguments:  []string{},
+			BundleType: "commonjs",
+			File:       "assignmentChain",
+			Local:      "null",
+		},
+		{
+			ExportType: "function",
+			Identifier: "abs",
+			Arguments:  []string{"x"},
+			BundleType: "commonjs",
+			File:       "methodDefinedLater",
+			Local:      "abs",
+		},
+		{
+			ExportType: "function",
+			Identifier: "sqrt",
+			Arguments:  []string{"x"},
+			BundleType: "commonjs",
+			File:       "methodDefinedLater",
+			Local:      "sqrtDefault",
+		},
+	}
+	assert.ElementsMatch(t, exports, expectedExports, fmt.Sprint(exports))
+}
+
+func getExportsFromPackagePath(packagePath string, t *testing.T) []resultprocessing.Export {
+	const analysisPath = "./exports-analysis/analysis"
+	logger := zap.NewNop().Sugar()
+	analysis := NewASTAnalysis(logger, analysisPath)
+	result, err := analysis.AnalyzePackage(packagePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exports, err := resultprocessing.TransformToExports(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return exports
 }

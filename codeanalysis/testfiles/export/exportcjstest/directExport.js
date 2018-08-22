@@ -10,3 +10,4 @@ const foo = {
 
 module.exports = addThree;
 module.exports = foo.subThree;
+module.exports = function(a) {};
