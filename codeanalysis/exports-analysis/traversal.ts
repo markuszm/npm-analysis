@@ -599,7 +599,7 @@ export class Traversal {
                             }
                             definedExports.push(
                                 new Export(
-                                    "member",
+                                    "function",
                                     "default",
                                     [],
                                     self.BUNDLE_TYPE_COMMONJS,
@@ -742,7 +742,7 @@ export class Traversal {
                             case "MemberExpression":
                                 definedExports.push(
                                     new Export(
-                                        "member",
+                                        "function",
                                         `${memberExpr.property.name}`,
                                         [],
                                         self.BUNDLE_TYPE_COMMONJS,
