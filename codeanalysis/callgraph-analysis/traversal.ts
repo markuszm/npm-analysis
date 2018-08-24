@@ -15,9 +15,11 @@ import {
     VariableDeclarator
 } from "./@types/estree";
 import { Function } from "./model";
+import { TernClient } from "./ternClient";
 
 // register AST visitors that get called when tern parses the files
 export function Visitors(
+    ternClient: TernClient,
     callExpressions: model.CallExpression[],
     requiredModules: any,
     definedFunctions: Function[],
@@ -75,10 +77,20 @@ export function Visitors(
                         }
                     } else {
                         const rightSideExpr = expressionToString(declarator);
-                        if (crossReferences[rightSideExpr]) {
-                            requiredModules[decl.start] =
-                                requiredModules[crossReferences[rightSideExpr]];
-                        }
+                        const crPosition = crossReferences[rightSideExpr];
+                        ternClient.requestReferences(
+                            declarator.start,
+                            declNode.sourceFile.name,
+                            function(err, data) {
+                                if (err) return;
+                                const crossRef = data.refs.find(
+                                    (ref: any) => ref.start === crPosition
+                                );
+                                if (crossRef) {
+                                    requiredModules[decl.start] = requiredModules[crPosition];
+                                }
+                            }
+                        );
                     }
                 }
             }
@@ -110,10 +122,19 @@ export function Visitors(
                 }
             } else {
                 const rightSideExpr = expressionToString(assignmentExpr.right);
-                if (crossReferences[rightSideExpr]) {
-                    requiredModules[assignmentExpr.left.start] =
-                        requiredModules[crossReferences[rightSideExpr]];
-                }
+                const crPosition = crossReferences[rightSideExpr];
+                ternClient.requestReferences(
+                    assignmentExpr.right.start,
+                    assignmentExpr.sourceFile.name,
+                    function(err, data) {
+                        if (err) return;
+                        const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
+                        if (crossRef) {
+                            requiredModules[assignmentExpr.left.start] =
+                                requiredModules[crPosition];
+                        }
+                    }
+                );
             }
         },
         ImportDeclaration: function(importDecl: ImportDeclaration, _: Node[]) {

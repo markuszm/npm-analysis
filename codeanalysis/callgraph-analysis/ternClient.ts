@@ -8,11 +8,18 @@ import * as acornWalk from "acorn/dist/walk";
 
 import { Call, CallExpression, Function } from "./model";
 import * as path from "path";
+import { Visitors } from "./traversal";
 
 export class TernClient {
     private ternServer: any;
 
-    constructor(visitors: any, private debug: boolean) {
+    constructor(
+        callExpressions: CallExpression[],
+        requiredModules: any,
+        declaredFunctions: Function[],
+        importedMethods: any,
+        private debug: boolean
+    ) {
         const tern = new ternModule.Server({
             plugins: {
                 modules: {},
@@ -21,9 +28,18 @@ export class TernClient {
             }
         });
 
-        tern.on("postParse", (ast: any, _: any) => {
-            if (ast) {
-                acornWalk.ancestor(ast, visitors);
+        const visitors = Visitors(
+            this,
+            callExpressions,
+            requiredModules,
+            declaredFunctions,
+            importedMethods,
+            debug
+        );
+
+        tern.on("afterLoad", (file: any) => {
+            if (file.ast) {
+                acornWalk.ancestor(file.ast, visitors);
             }
         });
 
@@ -32,6 +48,7 @@ export class TernClient {
 
     addFile(fileName: string, filePath: string): void {
         this.ternServer.addFile(fileName, fs.readFileSync(filePath));
+        this.ternServer.flush(() => void 0)
     }
 
     requestCallExpression(
@@ -80,7 +97,7 @@ export class TernClient {
                         safePush(modules, requiredModules[ref.start]);
                     }
                 }
-                
+
                 let toFunction = callExpression.name;
                 let importedName = importedMethods[callExpression.name];
                 if (importedName) {
@@ -107,6 +124,18 @@ export class TernClient {
                 );
             });
         });
+    }
+
+    requestReferences(start: number, file: string, cb: (err: string, data: any) => void) {
+        const queryRefs = {
+            query: {
+                type: "refs",
+                end: start,
+                file: file
+            }
+        };
+
+        this.ternServer.request(queryRefs, cb);
     }
 }
 

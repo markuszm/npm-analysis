@@ -9,7 +9,6 @@ import * as process from "process";
 import readdirp from "readdirp";
 
 import { TernClient } from "./ternClient";
-import { Visitors } from "./traversal";
 import * as path from "path";
 
 /* argument parsing */
@@ -63,14 +62,13 @@ if (stats.isDirectory()) {
                 const declaredFunctions: Function[] = [];
                 const requiredModules = {}; // map global variable name -> module name
                 const importedMethods = {}; // map local import name to imported name
-                const visitors = Visitors(
+                const ternClient = new TernClient(
                     callExpressions,
                     requiredModules,
                     declaredFunctions,
                     importedMethods,
                     debug
                 );
-                const ternClient = new TernClient(visitors, debug);
 
                 const fileName = getFileNameInsidePackage(fileInfo);
                 ternClient.addFile(fileName, fileInfo.fullPath);
@@ -103,8 +101,13 @@ if (stats.isDirectory()) {
     const requiredModules = {}; // map global variable name -> module name
     const importedMethods = {}; // map local import name to imported name
 
-    const visitors = Visitors(callExpressions, requiredModules, declaredFunctions, importedMethods, debug);
-    const ternClient = new TernClient(visitors, debug);
+    const ternClient = new TernClient(
+        callExpressions,
+        requiredModules,
+        declaredFunctions,
+        importedMethods,
+        debug
+    );
 
     ternClient.addFile(entryPath, entryPath);
     if (debug) console.log(`Added file ${entryPath} to tern`);
@@ -112,10 +115,16 @@ if (stats.isDirectory()) {
     // for each call expression, find the function definition that the call resolves to
     for (let i = 0; i < callExpressions.length; i++) {
         const callExpression = callExpressions[i];
-        ternClient.requestCallExpression(callExpression, requiredModules, declaredFunctions, importedMethods, calls);
+        ternClient.requestCallExpression(
+            callExpression,
+            requiredModules,
+            declaredFunctions,
+            importedMethods,
+            calls
+        );
     }
 
-    if (debug) console.log({requiredModules, importedMethods});
+    if (debug) console.log({ requiredModules, importedMethods });
 
     console.log(JSON.stringify(calls));
 }

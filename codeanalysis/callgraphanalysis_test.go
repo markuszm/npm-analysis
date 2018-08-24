@@ -78,6 +78,10 @@ func TestCallgraphScoping(t *testing.T) {
 		{FromModule: "calls", FromFunction: "g", Receiver: "foobar", Modules: []string{"foobar"}, ToFunction: "otherMethod", Arguments: []string{}},
 		{FromModule: "calls", FromFunction: "h", Receiver: "bar", Modules: []string{"foo", "bar"}, ToFunction: "someMethod", Arguments: []string{}},
 		{FromModule: "calls", FromFunction: "h", Receiver: "fooVar", Modules: []string{"foo"}, ToFunction: "someMethod", Arguments: []string{}},
+		{FromModule: "nestedCrossRef", FromFunction: ".root", Receiver: "", Modules: []string{}, ToFunction: "require", Arguments: []string{"microtime"}},
+		{FromModule: "nestedCrossRef", FromFunction: "nested", Receiver: "e", Modules: []string{}, ToFunction: "normalize", Arguments: []string{}},
+		{FromModule: "nestedCrossRef", FromFunction: "nested", Receiver: "d", Modules: []string{}, ToFunction: "normalize", Arguments: []string{}},
+		{FromModule: "nestedCrossRef", FromFunction: "func", Receiver: "foo", Modules: []string{"microtime"}, ToFunction: "now", Arguments: []string{}},
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
