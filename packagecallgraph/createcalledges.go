@@ -134,6 +134,8 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 	}
 
 	for _, m := range modules {
+		importedModuleName := c.getModuleNameForPackageImport(m)
+		requiredPackageName := getRequiredPackageName(m)
 		if codeanalysis.IsLocalImport(m) {
 			_, err = database.Exec(fmt.Sprintf(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
@@ -157,6 +159,39 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 			if err != nil {
 				return errors.Wrapf(err, "error inserting required module %s for call %s in package %s", m, call, pkgName)
 			}
+		} else if call.ClassName != "" {
+			_, err = database.Exec(`
+				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
+				MERGE (p1:Package {name: {packageName}})
+				MERGE (p2:Package {name: {requiredPackageName}})
+				MERGE (m2:Module {name: {fullRequiredModuleName}, moduleName: {requiredModuleName}})
+				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
+				MERGE (called:ClassFunction {name: {fullClassFunction}, functionName: {classFunction}})
+				MERGE (c:Class {name: {fullClassName}, className: {className}})
+				MERGE (m1)-[:REQUIRES_MODULE]->(m2)
+				MERGE (p1)-[:REQUIRES_PACKAGE]->(p2)
+				MERGE (p2)-[:CONTAINS_MODULE]->(m2)
+				MERGE (from)-[:CALL]->(called)
+				MERGE (m2)-[:CONTAINS_CLASS]->(c)
+				MERGE (c)-[:CONTAINS_CLASS_FUNCTION]->(called)
+				`,
+				map[string]interface{}{
+					"fullModuleName":         fmt.Sprintf("%s|%s", pkgName, call.FromModule),
+					"moduleName":             call.FromModule,
+					"fullRequiredModuleName": fmt.Sprintf("%s|%s", requiredPackageName, importedModuleName),
+					"requiredModuleName":     importedModuleName,
+					"requiredPackageName":    requiredPackageName,
+					"packageName":            pkgName,
+					"fromFunctionName":       fromFunctionFullName,
+					"fromFunction":           call.FromFunction,
+					"fullClassName":          fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName),
+					"className":              call.ClassName,
+					"fullClassFunction":      fmt.Sprintf("%s|%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName, call.ToFunction),
+					"classFunction":          call.ToFunction,
+				})
+			if err != nil {
+				return errors.Wrapf(err, "error inserting required module %s for call %s in package %s", m, call, pkgName)
+			}
 		} else {
 			_, err = database.Exec(fmt.Sprintf(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
@@ -174,13 +209,13 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 				map[string]interface{}{
 					"fullModuleName":         fmt.Sprintf("%s|%s", pkgName, call.FromModule),
 					"moduleName":             call.FromModule,
-					"fullRequiredModuleName": fmt.Sprintf("%s|%s", getRequiredPackageName(m), c.getModuleNameForPackageImport(m)),
-					"requiredModuleName":     c.getModuleNameForPackageImport(m),
-					"requiredPackageName":    getRequiredPackageName(m),
+					"fullRequiredModuleName": fmt.Sprintf("%s|%s", requiredPackageName, importedModuleName),
+					"requiredModuleName":     importedModuleName,
+					"requiredPackageName":    requiredPackageName,
 					"packageName":            pkgName,
 					"fromFunctionName":       fromFunctionFullName,
 					"fromFunction":           call.FromFunction,
-					"fullCalledFunctionName": fmt.Sprintf("%s|%s|%s", m, c.getModuleNameForPackageImport(m), call.ToFunction),
+					"fullCalledFunctionName": fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ToFunction),
 					"calledFunctionName":     call.ToFunction,
 				})
 			if err != nil {
@@ -210,6 +245,27 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 				})
 			if err != nil {
 				return errors.Wrapf(err, "error inserting localfunction call %s in package %s", call, pkgName)
+			}
+		} else if call.ClassName != "" {
+			_, err = database.Exec(`
+				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
+				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
+				MERGE (called:ClassFunction {name: {fullClassFunction}, functionName: {classFunction}})
+				MERGE (c:Class {name: {className}, className: {className}})
+				MERGE (from)-[:CALL]->(called)
+				MERGE (c)-[:CONTAINS_CLASS_FUNCTION]->(called)
+				`,
+				map[string]interface{}{
+					"fullModuleName":    fmt.Sprintf("%s|%s", pkgName, call.FromModule),
+					"moduleName":        call.FromModule,
+					"fromFunctionName":  fromFunctionFullName,
+					"fromFunction":      call.FromFunction,
+					"className":         call.ClassName,
+					"fullClassFunction": fmt.Sprintf("%s|%s", call.ClassName, call.ToFunction),
+					"classFunction":     call.ToFunction,
+				})
+			if err != nil {
+				return errors.Wrapf(err, "error inserting call %s in package %s", call, pkgName)
 			}
 		} else if call.Receiver != "" {
 			_, err = database.Exec(`
