@@ -8,6 +8,7 @@ export class CallExpression {
         public name: string,
         public outerMethod: string,
         public receiver: string,
+        public className: string,
         public args: string[]
     ) {}
 }
@@ -25,6 +26,7 @@ export class Call {
         public fromModule: string,
         public fromFunction: string,
         public receiver: string,
+        public className: string,
         public modules: string[],
         public toFunction: string,
         public args: string[],

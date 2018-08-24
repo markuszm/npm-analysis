@@ -10,6 +10,7 @@ import {
     ImportDeclaration,
     NewExpression,
     Node,
+    RegExpLiteral,
     Super,
     VariableDeclaration,
     VariableDeclarator
@@ -44,6 +45,8 @@ export function Visitors(
 
     var crossReferences: any = {};
 
+    var classReceivers: any = {};
+
     return {
         /* detect imports */
         VariableDeclaration: function(declNode: VariableDeclaration, _: Node[]) {
@@ -76,6 +79,17 @@ export function Visitors(
                             importedMethods[variableName] = imported;
                         }
                     } else {
+                        // special handling of RegExp literals
+                        if (declarator.type === "Literal") {
+                            const regexp = declarator as RegExpLiteral;
+                            if (regexp.regex) {
+                                classReceivers[patternToString(decl.id)] = {
+                                    start: decl.id.start,
+                                    className: "RegExp"
+                                };
+                            }
+                        }
+
                         const rightSideExpr = expressionToString(declarator);
                         const crPosition = crossReferences[rightSideExpr];
                         ternClient.requestReferences(
@@ -96,7 +110,8 @@ export function Visitors(
             }
         },
         AssignmentExpression: function(assignmentExpr: AssignmentExpression, _: Node[]) {
-            const callExpr = getRequireCallExpr(assignmentExpr.right);
+            const right = assignmentExpr.right;
+            const callExpr = getRequireCallExpr(right);
             if (callExpr) {
                 const variableName = patternToString(assignmentExpr.left);
                 const firstArg = callExpr.arguments[0];
@@ -110,31 +125,37 @@ export function Visitors(
                     });
                 }
                 const imported =
-                    assignmentExpr.right.type === "MemberExpression"
-                        ? expressionToString(assignmentExpr.right).replace(
-                              `require(${moduleName}).`,
-                              ""
-                          )
+                    right.type === "MemberExpression"
+                        ? expressionToString(right).replace(`require(${moduleName}).`, "")
                         : undefined;
 
                 if (imported) {
                     importedMethods[variableName] = imported;
                 }
             } else {
-                const rightSideExpr = expressionToString(assignmentExpr.right);
-                const crPosition = crossReferences[rightSideExpr];
-                ternClient.requestReferences(
-                    assignmentExpr.right.start,
-                    assignmentExpr.sourceFile.name,
-                    function(err, data) {
-                        if (err) return;
-                        const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
-                        if (crossRef) {
-                            requiredModules[assignmentExpr.left.start] =
-                                requiredModules[crPosition];
-                        }
+                // special handling of RegExp literals
+                if (right.type === "Literal") {
+                    const regexp = right as RegExpLiteral;
+                    if (regexp.regex) {
+                        classReceivers[patternToString(assignmentExpr.left)] = {
+                            start: assignmentExpr.left.start,
+                            className: "RegExp"
+                        };
                     }
-                );
+                }
+
+                const rightSideExpr = expressionToString(right);
+                const crPosition = crossReferences[rightSideExpr];
+                ternClient.requestReferences(right.start, assignmentExpr.sourceFile.name, function(
+                    err,
+                    data
+                ) {
+                    if (err) return;
+                    const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
+                    if (crossRef) {
+                        requiredModules[assignmentExpr.left.start] = requiredModules[crPosition];
+                    }
+                });
             }
         },
         ImportDeclaration: function(importDecl: ImportDeclaration, _: Node[]) {
@@ -184,6 +205,7 @@ export function Visitors(
 
             let functionName: string;
             let receiver: string = "";
+            let className = "";
 
             const callee = callNode.callee;
 
@@ -193,6 +215,17 @@ export function Visitors(
                     break;
                 case "MemberExpression":
                     functionName = expressionToString(callee.property);
+
+                    // special case handling calls on Regular Expressions Literals
+                    if(callee.object.type === "Literal") {
+                        const regexp = callee.object as RegExpLiteral;
+                        if (regexp.regex) {
+                            className = "RegExp";
+                            receiver = "";
+                        }
+                        break;
+                    }
+
                     if (
                         callee.object.type !== "Identifier" &&
                         callee.object.type !== "MemberExpression" &&
@@ -224,6 +257,25 @@ export function Visitors(
                 args.push(argumentAsString);
             }
 
+
+            if (receiver != "") {
+                const classForReceiver = classReceivers[receiver];
+                if (classForReceiver) {
+                    ternClient.requestReferences(callNode.start, callNode.sourceFile.name, function(
+                        err,
+                        data
+                    ) {
+                        if (err) return;
+                        const ref = data.refs.find(
+                            (ref: any) => ref.start === classForReceiver.start
+                        );
+                        if (ref) {
+                            className = classForReceiver.className;
+                        }
+                    });
+                }
+            }
+
             callExpressions.push(
                 new model.CallExpression(
                     callNode.sourceFile.name,
@@ -232,6 +284,7 @@ export function Visitors(
                     functionName,
                     outerMethodName,
                     receiver,
+                    className,
                     args
                 )
             );
@@ -278,27 +331,36 @@ export function Visitors(
                 args.push(argumentAsString);
             }
 
+            let receiverStart = -1;
+
             // when functionName is module then add left side of new expression to requiredModules
-            if (crossReferences[functionName]) {
-                const outerDeclarator: VariableDeclarator = ancestors
-                    .filter(node => node.type === "VariableDeclarator")
-                    .pop() as VariableDeclarator;
+            const outerDeclarator: VariableDeclarator = ancestors
+                .filter(node => node.type === "VariableDeclarator")
+                .pop() as VariableDeclarator;
+            const outerAssignment: AssignmentExpression = ancestors
+                .filter(node => node.type === "AssignmentExpression")
+                .pop() as AssignmentExpression;
 
-                const outerAssignment: AssignmentExpression = ancestors
-                    .filter(node => node.type === "AssignmentExpression")
-                    .pop() as AssignmentExpression;
-
-                if (outerDeclarator) {
-                    receiver = patternToString(outerDeclarator.id);
+            if (outerDeclarator) {
+                receiver = patternToString(outerDeclarator.id);
+                receiverStart = outerDeclarator.id.start;
+                if (crossReferences[functionName]) {
                     requiredModules[outerDeclarator.start] =
                         requiredModules[crossReferences[functionName]];
                 }
+            }
 
-                if (outerAssignment) {
-                    receiver = patternToString(outerAssignment.left);
+            if (outerAssignment) {
+                receiver = patternToString(outerAssignment.left);
+                receiverStart = outerAssignment.left.start;
+                if (crossReferences[functionName]) {
                     requiredModules[outerAssignment.start] =
                         requiredModules[crossReferences[functionName]];
                 }
+            }
+
+            if (receiverStart != -1) {
+                classReceivers[receiver] = { start: receiverStart, className: functionName };
             }
 
             callExpressions.push(
@@ -309,6 +371,7 @@ export function Visitors(
                     "new " + functionName,
                     outerMethodName,
                     receiver,
+                    functionName,
                     args
                 )
             );

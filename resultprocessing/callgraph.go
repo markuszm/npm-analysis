@@ -6,6 +6,7 @@ type Call struct {
 	FromModule   string   `json:"fromModule"`
 	FromFunction string   `json:"fromFunction"`
 	Receiver     string   `json:"receiver"`
+	ClassName    string   `json:"className"`
 	Modules      []string `json:"modules"`
 	ToFunction   string   `json:"toFunction"`
 	Arguments    []string `json:"args"`
