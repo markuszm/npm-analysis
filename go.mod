@@ -1,0 +1,54 @@
+module github.com/markuszm/npm-analysis
+
+require (
+	github.com/Masterminds/semver v1.4.2
+	github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af
+	github.com/aws/aws-sdk-go v1.14.23
+	github.com/blang/semver v3.5.1+incompatible
+	github.com/buger/jsonparser v0.0.0-20180318095312-2cac668e8456
+	github.com/davecgh/go-spew v1.1.0
+	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76
+	github.com/fsnotify/fsnotify v1.4.7
+	github.com/go-ini/ini v1.37.0
+	github.com/go-sql-driver/mysql v1.3.0
+	github.com/go-stack/stack v1.7.0
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
+	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
+	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce
+	github.com/inconshreveable/mousetrap v1.0.0
+	github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8
+	github.com/johnnadratowski/golang-neo4j-bolt-driver v0.0.0-20161220215215-2387cc1f0125
+	github.com/jung-kurt/gofpdf v1.0.0
+	github.com/llgcode/draw2d v0.0.0-20180124133339-274031cf2abe
+	github.com/magiconair/properties v1.8.0
+	github.com/mattn/go-sqlite3 v1.7.0
+	github.com/mholt/archiver v0.0.0-20180417220235-e4ef56d48eb0
+	github.com/mitchellh/go-homedir v0.0.0-20180523094522-3864e76763d9
+	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675
+	github.com/mongodb/mongo-go-driver v0.0.6
+	github.com/nwaples/rardecode v0.0.0-20171029023500-e06696f847ae
+	github.com/pelletier/go-toml v1.2.0
+	github.com/pierrec/lz4 v2.0.2+incompatible
+	github.com/pkg/errors v0.8.0
+	github.com/pmezard/go-difflib v1.0.0
+	github.com/spf13/afero v1.1.1
+	github.com/spf13/cast v1.2.0
+	github.com/spf13/cobra v0.0.3
+	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec
+	github.com/spf13/pflag v1.0.1
+	github.com/spf13/viper v1.0.2
+	github.com/stretchr/testify v1.2.2
+	github.com/ulikunitz/xz v0.5.4
+	go.uber.org/atomic v1.3.2
+	go.uber.org/multierr v1.1.0
+	go.uber.org/zap v1.8.0
+	golang.org/x/crypto v0.0.0-20180531191117-5ba7f6308246
+	golang.org/x/image v0.0.0-20180601115456-af66defab954
+	golang.org/x/net v0.0.0-20180530234432-1e491301e022
+	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f
+	golang.org/x/sys v0.0.0-20180627142611-7138fd3d9dc8
+	golang.org/x/text v0.3.0
+	gonum.org/v1/gonum v0.0.0-20180608062229-e4cc524e41c0
+	gonum.org/v1/plot v0.0.0-20180601122111-f671bfc8bb81
+	gopkg.in/yaml.v2 v2.2.1
+)
