@@ -1,54 +1,63 @@
 module github.com/markuszm/npm-analysis
 
 require (
+	github.com/BurntSushi/toml v0.3.0 // indirect
 	github.com/Masterminds/semver v1.4.2
-	github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af
-	github.com/aws/aws-sdk-go v1.14.23
+	github.com/aws/aws-sdk-go v1.15.21
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/buger/jsonparser v0.0.0-20180318095312-2cac668e8456
-	github.com/davecgh/go-spew v1.1.0
-	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76
-	github.com/fsnotify/fsnotify v1.4.7
-	github.com/go-ini/ini v1.37.0
-	github.com/go-sql-driver/mysql v1.3.0
-	github.com/go-stack/stack v1.7.0
-	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
-	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
-	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce
-	github.com/inconshreveable/mousetrap v1.0.0
-	github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8
-	github.com/johnnadratowski/golang-neo4j-bolt-driver v0.0.0-20161220215215-2387cc1f0125
-	github.com/jung-kurt/gofpdf v1.0.0
-	github.com/llgcode/draw2d v0.0.0-20180124133339-274031cf2abe
-	github.com/magiconair/properties v1.8.0
-	github.com/mattn/go-sqlite3 v1.7.0
+	github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44
+	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
+	github.com/fsnotify/fsnotify v1.4.7 // indirect
+	github.com/go-gl/glfw v0.0.0-20180813204114-2484f3e51bc4 // indirect
+	github.com/go-ini/ini v1.38.2 // indirect
+	github.com/go-sql-driver/mysql v1.4.0
+	github.com/go-stack/stack v1.7.0 // indirect
+	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
+	github.com/google/go-cmp v0.2.0 // indirect
+	github.com/gopherjs/gopherjs v0.0.0-20180825215210-0210a2f0f73c // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
+	github.com/johnnadratowski/golang-neo4j-bolt-driver v0.0.0-20180812033109-f96710402a3d
+	github.com/jtolds/gls v4.2.1+incompatible // indirect
+	github.com/llgcode/draw2d v0.0.0-20180825133448-f52c8a71aff0 // indirect
+	github.com/magiconair/properties v1.8.0 // indirect
+	github.com/mattn/go-sqlite3 v1.9.0
 	github.com/mholt/archiver v0.0.0-20180417220235-e4ef56d48eb0
-	github.com/mitchellh/go-homedir v0.0.0-20180523094522-3864e76763d9
-	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675
-	github.com/mongodb/mongo-go-driver v0.0.6
-	github.com/nwaples/rardecode v0.0.0-20171029023500-e06696f847ae
-	github.com/pelletier/go-toml v1.2.0
-	github.com/pierrec/lz4 v2.0.2+incompatible
+	github.com/mitchellh/go-homedir v1.0.0
+	github.com/mitchellh/mapstructure v1.0.0 // indirect
+	github.com/mongodb/mongo-go-driver v0.0.12
+	github.com/nwaples/rardecode v0.0.0-20171029023500-e06696f847ae // indirect
+	github.com/pelletier/go-toml v1.2.0 // indirect
+	github.com/pierrec/lz4 v2.0.3+incompatible // indirect
+	github.com/pierrec/xxHash v0.1.1 // indirect
 	github.com/pkg/errors v0.8.0
-	github.com/pmezard/go-difflib v1.0.0
-	github.com/spf13/afero v1.1.1
-	github.com/spf13/cast v1.2.0
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/smartystreets/assertions v0.0.0-20180820201707-7c9eb446e3cf // indirect
+	github.com/smartystreets/goconvey v0.0.0-20180222194500-ef6db91d284a // indirect
+	github.com/spf13/afero v1.1.1 // indirect
+	github.com/spf13/cast v1.2.0 // indirect
 	github.com/spf13/cobra v0.0.3
-	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec
-	github.com/spf13/pflag v1.0.1
-	github.com/spf13/viper v1.0.2
+	github.com/spf13/jwalterweatherman v0.0.0-20180814060501-14d3d4c51834 // indirect
+	github.com/spf13/pflag v1.0.2 // indirect
+	github.com/spf13/viper v1.1.0
 	github.com/stretchr/testify v1.2.2
-	github.com/ulikunitz/xz v0.5.4
-	go.uber.org/atomic v1.3.2
-	go.uber.org/multierr v1.1.0
-	go.uber.org/zap v1.8.0
-	golang.org/x/crypto v0.0.0-20180531191117-5ba7f6308246
-	golang.org/x/image v0.0.0-20180601115456-af66defab954
-	golang.org/x/net v0.0.0-20180530234432-1e491301e022
-	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f
-	golang.org/x/sys v0.0.0-20180627142611-7138fd3d9dc8
-	golang.org/x/text v0.3.0
-	gonum.org/v1/gonum v0.0.0-20180608062229-e4cc524e41c0
-	gonum.org/v1/plot v0.0.0-20180601122111-f671bfc8bb81
-	gopkg.in/yaml.v2 v2.2.1
+	github.com/ulikunitz/xz v0.5.4 // indirect
+	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
+	github.com/xdg/stringprep v1.0.0 // indirect
+	go.uber.org/atomic v1.3.2 // indirect
+	go.uber.org/multierr v1.1.0 // indirect
+	go.uber.org/zap v1.9.1
+	golang.org/x/crypto v0.0.0-20180820150726-614d502a4dac // indirect
+	golang.org/x/exp v0.0.0-20180807140117-3d87b88a115f // indirect
+	golang.org/x/net v0.0.0-20180826012351-8a410e7b638d // indirect
+	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f // indirect
+	golang.org/x/sys v0.0.0-20180824143301-4910a1d54f87 // indirect
+	golang.org/x/text v0.3.0 // indirect
+	golang.org/x/tools v0.0.0-20180826000951-f6ba57429505 // indirect
+	gonum.org/v1/gonum v0.0.0-20180825225636-e09c1d5ea579 // indirect
+	gonum.org/v1/plot v0.0.0-20180826075927-f52aaf5deade
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	gopkg.in/ini.v1 v1.38.2 // indirect
+	gopkg.in/yaml.v2 v2.2.1 // indirect
 )
