@@ -85,7 +85,7 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 
 		calls, err := resultprocessing.TransformToCalls(j.Result)
 		if err != nil {
-			c.logger.Fatal(err)
+			c.logger.With("package", j.Name).Error(err)
 		}
 
 		receiverModuleMap := make(map[string][]string, 0)

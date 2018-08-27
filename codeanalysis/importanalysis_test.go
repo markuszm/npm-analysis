@@ -1,33 +1,12 @@
 package codeanalysis
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
 )
-
-func transformToImports(result interface{}) ([]resultprocessing.Import, error) {
-	objs := result.([]interface{})
-
-	var imports []resultprocessing.Import
-
-	for _, value := range objs {
-		importObj := resultprocessing.Import{}
-		bytes, err := json.Marshal(value)
-		if err != nil {
-			return imports, err
-		}
-		err = json.Unmarshal(bytes, &importObj)
-		if err != nil {
-			return imports, err
-		}
-		imports = append(imports, importObj)
-	}
-	return imports, nil
-}
 
 func TestImportRequire(t *testing.T) {
 	imports := getImportsFromPackagePath("./testfiles/import/requiretest", t)
@@ -518,7 +497,7 @@ func getImportsFromPackagePath(packagePath string, t *testing.T) []resultprocess
 	if err != nil {
 		t.Fatal(err)
 	}
-	imports, err := transformToImports(result)
+	imports, err := resultprocessing.TransformToImports(result)
 	if err != nil {
 		t.Fatal(err)
 	}

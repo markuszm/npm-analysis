@@ -1,6 +1,10 @@
 package resultprocessing
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/pkg/errors"
+	"reflect"
+)
 
 type Export struct {
 	ExportType string   `json:"type"`
@@ -13,6 +17,10 @@ type Export struct {
 }
 
 func TransformToExports(result interface{}) ([]Export, error) {
+	if reflect.TypeOf(result).String() != "[]interface {}" {
+		return nil, errors.New("Error parsing exports")
+	}
+
 	objs := result.([]interface{})
 
 	var exports []Export

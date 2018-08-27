@@ -1,6 +1,10 @@
 package resultprocessing
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/pkg/errors"
+	"reflect"
+)
 
 type Call struct {
 	FromModule   string   `json:"fromModule"`
@@ -14,6 +18,10 @@ type Call struct {
 }
 
 func TransformToCalls(result interface{}) ([]Call, error) {
+	if reflect.TypeOf(result).String() != "[]interface {}" {
+		return nil, errors.New("Error parsing calls")
+	}
+
 	objs := result.([]interface{})
 
 	var calls []Call
