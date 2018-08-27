@@ -63,12 +63,11 @@ func (e *ExportEdgeCreator) Exec() error {
 
 func (e *ExportEdgeCreator) worker(workerId int, jobs chan model.PackageResult, workerWait *sync.WaitGroup) {
 	neo4JDatabase := graph.NewNeo4JDatabase()
-	defer neo4JDatabase.Close()
 	err := neo4JDatabase.InitDB(e.neo4jUrl)
-
 	if err != nil {
 		e.logger.Fatal(err)
 	}
+	defer neo4JDatabase.Close()
 
 	for j := range jobs {
 		pkg := j.Name

@@ -69,12 +69,11 @@ func (c *CallEdgeCreator) Exec() error {
 
 func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, workerWait *sync.WaitGroup) {
 	neo4JDatabase := graph.NewNeo4JDatabase()
-	defer neo4JDatabase.Close()
 	err := neo4JDatabase.InitDB(c.neo4jUrl)
-
 	if err != nil {
 		c.logger.Fatal(err)
 	}
+	defer neo4JDatabase.Close()
 
 	for j := range jobs {
 		pkg := j.Name

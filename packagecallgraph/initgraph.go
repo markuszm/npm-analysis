@@ -6,11 +6,11 @@ import (
 
 func InitSchema(neo4jUrl string) error {
 	database := graph.NewNeo4JDatabase()
-	defer database.Close()
 	err := database.InitDB(neo4jUrl)
 	if err != nil {
 		return err
 	}
+	defer database.Close()
 
 	_, err = database.Exec("CREATE CONSTRAINT ON (p:Package) ASSERT p.name IS UNIQUE", nil)
 	if err != nil {
