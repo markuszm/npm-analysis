@@ -2,12 +2,17 @@ package graph
 
 import (
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
+	"github.com/johnnadratowski/golang-neo4j-bolt-driver/log"
+	"github.com/pkg/errors"
+	"io"
 )
 
 type Database interface {
 	InitDB(url string) error
 	Exec(query string, args map[string]interface{}) (int64, error)
 	ExecPipeline(queries []string, args ...map[string]interface{}) ([]int64, error)
+	Query(query string, args map[string]interface{}) ([][]interface{}, error)
+	QueryStream(query string, args map[string]interface{}, resultCh chan []interface{}) error
 	Close() error
 }
 
@@ -58,8 +63,32 @@ func (d *Neo4JDatabase) ExecPipeline(queries []string, args ...map[string]interf
 	return rowsAffected, nil
 }
 
-func (d *Neo4JDatabase) Query(query string, args map[string]interface{}) error {
+func (d *Neo4JDatabase) QueryStream(query string, args map[string]interface{}, resultCh chan []interface{}) error {
+	rows, err := d.conn.QueryNeo(query, args)
+	if err != nil {
+		return errors.Wrap(err, "error querying neo4j")
+	}
+	for {
+		result, _, err := rows.NextNeo()
+		if err != nil {
+			if err == io.EOF {
+				close(resultCh)
+				break
+			} else {
+				log.Fatal(errors.Wrap(err, "error processing package results"))
+			}
+		}
+		resultCh <- result
+	}
 	return nil
+}
+
+func (d *Neo4JDatabase) Query(query string, args map[string]interface{}) ([][]interface{}, error) {
+	data, _, _, err := d.conn.QueryNeoAll(query, args)
+	if err != nil {
+		return nil, errors.Wrap(err, "error querying neo4j")
+	}
+	return data, nil
 }
 
 func (d *Neo4JDatabase) Close() error {
