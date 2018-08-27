@@ -90,6 +90,8 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 
 		receiverModuleMap := make(map[string][]string, 0)
 
+		var retryCalls []resultprocessing.Call
+
 		for _, call := range calls {
 			if len(call.Modules) > 0 {
 				receiverModuleMap[call.FromModule+call.Receiver] = call.Modules
@@ -97,7 +99,16 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 
 			err := c.insertCallIntoGraph(pkg, call, receiverModuleMap, neo4JDatabase)
 			if err != nil {
-				c.logger.Fatalw("error inserting call", "call", call, "error", err)
+				c.logger.With("package", pkg, "call", call, "error", err).Error("error inserting call - retrying")
+				retryCalls = append(retryCalls, call)
+			}
+		}
+
+		for _, call := range retryCalls {
+			err := c.insertCallIntoGraph(pkg, call, receiverModuleMap, neo4JDatabase)
+			if err != nil {
+				c.logger.With("package", pkg, "call", call, "error", err).Error("error inserting call - retrying")
+				retryCalls = append(retryCalls, call)
 			}
 		}
 
