@@ -22,9 +22,9 @@ import { TernClient } from "./ternClient";
 export function Visitors(
     ternClient: TernClient,
     callExpressions: model.CallExpression[],
-    requiredModules: any,
+    requiredModules: Map<string | number, any>,
     definedFunctions: Function[],
-    importedMethods: any,
+    importedMethods: Map<string, string>,
     debug: boolean
 ): any {
     function getRequireCallExpr(decl: Expression | Super): CallExpression | null {
@@ -58,7 +58,7 @@ export function Visitors(
                         const variableName = patternToString(decl.id);
                         const firstArg = callExpr.arguments[0];
                         const moduleName = firstArg.type === "Literal" ? firstArg.value : "";
-                        requiredModules[decl.start] = moduleName;
+                        requiredModules.set(decl.start, moduleName);
                         crossReferences[variableName] = decl.start;
                         if (debug) {
                             console.log("\nModule Declaration: \n", {
@@ -76,7 +76,7 @@ export function Visitors(
                                 : undefined;
 
                         if (imported) {
-                            importedMethods[variableName] = imported;
+                            importedMethods.set(variableName, imported);
                         }
                     } else {
                         // special handling of RegExp literals
@@ -101,7 +101,10 @@ export function Visitors(
                                     (ref: any) => ref.start === crPosition
                                 );
                                 if (crossRef) {
-                                    requiredModules[decl.start] = requiredModules[crPosition];
+                                    requiredModules.set(
+                                        decl.start,
+                                        requiredModules.get(crPosition)
+                                    );
                                 }
                             }
                         );
@@ -116,7 +119,7 @@ export function Visitors(
                 const variableName = patternToString(assignmentExpr.left);
                 const firstArg = callExpr.arguments[0];
                 const moduleName = firstArg.type === "Literal" ? firstArg.value : "";
-                requiredModules[assignmentExpr.left.start] = moduleName;
+                requiredModules.set(assignmentExpr.left.start, moduleName);
                 crossReferences[variableName] = assignmentExpr.left.start;
                 if (debug) {
                     console.log("\nModule Declaration: \n", {
@@ -130,7 +133,7 @@ export function Visitors(
                         : undefined;
 
                 if (imported) {
-                    importedMethods[variableName] = imported;
+                    importedMethods.set(variableName, imported);
                 }
             } else {
                 // special handling of RegExp literals
@@ -153,7 +156,10 @@ export function Visitors(
                     if (err) return;
                     const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
                     if (crossRef) {
-                        requiredModules[assignmentExpr.left.start] = requiredModules[crPosition];
+                        requiredModules.set(
+                            assignmentExpr.left.start,
+                            requiredModules.get(crPosition)
+                        );
                     }
                 });
             }
@@ -166,14 +172,14 @@ export function Visitors(
             const moduleName = importDecl.source.value;
 
             for (let specifier of importDecl.specifiers) {
-                requiredModules[specifier.local.name] = moduleName;
+                requiredModules.set(specifier.local.name, moduleName);
 
                 if (
                     specifier.type === "ImportSpecifier" &&
                     specifier.imported.name &&
                     specifier.imported.name != specifier.local.name
                 ) {
-                    importedMethods[specifier.local.name] = specifier.imported.name;
+                    importedMethods.set(specifier.local.name, specifier.imported.name);
                 }
             }
         },
@@ -217,7 +223,7 @@ export function Visitors(
                     functionName = expressionToString(callee.property);
 
                     // special case handling calls on Regular Expressions Literals
-                    if(callee.object.type === "Literal") {
+                    if (callee.object.type === "Literal") {
                         const regexp = callee.object as RegExpLiteral;
                         if (regexp.regex) {
                             className = "RegExp";
@@ -256,7 +262,6 @@ export function Visitors(
                         : expressionToString(argument);
                 args.push(argumentAsString);
             }
-
 
             if (receiver != "") {
                 const classForReceiver = classReceivers[receiver];
@@ -345,8 +350,10 @@ export function Visitors(
                 receiver = patternToString(outerDeclarator.id);
                 receiverStart = outerDeclarator.id.start;
                 if (crossReferences[functionName]) {
-                    requiredModules[outerDeclarator.start] =
-                        requiredModules[crossReferences[functionName]];
+                    requiredModules.set(
+                        outerDeclarator.start,
+                        requiredModules.get(crossReferences[functionName])
+                    );
                 }
             }
 
@@ -354,8 +361,10 @@ export function Visitors(
                 receiver = patternToString(outerAssignment.left);
                 receiverStart = outerAssignment.left.start;
                 if (crossReferences[functionName]) {
-                    requiredModules[outerAssignment.start] =
-                        requiredModules[crossReferences[functionName]];
+                    requiredModules.set(
+                        outerAssignment.start,
+                        requiredModules.get(crossReferences[functionName])
+                    );
                 }
             }
 

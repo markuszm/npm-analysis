@@ -15,7 +15,7 @@ export class TernClient {
 
     constructor(
         callExpressions: CallExpression[],
-        requiredModules: any,
+        requiredModules: Map<string|number, any>,
         declaredFunctions: Function[],
         importedMethods: any,
         private debug: boolean
@@ -53,9 +53,9 @@ export class TernClient {
 
     requestCallExpression(
         callExpression: CallExpression,
-        requiredModules: any,
+        requiredModules: Map<string|number, any>,
         declaredFunctions: Function[],
-        importedMethods: any,
+        importedMethods: Map<string,string>,
         calls: Array<Call>
     ): void {
         const queryFuncDef = {
@@ -94,21 +94,21 @@ export class TernClient {
 
                 if (dataRefs) {
                     for (let ref of dataRefs.refs) {
-                        safePush(modules, requiredModules[ref.start]);
+                        safePush(modules, requiredModules.get(ref.start));
                     }
                 }
 
                 let toFunction = callExpression.name;
-                let importedName = importedMethods[callExpression.name];
+                let importedName = importedMethods.get(callExpression.name);
                 if (importedName) {
                     toFunction = importedName;
                 }
 
                 safePush(
                     modules,
-                    requiredModules[dataFunc.start],
-                    requiredModules[callExpression.receiver],
-                    requiredModules[callExpression.name]
+                    requiredModules.get(dataFunc.start),
+                    requiredModules.get(callExpression.receiver),
+                    requiredModules.get(callExpression.name)
                 );
                 calls.push(
                     new Call(

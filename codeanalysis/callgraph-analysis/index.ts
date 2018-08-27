@@ -60,8 +60,8 @@ if (stats.isDirectory()) {
             (fileInfo: any) => {
                 const callExpressions: CallExpression[] = [];
                 const declaredFunctions: Function[] = [];
-                const requiredModules = {}; // map global variable name -> module name
-                const importedMethods = {}; // map local import name to imported name
+                const requiredModules = new Map<string|number, any>(); // map global variable name -> module name
+                const importedMethods = new Map<string, string>(); // map local import name to imported name
                 const ternClient = new TernClient(
                     callExpressions,
                     requiredModules,
@@ -98,8 +98,8 @@ if (stats.isDirectory()) {
 } else {
     const callExpressions: CallExpression[] = [];
     const declaredFunctions: Function[] = [];
-    const requiredModules = {}; // map global variable name -> module name
-    const importedMethods = {}; // map local import name to imported name
+    const requiredModules = new Map<string|number, any>(); // map global variable name -> module name
+    const importedMethods = new Map<string, string>(); // map local import name to imported name
 
     const ternClient = new TernClient(
         callExpressions,
