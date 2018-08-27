@@ -33,8 +33,10 @@ var cgQueryCmd = &cobra.Command{
 
 		var apiUsages []ApiUsageStats
 
+		count := 0
+
 		for expFunc := range functionChan {
-			count, err := queries.GetCallCountForExportedFunction(expFunc)
+			callCount, err := queries.GetCallCountForExportedFunction(expFunc)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -45,10 +47,17 @@ var cgQueryCmd = &cobra.Command{
 			}
 
 			apiUsages = append(apiUsages, ApiUsageStats{
-				FunctionName: expFunc,
-				CallCount:    count,
-				Packages:     packages,
+				FunctionName:  expFunc,
+				CallCount:     callCount,
+				Packages:      packages,
+				PackagesCount: len(packages),
 			})
+
+			count++
+
+			if count%10000 == 0 {
+				logger.Infof("Finished %v functions", count)
+			}
 		}
 
 		marshal, err := json.Marshal(apiUsages)
@@ -72,7 +81,8 @@ func init() {
 }
 
 type ApiUsageStats struct {
-	FunctionName string
-	CallCount    int64
-	Packages     []string
+	FunctionName  string
+	CallCount     int64
+	PackagesCount int
+	Packages      []string
 }
