@@ -1,4 +1,6 @@
+bin
 db-data
 thirdparty
 *.zip
 .git
+*.tar.gz
