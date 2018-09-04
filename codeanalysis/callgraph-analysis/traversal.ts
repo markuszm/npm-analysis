@@ -30,17 +30,29 @@ export function Visitors(
     function getRequireCallExpr(decl: Expression | Super): CallExpression | null {
         switch (decl.type) {
             case "CallExpression":
-                return decl &&
-                    decl.type === "CallExpression" &&
-                    decl.callee.type === "Identifier" &&
-                    decl.callee.name === "require"
-                    ? decl
-                    : null;
+                if (isRequireCall(decl)) {
+                    return decl;
+                } else {
+                    if (decl.callee.type === "MemberExpression") {
+                        return getRequireCallExpr(decl.callee);
+                    } else {
+                        return null;
+                    }
+                }
             case "MemberExpression":
                 return getRequireCallExpr(decl.object);
             default:
                 return null;
         }
+    }
+
+    function isRequireCall(decl: CallExpression) {
+        return (
+            decl &&
+            decl.type === "CallExpression" &&
+            decl.callee.type === "Identifier" &&
+            decl.callee.name === "require"
+        );
     }
 
     var crossReferences: any = {};

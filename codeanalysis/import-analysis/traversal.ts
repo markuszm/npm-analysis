@@ -3,13 +3,13 @@ import { default as traverse } from "@babel/traverse";
 import { NodePath } from "babel-traverse";
 import { Import } from "./model";
 import {
-    ImportDeclaration,
-    VariableDeclaration,
-    Node,
+    AssignmentExpression,
     CallExpression,
     Expression,
+    ImportDeclaration,
+    Node,
     Super,
-    AssignmentExpression
+    VariableDeclaration
 } from "estree";
 import * as util from "./util";
 import { patternToString } from "./util";
@@ -111,6 +111,22 @@ export class Traversal {
                 }
             },
 
+            CallExpression(path: NodePath) {
+                const node = (path.node as Node) as CallExpression;
+
+                if (Traversal.isRequireCall(node)) {
+                    let argument = node.arguments[0];
+                    if (argument.type !== "Literal" || !argument.value) {
+                        return;
+                    }
+                    const moduleName = argument.value.toString();
+                    const alreadyExistingImport = definedImports.find(i => i.moduleName === moduleName);
+                    if(alreadyExistingImport === undefined) {
+                        definedImports.push(new Import(self.IMPORT_SIDE_EFFECT, fileName, moduleName, self.BUNDLE_TYPE_COMMONJS, ""))
+                    }
+                }
+            },
+
             ImportDeclaration(path: NodePath) {
                 const node = (path.node as Node) as ImportDeclaration;
 
@@ -162,16 +178,28 @@ export class Traversal {
     private static getRequireCallExpr(decl: Expression | Super): CallExpression | null {
         switch (decl.type) {
             case "CallExpression":
-                return decl &&
-                    decl.type === "CallExpression" &&
-                    decl.callee.type === "Identifier" &&
-                    decl.callee.name === "require"
-                    ? decl
-                    : null;
+                if (Traversal.isRequireCall(decl)) {
+                    return decl;
+                } else {
+                    if (decl.callee.type === "MemberExpression") {
+                        return Traversal.getRequireCallExpr(decl.callee);
+                    } else {
+                        return null;
+                    }
+                }
             case "MemberExpression":
                 return Traversal.getRequireCallExpr(decl.object);
             default:
                 return null;
         }
+    }
+
+    private static isRequireCall(decl: CallExpression) {
+        return (
+            decl &&
+            decl.type === "CallExpression" &&
+            decl.callee.type === "Identifier" &&
+            decl.callee.name === "require"
+        );
     }
 }
