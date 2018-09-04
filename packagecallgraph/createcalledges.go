@@ -136,7 +136,7 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 	}
 
 	modules := call.Modules
-	if len(modules) == 0 {
+	if len(modules) == 0 && call.Receiver != "" {
 		refModules, exists := receiverModuleMap[call.FromModule+call.Receiver]
 		if exists {
 			modules = refModules
