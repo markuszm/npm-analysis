@@ -121,9 +121,9 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 	_, err := database.Exec(`
 		MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
 		MERGE (p:Package {name: {packageName}})
-		MERGE (l:LocalFunction {name: {fullLocalFunctionName}, functionName: {fromFunction}})
+		MERGE (f:Function {name: {fullLocalFunctionName}}) ON CREATE SET f.functionName = {fromFunction}, f.functionType = "local"
 		MERGE (p)-[:CONTAINS_MODULE]->(m)
-		MERGE (m)-[:CONTAINS_FUNCTION]->(l)`,
+		MERGE (m)-[:CONTAINS_FUNCTION]->(f)`,
 		map[string]interface{}{
 			"fullModuleName":        fmt.Sprintf("%s|%s", pkgName, call.FromModule),
 			"moduleName":            call.FromModule,
@@ -147,15 +147,15 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 		importedModuleName := c.getModuleNameForPackageImport(m)
 		requiredPackageName := getRequiredPackageName(m)
 		if codeanalysis.IsLocalImport(m) {
-			_, err = database.Exec(fmt.Sprintf(`
+			_, err = database.Exec(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
 				MERGE (m2:Module {name: {fullRequiredModuleName}, moduleName: {requiredModuleName}})
-				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
-				MERGE (called:%s {name: {fullCalledFunctionName}, functionName: {calledFunctionName}})
+				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
+				MERGE (called:Function {name: {fullCalledFunctionName}}) ON CREATE SET called.functionName = {calledFunctionName}, called.functionType = {calledFunctionType}
 				MERGE (m1)-[:REQUIRES_MODULE]->(m2)
 				MERGE (from)-[:CALL]->(called)
 				MERGE (m2)-[:CONTAINS_FUNCTION]->(called)
-				`, getFunctionType(call)),
+				`,
 				map[string]interface{}{
 					"fullModuleName":         fmt.Sprintf("%s|%s", pkgName, call.FromModule),
 					"moduleName":             call.FromModule,
@@ -165,9 +165,10 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"fromFunction":           call.FromFunction,
 					"fullCalledFunctionName": fmt.Sprintf("%s|%s|%s", pkgName, m, call.ToFunction),
 					"calledFunctionName":     call.ToFunction,
+					"calledFunctionType":     getFunctionType(call),
 				})
 			if err != nil {
-				return errors.Wrapf(err, "error inserting required module %s for call %s in package %s", m, call, pkgName)
+				return errors.Wrapf(err, "error inserting required module %s for call %v in package %s", m, call, pkgName)
 			}
 		} else if call.ClassName != "" {
 			_, err = database.Exec(`
@@ -175,8 +176,8 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 				MERGE (p1:Package {name: {packageName}})
 				MERGE (p2:Package {name: {requiredPackageName}})
 				MERGE (m2:Module {name: {fullRequiredModuleName}, moduleName: {requiredModuleName}})
-				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
-				MERGE (called:ClassFunction {name: {fullClassFunction}, functionName: {classFunction}})
+				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
+				MERGE (called:Function {name: {fullClassFunction}}) ON CREATE SET called.functionName = {classFunction}, called.functionType = "class"
 				MERGE (c:Class {name: {fullClassName}, className: {className}})
 				MERGE (m1)-[:REQUIRES_MODULE]->(m2)
 				MERGE (p1)-[:REQUIRES_PACKAGE]->(p2)
@@ -200,22 +201,22 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"classFunction":          call.ToFunction,
 				})
 			if err != nil {
-				return errors.Wrapf(err, "error inserting required module %s for call %s in package %s", m, call, pkgName)
+				return errors.Wrapf(err, "error inserting required module %s for call %v in package %s", m, call, pkgName)
 			}
 		} else {
-			_, err = database.Exec(fmt.Sprintf(`
+			_, err = database.Exec(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
 				MERGE (p1:Package {name: {packageName}})
 				MERGE (p2:Package {name: {requiredPackageName}})
 				MERGE (m2:Module {name: {fullRequiredModuleName}, moduleName: {requiredModuleName}})
-				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
-				MERGE (called:%s {name: {fullCalledFunctionName}, functionName: {calledFunctionName}})
+				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
+				MERGE (called:Function {name: {fullCalledFunctionName}}) ON CREATE SET called.functionName = {calledFunctionName}, called.functionType = {calledFunctionType}
 				MERGE (m1)-[:REQUIRES_MODULE]->(m2)
 				MERGE (p1)-[:REQUIRES_PACKAGE]->(p2)
 				MERGE (p2)-[:CONTAINS_MODULE]->(m2)
 				MERGE (from)-[:CALL]->(called)
 				MERGE (m2)-[:CONTAINS_FUNCTION]->(called)
-				`, getFunctionType(call)),
+				`,
 				map[string]interface{}{
 					"fullModuleName":         fmt.Sprintf("%s|%s", pkgName, call.FromModule),
 					"moduleName":             call.FromModule,
@@ -227,9 +228,10 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"fromFunction":           call.FromFunction,
 					"fullCalledFunctionName": fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ToFunction),
 					"calledFunctionName":     call.ToFunction,
+					"calledFunctionType":     getFunctionType(call),
 				})
 			if err != nil {
-				return errors.Wrapf(err, "error inserting required module %s for call %s in package %s", m, call, pkgName)
+				return errors.Wrapf(err, "error inserting required module %s for call %v in package %s", m, call, pkgName)
 			}
 		}
 
@@ -240,8 +242,8 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 		if call.IsLocal || call.Receiver == "this" {
 			_, err = database.Exec(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
-				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
-				MERGE (called:LocalFunction {name: {fullCalledFunctionName}, functionName: {calledFunctionName}})
+				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
+				MERGE (called:Function {name: {fullCalledFunctionName}}) ON CREATE SET called.functionName = {calledFunctionName}, called.functionType = "local"
 				MERGE (from)-[:CALL]->(called)
 				MERGE (m1)-[:CONTAINS_FUNCTION]->(called)
 				`,
@@ -254,13 +256,13 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"calledFunctionName":     call.ToFunction,
 				})
 			if err != nil {
-				return errors.Wrapf(err, "error inserting localfunction call %s in package %s", call, pkgName)
+				return errors.Wrapf(err, "error inserting localfunction call %v in package %s", call, pkgName)
 			}
 		} else if call.ClassName != "" {
 			_, err = database.Exec(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
-				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
-				MERGE (called:ClassFunction {name: {fullClassFunction}, functionName: {classFunction}})
+				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
+				MERGE (called:Function {name: {fullClassFunction}}) ON CREATE SET called.functionName = {classFunction}, called.functionType = "class"
 				MERGE (c:Class {name: {className}, className: {className}})
 				MERGE (from)-[:CALL]->(called)
 				MERGE (c)-[:CONTAINS_CLASS_FUNCTION]->(called)
@@ -275,14 +277,14 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"classFunction":     call.ToFunction,
 				})
 			if err != nil {
-				return errors.Wrapf(err, "error inserting call %s in package %s", call, pkgName)
+				return errors.Wrapf(err, "error inserting call %v in package %s", call, pkgName)
 			}
 		} else if call.Receiver != "" {
 			_, err = database.Exec(`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
 				MERGE (m2:Module {name: {receiver}, moduleName: {receiver}})
-				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
-				MERGE (called:ExportedFunction {name: {fullCalledFunctionName}, functionName: {calledFunctionName}})
+				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
+				MERGE (called:Function {name: {fullCalledFunctionName}}) ON CREATE SET called.functionName = {calledFunctionName}, called.functionType = "export"
 				MERGE (m1)-[:REQUIRES_MODULE]->(m2)
 				MERGE (from)-[:CALL]->(called)
 				MERGE (m2)-[:CONTAINS_FUNCTION]->(called)
@@ -297,12 +299,12 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"calledFunctionName":     call.ToFunction,
 				})
 			if err != nil {
-				return errors.Wrapf(err, "error inserting call %s in package %s", call, pkgName)
+				return errors.Wrapf(err, "error inserting call %v in package %s", call, pkgName)
 			}
 		} else {
 			_, err = database.Exec(`
-				MERGE (from:LocalFunction {name: {fromFunctionName}, functionName: {fromFunction}})
-				MERGE (called:ExportedFunction {name: {calledFunctionName}, functionName: {calledFunctionName}})
+				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
+				MERGE (called:Function {name: {calledFunctionName}}) ON CREATE SET called.functionName = {calledFunctionName}, called.functionType = "export"
 				MERGE (from)-[:CALL]->(called)
 				`,
 				map[string]interface{}{
@@ -311,7 +313,7 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"calledFunctionName": call.ToFunction,
 				})
 			if err != nil {
-				return errors.Wrapf(err, "error inserting call %s in package %s", call, pkgName)
+				return errors.Wrapf(err, "error inserting call %v in package %s", call, pkgName)
 			}
 		}
 	}
@@ -352,7 +354,7 @@ func getRequiredPackageName(moduleName string) string {
 
 func getFunctionType(call resultprocessing.Call) string {
 	if call.IsLocal || call.Receiver == "this" {
-		return "LocalFunction"
+		return "local"
 	}
-	return "ExportedFunction"
+	return "export"
 }

@@ -94,27 +94,34 @@ func (e *ExportEdgeCreator) addExportEdges(pkgName string, export resultprocessi
 		return nil
 	}
 
+	exportName := export.Identifier
+	moduleName := export.File
+	localName := e.getLocalName(export)
+
+	if localName == exportName {
+		return nil
+	}
+
 	_, err := database.Exec(`
-		MERGE (l:LocalFunction {name: {fullLocalFunctionName}, functionName: {fromFunction}})
-		MERGE (e:ExportedFunction {name: {fullExportedFunctionName}, functionName: {exportedFunction}})
+		MATCH (l:Function {name: {localFullName}})
+		MERGE (e:Function {name: {exportFullName}}) ON CREATE SET e.functionName = {exportName}, e.functionType = "export"
 		MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
 		MERGE (p:Package {name: {packageName}})
-		MERGE (l)-[:EXPORT_AS]->(e)
 		MERGE (p)-[:CONTAINS_MODULE]->(m)
 		MERGE (m)-[:CONTAINS_FUNCTION]->(e)
-		MERGE (m)-[:CONTAINS_FUNCTION]->(l)
+		WITH [e,l] as nodes CALL apoc.refactor.mergeNodes(nodes,{properties:"discard", mergeRels:true}) yield node return *
 		`,
 		map[string]interface{}{
-			"packageName":              pkgName,
-			"fullModuleName":           fmt.Sprintf("%s|%s", pkgName, export.File),
-			"moduleName":               export.File,
-			"fullLocalFunctionName":    fmt.Sprintf("%s|%s|%s", pkgName, export.File, e.getLocalName(export)),
-			"fromFunction":             e.getLocalName(export),
-			"fullExportedFunctionName": fmt.Sprintf("%s|%s|%s", pkgName, export.File, export.Identifier),
-			"exportedFunction":         export.Identifier,
+			"localFullName":  fmt.Sprintf("%s|%s|%s", pkgName, moduleName, localName),
+			"exportFullName": fmt.Sprintf("%s|%s|%s", pkgName, moduleName, exportName),
+			"exportName":     exportName,
+			"packageName":    pkgName,
+			"fullModuleName": fmt.Sprintf("%s|%s", pkgName, moduleName),
+			"moduleName":     moduleName,
 		})
+
 	if err != nil {
-		return errors.Wrap(err, "error inserting module node")
+		return errors.Wrap(err, "error merging export and local function nodes")
 	}
 
 	return nil

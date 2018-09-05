@@ -27,17 +27,7 @@ func InitSchema(neo4jUrl string) error {
 		return err
 	}
 
-	_, err = database.Exec("CREATE CONSTRAINT ON (c:ClassFunction) ASSERT c.name IS UNIQUE", nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = database.Exec("CREATE CONSTRAINT ON (l:LocalFunction) ASSERT l.name IS UNIQUE", nil)
-	if err != nil {
-		return err
-	}
-
-	_, err = database.Exec("CREATE CONSTRAINT ON (e:ExportedFunction) ASSERT e.name IS UNIQUE", nil)
+	_, err = database.Exec("CREATE CONSTRAINT ON (f:Function) ASSERT f.name IS UNIQUE", nil)
 	if err != nil {
 		return err
 	}
