@@ -92,6 +92,14 @@ func TestCallgraphEdgecases(t *testing.T) {
 
 	expectedCalls := []resultprocessing.Call{
 		{
+			FromModule:   "basicTypes",
+			FromFunction: "f",
+			Receiver:     "str",
+			Modules:      []string{},
+			ToFunction:   "replace",
+			Arguments:    []string{"a", "b"},
+		},
+		{
 			FromModule:   "methodChaining",
 			FromFunction: ".root",
 			Receiver:     "",
