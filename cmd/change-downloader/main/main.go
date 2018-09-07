@@ -5,6 +5,7 @@ import (
 	"github.com/markuszm/npm-analysis/downloader"
 	"log"
 	"net/http"
+	"strings"
 
 	"flag"
 	"fmt"
@@ -44,10 +45,15 @@ func main() {
 		value := Value{}
 		err := decoder.Decode(&value)
 		if err != nil {
-			err := ioutil.WriteFile(lastSeqFile, []byte(strconv.Itoa(lastSeq)), os.ModePerm)
-			log.Fatalf("EOF restarting with latest sequence stored")
-			if err != nil {
-				log.Print("ERROR writing lastSeq")
+			if strings.Contains(err.Error(), "EOF") {
+				err := ioutil.WriteFile(lastSeqFile, []byte(strconv.Itoa(lastSeq)), os.ModePerm)
+				log.Fatalf("EOF restarting with latest sequence stored")
+				if err != nil {
+					log.Print("ERROR writing lastSeq")
+				}
+			} else {
+				log.Printf("ERROR: parsing metadata for id after last id %v with error %v", lastSeq, err)
+				continue
 			}
 		}
 
@@ -100,7 +106,8 @@ func main() {
 }
 
 type Version struct {
-	Dist model.Dist `json:"dist"`
+	Dist      model.Dist `json:"dist"`
+	DistWrong string     `json:"DIST"`
 }
 
 type Document struct {
