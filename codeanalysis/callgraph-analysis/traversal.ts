@@ -110,6 +110,10 @@ export function Visitors(
                 }
             }
         }
+
+        if (outerMethodName === "module.exports" || outerMethodName === "exports") {
+            outerMethodName = "default"
+        }
         return outerMethodName;
     }
 
@@ -138,7 +142,6 @@ export function Visitors(
                             declarator.params.map(param => patternToString(param))
                         );
                         definedFunctions.push(func);
-                        continue;
                     }
 
                     // handle require calls
@@ -167,7 +170,6 @@ export function Visitors(
                         if (imported) {
                             importedMethods.set(variableName, imported);
                         }
-                        continue;
                     }
 
                     // special handling of RegExp literals
@@ -182,12 +184,18 @@ export function Visitors(
                     }
 
                     // check for references of the expression in same scope to add module reference for left side
-                    const rightSideExpr = expressionToString(declarator);
+                    let rightSideExpr = expressionToString(declarator);
+                    if(declarator.type === "CallExpression") {
+                        rightSideExpr = expressionToString(declarator.callee)
+                    }
                     const crPosition = crossReferences[rightSideExpr];
                     ternClient.requestReferences(
                         declarator.start,
                         declNode.sourceFile.name,
                         function(err, data) {
+                            if(debug) {
+                                console.log("Found following references: ", data)
+                            }
                             if (err) return;
                             const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
                             if (crossRef) {
@@ -210,7 +218,6 @@ export function Visitors(
                     right.params.map(param => patternToString(param))
                 );
                 definedFunctions.push(func);
-                return;
             }
 
             // handle require calls
@@ -235,7 +242,6 @@ export function Visitors(
                 if (imported) {
                     importedMethods.set(variableName, imported);
                 }
-                return;
             }
 
             // special handling of RegExp literals
@@ -250,7 +256,10 @@ export function Visitors(
             }
 
             // check for references of the expression in same scope to add module reference for left side
-            const rightSideExpr = expressionToString(right);
+            let rightSideExpr = expressionToString(right);
+            if(right.type === "CallExpression") {
+                rightSideExpr = expressionToString(right.callee)
+            }
             const crPosition = crossReferences[rightSideExpr];
             ternClient.requestReferences(right.start, assignmentExpr.sourceFile.name, function(
                 err,
@@ -332,10 +341,7 @@ export function Visitors(
                     )
                         // ignore other expressions for now
                         return;
-                    receiver =
-                        callee.object.type === "Super"
-                            ? "super"
-                            : expressionToString(callee.object);
+                    receiver = expressionToString(callee.object);
                     break;
                 case "Super":
                     functionName = "super";

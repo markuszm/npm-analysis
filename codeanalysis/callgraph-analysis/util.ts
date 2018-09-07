@@ -42,7 +42,7 @@ export function patternToString(pattern: Pattern): string {
     return patternString;
 }
 
-export function expressionToString(expression: Expression): string {
+export function expressionToString(expression: Expression | Super): string {
     if (!expression) {
         return "null";
     }
@@ -179,6 +179,8 @@ export function expressionToString(expression: Expression): string {
                 : "null";
         case "Identifier":
             return expression.name;
+        case "Super":
+            return "super"
     }
 }
 

@@ -234,6 +234,14 @@ func TestCallgraphEdgecases(t *testing.T) {
 		},
 		{
 			FromModule:   "redefinitions",
+			FromFunction: ".root",
+			Receiver:     "",
+			Modules:      []string{"foo"},
+			ToFunction:   "bar",
+			Arguments:    []string{},
+		},
+		{
+			FromModule:   "redefinitions",
 			FromFunction: "x",
 			Receiver:     "bar2",
 			Modules:      []string{"foo"},

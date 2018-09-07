@@ -1,6 +1,6 @@
 let bar = require("foo");
 
-let bar2 = bar;
+let bar2 = bar();
 
 let bar3;
 bar3 = bar;
