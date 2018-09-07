@@ -1,9 +1,11 @@
 // Author: Michael Pradel, Markus Zimmermann
 import * as model from "./model";
+import { Function } from "./model";
 
-import { patternToString, expressionToString, extractFunctionInfo } from "./util";
+import { expressionToString, extractFunctionInfo, patternToString } from "./util";
 import {
     AssignmentExpression,
+    BaseFunction,
     CallExpression,
     Expression,
     FunctionDeclaration,
@@ -15,7 +17,6 @@ import {
     VariableDeclaration,
     VariableDeclarator
 } from "./@types/estree";
-import { Function } from "./model";
 import { TernClient } from "./ternClient";
 
 // register AST visitors that get called when tern parses the files
@@ -55,6 +56,63 @@ export function Visitors(
         );
     }
 
+    function replaceCommonjsExportPrefix(functionName: string): string {
+        if (functionName.startsWith("module.exports.")) {
+            functionName = functionName.replace("module.exports.", "");
+        }
+        if (functionName.startsWith("exports.")) {
+            functionName = functionName.replace("exports.", "");
+        }
+        return functionName;
+    }
+
+    function findOuterFunction(ancestors: Node[]) {
+        const outerDeclaration: FunctionDeclaration | undefined = ancestors
+            .filter((node: Node) => node.type === "FunctionDeclaration")
+            .pop() as FunctionDeclaration;
+        const outerExpression: Node | undefined = ancestors
+            .filter(
+                (node: Node) =>
+                    node.type === "FunctionExpression" ||
+                    node.type === "ArrowFunctionExpression" ||
+                    node.type === "CallExpression"
+            )
+            .shift();
+        let outerMethodName = ".root";
+        if (outerDeclaration) {
+            outerMethodName = outerDeclaration.id ? outerDeclaration.id.name : "default";
+        }
+        if (outerExpression) {
+            for (let ancestor of ancestors) {
+                if (ancestor.type === "VariableDeclarator") {
+                    const leftSideName = patternToString(ancestor.id);
+                    if (
+                        outerExpression.type === "CallExpression" &&
+                        !leftSideName.includes("exports.")
+                    ) {
+                        break;
+                    }
+                    outerMethodName = leftSideName;
+                    outerMethodName = replaceCommonjsExportPrefix(outerMethodName);
+                    break;
+                }
+                if (ancestor.type === "AssignmentExpression") {
+                    const leftSideName = patternToString(ancestor.left);
+                    if (
+                        outerExpression.type === "CallExpression" &&
+                        !leftSideName.includes("exports.")
+                    ) {
+                        break;
+                    }
+                    outerMethodName = leftSideName;
+                    outerMethodName = replaceCommonjsExportPrefix(outerMethodName);
+                    break;
+                }
+            }
+        }
+        return outerMethodName;
+    }
+
     var crossReferences: any = {};
 
     var classReceivers: any = {};
@@ -65,6 +123,25 @@ export function Visitors(
             for (let decl of declNode.declarations) {
                 const declarator = decl.init;
                 if (declarator) {
+                    // handle function expressions
+                    if (
+                        declarator.type === "FunctionExpression" ||
+                        declarator.type === "ArrowFunctionExpression"
+                    ) {
+                        // replace cjs export prefix
+                        let functionName = patternToString(decl.id);
+                        functionName = replaceCommonjsExportPrefix(functionName);
+
+                        const func = new Function(
+                            functionName,
+                            decl.id.start,
+                            declarator.params.map(param => patternToString(param))
+                        );
+                        definedFunctions.push(func);
+                        continue;
+                    }
+
+                    // handle require calls
                     const callExpr = getRequireCallExpr(declarator);
                     if (callExpr) {
                         const variableName = patternToString(decl.id);
@@ -90,49 +167,60 @@ export function Visitors(
                         if (imported) {
                             importedMethods.set(variableName, imported);
                         }
-                    } else {
-                        // special handling of RegExp literals
-                        if (declarator.type === "Literal") {
-                            const regexp = declarator as RegExpLiteral;
-                            if (regexp.regex) {
-                                classReceivers[patternToString(decl.id)] = {
-                                    start: decl.id.start,
-                                    className: "RegExp"
-                                };
+                        continue;
+                    }
+
+                    // special handling of RegExp literals
+                    if (declarator.type === "Literal") {
+                        const regexp = declarator as RegExpLiteral;
+                        if (regexp.regex) {
+                            classReceivers[patternToString(decl.id)] = {
+                                start: decl.id.start,
+                                className: "RegExp"
+                            };
+                        }
+                    }
+
+                    // check for references of the expression in same scope to add module reference for left side
+                    const rightSideExpr = expressionToString(declarator);
+                    const crPosition = crossReferences[rightSideExpr];
+                    ternClient.requestReferences(
+                        declarator.start,
+                        declNode.sourceFile.name,
+                        function(err, data) {
+                            if (err) return;
+                            const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
+                            if (crossRef) {
+                                requiredModules.set(decl.start, requiredModules.get(crPosition));
                             }
                         }
-
-                        const rightSideExpr = expressionToString(declarator);
-                        const crPosition = crossReferences[rightSideExpr];
-                        ternClient.requestReferences(
-                            declarator.start,
-                            declNode.sourceFile.name,
-                            function(err, data) {
-                                if (err) return;
-                                const crossRef = data.refs.find(
-                                    (ref: any) => ref.start === crPosition
-                                );
-                                if (crossRef) {
-                                    requiredModules.set(
-                                        decl.start,
-                                        requiredModules.get(crPosition)
-                                    );
-                                }
-                            }
-                        );
-                    }
+                    );
                 }
             }
         },
         AssignmentExpression: function(assignmentExpr: AssignmentExpression, _: Node[]) {
+            const left = assignmentExpr.left;
             const right = assignmentExpr.right;
+
+            // handle function expressions
+            if (right.type === "FunctionExpression" || right.type === "ArrowFunctionExpression") {
+                const func = new Function(
+                    patternToString(left),
+                    left.start,
+                    right.params.map(param => patternToString(param))
+                );
+                definedFunctions.push(func);
+                return;
+            }
+
+            // handle require calls
             const callExpr = getRequireCallExpr(right);
             if (callExpr) {
-                const variableName = patternToString(assignmentExpr.left);
+                const variableName = patternToString(left);
                 const firstArg = callExpr.arguments[0];
                 const moduleName = firstArg.type === "Literal" ? firstArg.value : "";
-                requiredModules.set(assignmentExpr.left.start, moduleName);
-                crossReferences[variableName] = assignmentExpr.left.start;
+                requiredModules.set(left.start, moduleName);
+                crossReferences[variableName] = left.start;
                 if (debug) {
                     console.log("\nModule Declaration: \n", {
                         Variable: variableName,
@@ -147,34 +235,33 @@ export function Visitors(
                 if (imported) {
                     importedMethods.set(variableName, imported);
                 }
-            } else {
-                // special handling of RegExp literals
-                if (right.type === "Literal") {
-                    const regexp = right as RegExpLiteral;
-                    if (regexp.regex) {
-                        classReceivers[patternToString(assignmentExpr.left)] = {
-                            start: assignmentExpr.left.start,
-                            className: "RegExp"
-                        };
-                    }
-                }
-
-                const rightSideExpr = expressionToString(right);
-                const crPosition = crossReferences[rightSideExpr];
-                ternClient.requestReferences(right.start, assignmentExpr.sourceFile.name, function(
-                    err,
-                    data
-                ) {
-                    if (err) return;
-                    const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
-                    if (crossRef) {
-                        requiredModules.set(
-                            assignmentExpr.left.start,
-                            requiredModules.get(crPosition)
-                        );
-                    }
-                });
+                return;
             }
+
+            // special handling of RegExp literals
+            if (right.type === "Literal") {
+                const regexp = right as RegExpLiteral;
+                if (regexp.regex) {
+                    classReceivers[patternToString(left)] = {
+                        start: left.start,
+                        className: "RegExp"
+                    };
+                }
+            }
+
+            // check for references of the expression in same scope to add module reference for left side
+            const rightSideExpr = expressionToString(right);
+            const crPosition = crossReferences[rightSideExpr];
+            ternClient.requestReferences(right.start, assignmentExpr.sourceFile.name, function(
+                err,
+                data
+            ) {
+                if (err) return;
+                const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
+                if (crossRef) {
+                    requiredModules.set(assignmentExpr.left.start, requiredModules.get(crPosition));
+                }
+            });
         },
         ImportDeclaration: function(importDecl: ImportDeclaration, _: Node[]) {
             if (debug) {
@@ -213,13 +300,7 @@ export function Visitors(
         /* track function calls */
         CallExpression: function(callNode: CallExpression, ancestors: Node[]) {
             if (debug) console.log("\nCallExpression: \n", { callNode, ancestors });
-            const outerMethod: FunctionDeclaration | undefined = ancestors
-                .filter((node: Node) => node.type === "FunctionDeclaration")
-                .pop() as FunctionDeclaration;
-            let outerMethodName = ".root";
-            if (outerMethod) {
-                outerMethodName = outerMethod.id ? outerMethod.id.name : "default";
-            }
+            let outerMethodName = findOuterFunction(ancestors);
 
             let functionName: string;
             let receiver: string = "";
