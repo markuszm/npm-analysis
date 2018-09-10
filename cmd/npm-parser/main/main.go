@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -38,9 +39,12 @@ var insertType string
 
 var typeMapping = sync.Map{}
 
+var debug *bool
+
 func main() {
 	dbFlag := flag.String("db", "mysql", "name of db to use")
 	createFlag := flag.Bool("create", false, "create db scheme")
+	debug := flag.Bool("debug", false, "type mapping debug")
 	flag.StringVar(&insertType, "insert", "package", "what value to insert")
 
 	flag.Parse()
@@ -93,10 +97,12 @@ func main() {
 
 	log.Println(count)
 
-	//typeMapping.Range(func(key, value interface{}) bool {
-	//	log.Println(key, "count: ", value)
-	//	return true
-	//})
+	if *debug {
+		typeMapping.Range(func(key, value interface{}) bool {
+			log.Println(key, "count: ", value)
+			return true
+		})
+	}
 
 	errFile, _ := os.Create(ERROR_PATH)
 	defer errFile.Close()
@@ -108,12 +114,14 @@ func storePackageValues(value []byte, db *sql.DB) (string, error) {
 	var pkg model.Package
 	jsonErr := json.Unmarshal(pkgVal, &pkg)
 
-	//t := reflect.TypeOf(pkg.Maintainers)
-	//if val, ok := typeMapping.Load(t); !ok {
-	//	typeMapping.Store(t, 1)
-	//} else {
-	//	typeMapping.Store(t, val.(int)+1)
-	//}
+	if *debug {
+		t := reflect.TypeOf(pkg.License)
+		if val, ok := typeMapping.Load(t); !ok {
+			typeMapping.Store(t, 1)
+		} else {
+			typeMapping.Store(t, val.(int)+1)
+		}
+	}
 
 	var storeErr error
 
