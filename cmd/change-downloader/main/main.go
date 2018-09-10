@@ -21,8 +21,16 @@ const s3BucketName = "455877074454-npm-packages"
 const lastSeqFile = "/tmp/lastseq"
 
 func main() {
-	since := flag.Int("since", 5506500, "since which sequence to track changes")
+	since := flag.Int("since", 6087177, "since which sequence to track changes")
 	flag.Parse()
+
+	lastSeqFileBytes, err := ioutil.ReadFile(lastSeqFile)
+	if err == nil {
+		toInt, err := strconv.Atoi(string(lastSeqFileBytes))
+		if err == nil {
+			*since = int(toInt)
+		}
+	}
 
 	s3Client := storage.NewS3Client("us-east-1")
 

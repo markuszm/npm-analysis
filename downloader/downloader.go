@@ -91,11 +91,10 @@ func DownloadPackageAndVerify(downloadPath, pkgUrl, pkgShasum string) (string, e
 
 	file, createFileErr := os.Create(packageFilePath)
 
-	defer file.Close()
-
 	if createFileErr != nil {
 		return "", errors.Wrapf(createFileErr, "Error downloading package: %s", pkgUrl)
 	}
+	defer file.Close()
 
 	_, copyErr := io.Copy(file, resp.Body)
 
