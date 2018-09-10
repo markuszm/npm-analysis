@@ -86,7 +86,6 @@ func main() {
 		}
 
 		file, err := os.Open(filePath)
-		defer file.Close()
 		if err != nil {
 			log.Printf("ERROR: %v", err)
 			continue
@@ -98,6 +97,8 @@ func main() {
 		}
 
 		log.Printf("Uploaded: Seq: %v, Id: %v, Version: %v", value.Seq, value.Name, latest)
+
+		file.Close()
 
 		os.Remove(filePath)
 
