@@ -45,7 +45,7 @@ var callgraphCmd = &cobra.Command{
 		if callgraphInputExports == "" {
 			logger.Info("Skipping export creation")
 		} else {
-			exportEdgeCreator := packagecallgraph.NewExportEdgeCreator(callgraphNeo4jUrl, callgraphInputExports, callgraphWorkerNumber, logger)
+			exportEdgeCreator := packagecallgraph.NewExportEdgeCreator(callgraphNeo4jUrl, callgraphInputExports, 1, logger)
 			err = exportEdgeCreator.Exec()
 			if err != nil {
 				logger.Fatal(err)

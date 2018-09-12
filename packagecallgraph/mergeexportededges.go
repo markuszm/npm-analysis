@@ -74,13 +74,22 @@ func (e *ExportEdgeCreator) worker(workerId int, jobs chan model.PackageResult, 
 
 		exports, err := resultprocessing.TransformToExports(j.Result)
 		if err != nil {
-			e.logger.Fatal(err)
+			e.logger.With("package", j.Name).Error(err)
 		}
+
+		retry := 0
 
 		for _, export := range exports {
 			err := e.addExportEdges(pkg, export, neo4JDatabase)
+
 			if err != nil {
-				e.logger.Fatalw("error inserting export", "export", export, "error", err)
+				for retry < 3 && err != nil {
+					err = e.addExportEdges(pkg, export, neo4JDatabase)
+					retry++
+				}
+				if err != nil {
+					e.logger.With("package", pkg, "error", err).Error("error merging exports")
+				}
 			}
 		}
 

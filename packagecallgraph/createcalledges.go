@@ -117,7 +117,9 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 				_, err = neo4JDatabase.ExecPipeline(false, queries, parameters...)
 				retry++
 			}
-			c.logger.With("package", pkg, "error", err).Error("error inserting calls")
+			if err != nil {
+				c.logger.With("package", pkg, "error", err).Error("error inserting calls")
+			}
 		}
 
 		c.logger.Debugf("Worker: %v, Package: %s, Calls %v", workerId, j.Name, len(calls))
