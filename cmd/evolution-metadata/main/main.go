@@ -189,7 +189,7 @@ func processDocument(doc database.Document) int {
 }
 
 func insertLicenses(metadata model.Metadata) error {
-	var licenses []insert.License
+	var licenses []insert.LicenseVersion
 	for version, data := range metadata.Versions {
 		releaseTime := evolution.GetTimeForVersion(metadata, data.Version)
 		if releaseTime.After(timeCutoff) {
@@ -201,7 +201,7 @@ func insertLicenses(metadata model.Metadata) error {
 			license = evolution.ProcessLicenses(data)
 		}
 
-		licenses = append(licenses, insert.License{PkgName: data.Name, License: license, Version: version, Time: releaseTime})
+		licenses = append(licenses, insert.LicenseVersion{PkgName: data.Name, License: license, Version: version, Time: releaseTime})
 	}
 	err := insert.StoreLicenseWithVersion(db, licenses)
 	return err

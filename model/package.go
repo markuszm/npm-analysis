@@ -10,7 +10,8 @@ type Package struct {
 	Maintainers          []Person               `json:"maintainers"`
 	Files                []string               `json:"files"`
 	License              interface{}            `json:"license"` // multiple possible values
-	Man                  interface{}            `json:"man"`     // multiple possible values
+	Licenses             interface{}            `json:"licenses"`
+	Man                  interface{}            `json:"man"` // multiple possible values
 	Dependencies         map[string]string      `json:"dependencies"`
 	DevDependencies      map[string]string      `json:"devDependencies"`
 	PeerDependencies     map[string]string      `json:"peerDependencies"`

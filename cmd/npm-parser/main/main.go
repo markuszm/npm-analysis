@@ -8,6 +8,7 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/insert"
+	"github.com/markuszm/npm-analysis/evolution"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"io"
@@ -44,7 +45,7 @@ var debug *bool
 func main() {
 	dbFlag := flag.String("db", "mysql", "name of db to use")
 	createFlag := flag.Bool("create", false, "create db scheme")
-	debug := flag.Bool("debug", false, "type mapping debug")
+	debug = flag.Bool("debug", false, "type mapping debug")
 	flag.StringVar(&insertType, "insert", "package", "what value to insert")
 
 	flag.Parse()
@@ -113,9 +114,12 @@ func storePackageValues(value []byte, db *sql.DB) (string, error) {
 	pkgVal, _, _, _ := jsonparser.Get(value, "value")
 	var pkg model.Package
 	jsonErr := json.Unmarshal(pkgVal, &pkg)
+	if jsonErr != nil {
+		log.Print(jsonErr)
+	}
 
 	if *debug {
-		t := reflect.TypeOf(pkg.License)
+		t := reflect.TypeOf(pkg.Licenses)
 		if val, ok := typeMapping.Load(t); !ok {
 			typeMapping.Store(t, 1)
 		} else {
@@ -134,6 +138,19 @@ func storePackageValues(value []byte, db *sql.DB) (string, error) {
 		storeErr = insert.StoreAuthor(db, pkg)
 	case "maintainers":
 		storeErr = insert.StoreMaintainers(db, pkg)
+	case "license":
+		if pkg.License != nil {
+			license := evolution.ProcessLicenseInternal(pkg.License)
+			if license != "" {
+				insert.StoreLicense(db, insert.License{PkgName: pkg.Name, License: license})
+			}
+		}
+		if pkg.Licenses != nil {
+			license := evolution.ProcessLicensesInternal(pkg.Licenses)
+			if license != "" {
+				insert.StoreLicense(db, insert.License{PkgName: pkg.Name, License: license})
+			}
+		}
 	}
 
 	if storeErr != nil {

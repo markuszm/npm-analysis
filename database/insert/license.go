@@ -6,7 +6,21 @@ import (
 	"time"
 )
 
-func StoreLicenseWithVersion(db *sql.DB, licenses []License) error {
+func StoreLicense(db *sql.DB, license License) error {
+	queryInsertLicense := `
+		INSERT INTO license(type, url, package) values(?,?,?)
+	`
+
+	_, err := db.Exec(queryInsertLicense, license.License, "", license.PkgName)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func StoreLicenseWithVersion(db *sql.DB, licenses []LicenseVersion) error {
 	tx, txErr := db.Begin()
 	if txErr != nil {
 		return txErr
@@ -63,7 +77,11 @@ func StoreLicenceChanges(db *sql.DB, changes []evolution.LicenseChange) error {
 	return nil
 }
 
-type License struct {
+type LicenseVersion struct {
 	PkgName, License, Version string
 	Time                      time.Time
+}
+
+type License struct {
+	PkgName, License string
 }

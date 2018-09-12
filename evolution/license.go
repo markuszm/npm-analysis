@@ -58,9 +58,8 @@ func ProcessLicenseChanges(metadata model.Metadata, timeCutoff time.Time) ([]Lic
 	return changeList, nil
 }
 
-func ProcessLicense(version model.PackageLegacy) string {
+func ProcessLicenseInternal(license interface{}) string {
 	licenseStr := ""
-	license := version.License
 	if license == nil {
 		return licenseStr
 	}
@@ -99,9 +98,13 @@ func ProcessLicense(version model.PackageLegacy) string {
 	return licenseStr
 }
 
-func ProcessLicenses(version model.PackageLegacy) string {
+func ProcessLicense(version model.PackageLegacy) string {
+	license := version.License
+	return ProcessLicenseInternal(license)
+}
+
+func ProcessLicensesInternal(license interface{}) string {
 	licenseStr := ""
-	license := version.Licenses
 	if license == nil {
 		return licenseStr
 	}
@@ -144,4 +147,9 @@ func ProcessLicenses(version model.PackageLegacy) string {
 		}
 	}
 	return licenseStr
+}
+
+func ProcessLicenses(version model.PackageLegacy) string {
+	license := version.Licenses
+	return ProcessLicensesInternal(license)
 }
