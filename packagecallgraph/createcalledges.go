@@ -25,6 +25,11 @@ type CallEdgeCreator struct {
 	workers       int
 }
 
+type Neo4jQuery struct {
+	queryString string
+	parameters  map[string]interface{}
+}
+
 func NewCallEdgeCreator(neo4jUrl, callgraphInput string, workerNumber int, sql *sql.DB, logger *zap.SugaredLogger) *CallEdgeCreator {
 	return &CallEdgeCreator{neo4jUrl: neo4jUrl, inputFile: callgraphInput, workers: workerNumber, logger: logger, mysqlDatabase: sql}
 }
@@ -77,10 +82,6 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 
 	for j := range jobs {
 		pkg := j.Name
-		_, err := neo4JDatabase.Exec(`MERGE (:Package {name: {pkgName}})`, map[string]interface{}{"pkgName": pkg})
-		if err != nil {
-			c.logger.Fatalw("error creating package node", "package", pkg, "error", err)
-		}
 
 		calls, err := resultprocessing.TransformToCalls(j.Result)
 		if err != nil {
@@ -89,26 +90,34 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 
 		receiverModuleMap := make(map[string][]string, 0)
 
-		var retryCalls []resultprocessing.Call
+		var allQueries []Neo4jQuery
 
 		for _, call := range calls {
 			if len(call.Modules) > 0 {
 				receiverModuleMap[call.FromModule+call.Receiver] = call.Modules
 			}
 
-			err := c.insertCallIntoGraph(pkg, call, receiverModuleMap, neo4JDatabase)
-			if err != nil {
-				c.logger.With("package", pkg, "call", call, "error", err).Error("error inserting call - retrying")
-				retryCalls = append(retryCalls, call)
-			}
+			allQueries = append(allQueries, c.createQueries(pkg, call, receiverModuleMap, neo4JDatabase)...)
+
 		}
 
-		for _, call := range retryCalls {
-			err := c.insertCallIntoGraph(pkg, call, receiverModuleMap, neo4JDatabase)
-			if err != nil {
-				c.logger.With("package", pkg, "call", call, "error", err).Error("error inserting call - retrying")
-				retryCalls = append(retryCalls, call)
+		queries := make([]string, len(allQueries))
+		parameters := make([]map[string]interface{}, len(allQueries))
+
+		for i, q := range allQueries {
+			queries[i] = q.queryString
+			parameters[i] = q.parameters
+		}
+
+		retry := 0
+
+		_, err = neo4JDatabase.ExecPipeline(false, queries, parameters...)
+		if err != nil {
+			for retry < 3 && err != nil {
+				_, err = neo4JDatabase.ExecPipeline(false, queries, parameters...)
+				retry++
 			}
+			c.logger.With("package", pkg, "error", err).Error("error inserting calls")
 		}
 
 		c.logger.Debugf("Worker: %v, Package: %s, Calls %v", workerId, j.Name, len(calls))
@@ -116,9 +125,10 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 	workerWait.Done()
 }
 
-func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocessing.Call, receiverModuleMap map[string][]string, database graph.Database) error {
+func (c *CallEdgeCreator) createQueries(pkgName string, call resultprocessing.Call, receiverModuleMap map[string][]string, database graph.Database) []Neo4jQuery {
 	fromFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, call.FromModule, call.FromFunction)
-	_, err := database.Exec(`
+	var queries []Neo4jQuery
+	queries = append(queries, Neo4jQuery{`
 		MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
 		MERGE (p:Package {name: {packageName}})
 		MERGE (f:Function {name: {fullLocalFunctionName}}) ON CREATE SET f.functionName = {fromFunction}, f.functionType = "local"
@@ -130,10 +140,7 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 			"packageName":           pkgName,
 			"fullLocalFunctionName": fromFunctionFullName,
 			"fromFunction":          call.FromFunction,
-		})
-	if err != nil {
-		return errors.Wrap(err, "error inserting module node")
-	}
+		}})
 
 	modules := call.Modules
 	if len(modules) == 0 && call.Receiver != "" {
@@ -147,7 +154,7 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 		importedModuleName := c.getModuleNameForPackageImport(m)
 		requiredPackageName := getRequiredPackageName(m)
 		if codeanalysis.IsLocalImport(m) {
-			_, err = database.Exec(`
+			queries = append(queries, Neo4jQuery{`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
 				MERGE (m2:Module {name: {fullRequiredModuleName}, moduleName: {requiredModuleName}})
 				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
@@ -166,12 +173,9 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"fullCalledFunctionName": fmt.Sprintf("%s|%s|%s", pkgName, m, call.ToFunction),
 					"calledFunctionName":     call.ToFunction,
 					"calledFunctionType":     getFunctionType(call),
-				})
-			if err != nil {
-				return errors.Wrapf(err, "error inserting required module %s for call %v in package %s", m, call, pkgName)
-			}
+				}})
 		} else if call.ClassName != "" {
-			_, err = database.Exec(`
+			queries = append(queries, Neo4jQuery{`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
 				MERGE (p1:Package {name: {packageName}})
 				MERGE (p2:Package {name: {requiredPackageName}})
@@ -199,12 +203,10 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"className":              call.ClassName,
 					"fullClassFunction":      fmt.Sprintf("%s|%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName, call.ToFunction),
 					"classFunction":          call.ToFunction,
-				})
-			if err != nil {
-				return errors.Wrapf(err, "error inserting required module %s for call %v in package %s", m, call, pkgName)
-			}
+				}})
+
 		} else {
-			_, err = database.Exec(`
+			queries = append(queries, Neo4jQuery{`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
 				MERGE (p1:Package {name: {packageName}})
 				MERGE (p2:Package {name: {requiredPackageName}})
@@ -229,10 +231,7 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"fullCalledFunctionName": fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ToFunction),
 					"calledFunctionName":     call.ToFunction,
 					"calledFunctionType":     getFunctionType(call),
-				})
-			if err != nil {
-				return errors.Wrapf(err, "error inserting required module %s for call %v in package %s", m, call, pkgName)
-			}
+				}})
 		}
 
 	}
@@ -240,7 +239,7 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 	// special case where modules is empty
 	if len(modules) == 0 {
 		if call.IsLocal || call.Receiver == "this" {
-			_, err = database.Exec(`
+			queries = append(queries, Neo4jQuery{`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
 				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
 				MERGE (called:Function {name: {fullCalledFunctionName}}) ON CREATE SET called.functionName = {calledFunctionName}, called.functionType = "local"
@@ -254,12 +253,9 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"fromFunction":           call.FromFunction,
 					"fullCalledFunctionName": fmt.Sprintf("%s|%s|%s", pkgName, call.FromModule, call.ToFunction),
 					"calledFunctionName":     call.ToFunction,
-				})
-			if err != nil {
-				return errors.Wrapf(err, "error inserting localfunction call %v in package %s", call, pkgName)
-			}
+				}})
 		} else if call.ClassName != "" {
-			_, err = database.Exec(`
+			queries = append(queries, Neo4jQuery{`
 				MERGE (m1:Module {name: {fullModuleName}, moduleName: {moduleName}})
 				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
 				MERGE (called:Function {name: {fullClassFunction}}) ON CREATE SET called.functionName = {classFunction}, called.functionType = "class"
@@ -275,12 +271,9 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"className":         call.ClassName,
 					"fullClassFunction": fmt.Sprintf("%s|%s", call.ClassName, call.ToFunction),
 					"classFunction":     call.ToFunction,
-				})
-			if err != nil {
-				return errors.Wrapf(err, "error inserting call %v in package %s", call, pkgName)
-			}
+				}})
 		} else {
-			_, err = database.Exec(`
+			queries = append(queries, Neo4jQuery{`
 				MERGE (from:Function {name: {fromFunctionName}}) ON CREATE SET from.functionName = {fromFunction}, from.functionType = "local"
 				MERGE (called:Function {name: {calledFunctionName}}) ON CREATE SET called.functionName = {calledFunctionName}, called.functionType = "export"
 				MERGE (from)-[:CALL]->(called)
@@ -289,14 +282,11 @@ func (c *CallEdgeCreator) insertCallIntoGraph(pkgName string, call resultprocess
 					"fromFunctionName":   fromFunctionFullName,
 					"fromFunction":       call.FromFunction,
 					"calledFunctionName": call.ToFunction,
-				})
-			if err != nil {
-				return errors.Wrapf(err, "error inserting call %v in package %s", call, pkgName)
-			}
+				}})
 		}
 	}
 
-	return nil
+	return queries
 }
 
 func (c *CallEdgeCreator) getModuleNameForPackageImport(moduleName string) string {

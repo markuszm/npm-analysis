@@ -10,7 +10,7 @@ import (
 type Database interface {
 	InitDB(url string) error
 	Exec(query string, args map[string]interface{}) (int64, error)
-	ExecPipeline(queries []string, args ...map[string]interface{}) ([]int64, error)
+	ExecPipeline(isReturnResults bool, queries []string, args ...map[string]interface{}) ([]int64, error)
 	Query(query string, args map[string]interface{}) ([][]interface{}, error)
 	QueryStream(query string, args map[string]interface{}, resultCh chan []interface{}) error
 	Close() error
@@ -27,11 +27,11 @@ func NewNeo4JDatabase() Database {
 func (d *Neo4JDatabase) InitDB(url string) error {
 	driver := bolt.NewDriver()
 	conn, err := driver.OpenNeo(url)
-
-	d.conn = conn
 	if err != nil {
 		return err
 	}
+
+	d.conn = conn
 	return nil
 }
 
@@ -47,20 +47,23 @@ func (d *Neo4JDatabase) Exec(query string, args map[string]interface{}) (int64, 
 	return rowsAffected, nil
 }
 
-func (d *Neo4JDatabase) ExecPipeline(queries []string, args ...map[string]interface{}) ([]int64, error) {
+func (d *Neo4JDatabase) ExecPipeline(isReturnResults bool, queries []string, args ...map[string]interface{}) ([]int64, error) {
 	var rowsAffected []int64
 	results, err := d.conn.ExecPipeline(queries, args...)
 	if err != nil {
 		return rowsAffected, err
 	}
-	for _, result := range results {
-		numResult, err := result.RowsAffected()
-		if err != nil {
-			return rowsAffected, err
+	if isReturnResults {
+		for _, result := range results {
+			numResult, err := result.RowsAffected()
+			if err != nil {
+				return rowsAffected, err
+			}
+			rowsAffected = append(rowsAffected, numResult)
 		}
-		rowsAffected = append(rowsAffected, numResult)
+		return rowsAffected, nil
 	}
-	return rowsAffected, nil
+	return []int64{}, nil
 }
 
 func (d *Neo4JDatabase) QueryStream(query string, args map[string]interface{}, resultCh chan []interface{}) error {
