@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type CallEdgeCreator struct {
@@ -44,7 +45,7 @@ func (c *CallEdgeCreator) Exec() error {
 
 	workerWait := sync.WaitGroup{}
 
-	jobs := make(chan model.PackageResult, 100)
+	jobs := make(chan model.PackageResult, c.workers)
 
 	for w := 1; w <= c.workers; w++ {
 		workerWait.Add(1)
@@ -90,7 +91,7 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 
 		receiverModuleMap := make(map[string][]string, 0)
 
-		var allQueries []Neo4jQuery
+		allQueries := make([]Neo4jQuery, 0)
 
 		for _, call := range calls {
 			if len(call.Modules) > 0 {
@@ -98,7 +99,6 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 			}
 
 			allQueries = append(allQueries, c.createQueries(pkg, call, receiverModuleMap, neo4JDatabase)...)
-
 		}
 
 		queries := make([]string, len(allQueries))
@@ -115,14 +115,23 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 		if err != nil {
 			for retry < 3 && err != nil {
 				_, err = neo4JDatabase.ExecPipeline(false, queries, parameters...)
+				time.Sleep(2 * time.Second)
 				retry++
 			}
 			if err != nil {
 				c.logger.With("package", pkg, "error", err).Error("error inserting calls")
+				continue
 			}
 		}
 
 		c.logger.Debugf("Worker: %v, Package: %s, Calls %v", workerId, j.Name, len(calls))
+
+		// cleanup allocated slices by assigning nil
+		calls = nil
+		allQueries = nil
+		queries = nil
+		parameters = nil
+		receiverModuleMap = nil
 	}
 	workerWait.Done()
 }

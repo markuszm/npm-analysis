@@ -62,5 +62,5 @@ func init() {
 	callgraphCmd.Flags().StringVarP(&callgraphInputExports, "exports", "e", "", "Path to exports analysis results")
 	callgraphCmd.Flags().StringVarP(&callgraphNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7688", "Neo4j bolt url")
 	callgraphCmd.Flags().StringVarP(&callgraphMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
-	callgraphCmd.Flags().IntVarP(&callgraphWorkerNumber, "worker", "w", 50, "Number of workers")
+	callgraphCmd.Flags().IntVarP(&callgraphWorkerNumber, "worker", "w", 8, "Number of workers")
 }

@@ -89,6 +89,7 @@ func (e *ExportEdgeCreator) worker(workerId int, jobs chan model.PackageResult, 
 				}
 				if err != nil {
 					e.logger.With("package", pkg, "error", err).Error("error merging exports")
+					continue
 				}
 			}
 		}
