@@ -101,25 +101,16 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 			allQueries = append(allQueries, c.createQueries(pkg, call, receiverModuleMap, neo4JDatabase)...)
 		}
 
-		queries := make([]string, len(allQueries))
-		parameters := make([]map[string]interface{}, len(allQueries))
-
-		for i, q := range allQueries {
-			queries[i] = q.queryString
-			parameters[i] = q.parameters
-		}
-
-		retry := 0
-
-		_, err = neo4JDatabase.ExecPipeline(false, queries, parameters...)
-		if err != nil {
-			for retry < 3 && err != nil {
-				_, err = neo4JDatabase.ExecPipeline(false, queries, parameters...)
-				time.Sleep(2 * time.Second)
+		for _, q := range allQueries {
+			retry := 0
+			_, err = neo4JDatabase.Exec(q.queryString, q.parameters)
+			for retry < c.workers*2 && err != nil {
+				_, err = neo4JDatabase.Exec(q.queryString, q.parameters)
+				time.Sleep(10 * time.Second)
 				retry++
 			}
 			if err != nil {
-				c.logger.With("package", pkg, "error", err).Error("error inserting calls")
+				c.logger.With("package", pkg, "error", err).Fatal("error inserting calls")
 				continue
 			}
 		}
@@ -129,8 +120,6 @@ func (c *CallEdgeCreator) worker(workerId int, jobs chan model.PackageResult, wo
 		// cleanup allocated slices by assigning nil
 		calls = nil
 		allQueries = nil
-		queries = nil
-		parameters = nil
 		receiverModuleMap = nil
 	}
 	workerWait.Done()
