@@ -30,8 +30,15 @@ For available tools see `cmd` folder
 
 #### Package Callgraph
 
+Remove duplicates from csv output first before importing into neo4j
+
+Example: 
+
+`sort -t, -u <relations.csv >relations_unique.csv`
+
+
 Example usage of neo4j import:
 
-`neo4j-admin import --nodes /csvs/packages-header.csv,/csvs/packages.csv --nodes /csvs/modules-header.csv,/csvs/modules.csv --nodes /csvs/classes-header.csv,/csvs/classes.csv --nodes /csvs/functions-header.csv,/csvs/functions.csv --relationships /csvs/relations-header.csv,/csvs/relations.csv --database=callgraph --multiline-fields --ignore-duplicate-nodes
+`neo4j-admin import --nodes /csvs/packages-header.csv,/csvs/packages.csv --nodes /csvs/modules-header.csv,/csvs/modules.csv --nodes /csvs/classes-header.csv,/csvs/classes.csv --nodes /csvs/functions-header.csv,/csvs/functions.csv --relationships /csvs/relations-header.csv,/csvs/relations.csv --database=callgraph --multiline-fields --ignore-duplicate-nodes --high-io
 `
 with /csvs being the volume containing the csv files with the package callgraph

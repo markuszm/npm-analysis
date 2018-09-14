@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 )
 
 type WriteObject interface {
@@ -21,14 +22,18 @@ type Module struct {
 	moduleName string
 }
 
-func (m *Module) GetFields() []string { return []string{m.name, m.moduleName, "Module"} }
+func (m *Module) GetFields() []string {
+	return []string{removeNewLines(m.name), removeNewLines(m.moduleName), "Module"}
+}
 
 type Class struct {
 	name      string // ID
 	className string
 }
 
-func (c *Class) GetFields() []string { return []string{c.name, c.className, "Class"} }
+func (c *Class) GetFields() []string {
+	return []string{removeNewLines(c.name), removeNewLines(c.className), "Class"}
+}
 
 type Function struct {
 	name         string // ID
@@ -37,7 +42,7 @@ type Function struct {
 }
 
 func (f *Function) GetFields() []string {
-	return []string{f.name, f.functionName, f.functionType, "Function"}
+	return []string{removeNewLines(f.name), removeNewLines(f.functionName), f.functionType, "Function"}
 }
 
 type Relation struct {
@@ -45,7 +50,7 @@ type Relation struct {
 }
 
 func (r *Relation) GetFields() []string {
-	return []string{r.startID, r.endID, r.relType}
+	return []string{removeNewLines(r.startID), removeNewLines(r.endID), r.relType}
 }
 
 type CSVChannels struct {
@@ -54,6 +59,10 @@ type CSVChannels struct {
 	ClassChan    chan WriteObject
 	FunctionChan chan WriteObject
 	RelationChan chan WriteObject
+}
+
+func removeNewLines(str string) string {
+	return strings.Replace(str, "\n", "", -1)
 }
 
 func CreateHeaderFiles(folder string) error {
