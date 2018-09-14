@@ -93,7 +93,7 @@ func (c *CallEdgeCreator) queryWorker(workerId int, jobs chan model.PackageResul
 		receiverModuleMap := make(map[string][]string, 0)
 
 		for _, call := range calls {
-			if len(call.Modules) > 0 {
+			if hasValidModules(call) {
 				receiverModuleMap[call.FromModule+call.Receiver] = call.Modules
 			}
 
@@ -110,6 +110,10 @@ func (c *CallEdgeCreator) queryWorker(workerId int, jobs chan model.PackageResul
 }
 
 func (c *CallEdgeCreator) createQueries(pkgName string, call resultprocessing.Call, receiverModuleMap map[string][]string, queryChannel chan Neo4jQuery) {
+	if !isValidCall(call) {
+		return
+	}
+
 	fromFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, call.FromModule, call.FromFunction)
 	fullModuleName := fmt.Sprintf("%s|%s", pkgName, call.FromModule)
 
@@ -431,4 +435,20 @@ func getFunctionType(call resultprocessing.Call) string {
 		return "local"
 	}
 	return "export"
+}
+
+func isValidCall(call resultprocessing.Call) bool {
+	if call.ToFunction == "" {
+		return false
+	}
+	return true
+}
+
+func hasValidModules(call resultprocessing.Call) bool {
+	for _, m := range call.Modules {
+		if m == "" {
+			return false
+		}
+	}
+	return len(call.Modules) > 0
 }

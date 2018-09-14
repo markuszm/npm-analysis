@@ -36,6 +36,7 @@ Example:
 
 `sort -t, -u <relations.csv >relations_unique.csv`
 
+Run `sortCSVs.sh` to sort all csv files.
 
 Example usage of neo4j import:
 

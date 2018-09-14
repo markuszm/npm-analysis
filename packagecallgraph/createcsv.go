@@ -135,7 +135,7 @@ func (c *CallEdgeCreatorCSV) queryWorker(workerId int, jobs chan model.PackageRe
 		receiverModuleMap := make(map[string][]string, 0)
 
 		for _, call := range calls {
-			if len(call.Modules) > 0 {
+			if hasValidModules(call) {
 				receiverModuleMap[call.FromModule+call.Receiver] = call.Modules
 			}
 
@@ -152,6 +152,10 @@ func (c *CallEdgeCreatorCSV) queryWorker(workerId int, jobs chan model.PackageRe
 }
 
 func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing.Call, receiverModuleMap map[string][]string, csvChannels CSVChannels) {
+	if !isValidCall(call) {
+		return
+	}
+
 	fromFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, call.FromModule, call.FromFunction)
 	fullModuleName := fmt.Sprintf("%s|%s", pkgName, call.FromModule)
 
@@ -172,133 +176,134 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 	modules := call.Modules
 	if len(modules) == 0 && call.Receiver != "" {
 		refModules, exists := receiverModuleMap[call.FromModule+call.Receiver]
-		if exists {
+		if exists && len(refModules) != 0 {
 			modules = refModules
 		}
 	}
 
-	for _, m := range modules {
-		importedModuleName := c.getModuleNameForPackageImport(m)
-		requiredPackageName := getRequiredPackageName(m)
-		if codeanalysis.IsLocalImport(m) {
-			fullRequiredModuleName := fmt.Sprintf("%s|%s", pkgName, m)
-			csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
-			csvChannels.RelationChan <- &Relation{
-				startID: fullModuleName,
-				endID:   fullRequiredModuleName,
-				relType: requiresModule,
+	if hasValidModules(call) {
+		for _, m := range modules {
+			importedModuleName := c.getModuleNameForPackageImport(m)
+			requiredPackageName := getRequiredPackageName(m)
+
+			if codeanalysis.IsLocalImport(m) {
+				fullRequiredModuleName := fmt.Sprintf("%s|%s", pkgName, m)
+				csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
+				csvChannels.RelationChan <- &Relation{
+					startID: fullModuleName,
+					endID:   fullRequiredModuleName,
+					relType: requiresModule,
+				}
+
+				calledFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, m, call.ToFunction)
+				csvChannels.FunctionChan <- &Function{
+					name:         calledFunctionFullName,
+					functionName: call.ToFunction,
+					functionType: getFunctionType(call),
+				}
+				csvChannels.RelationChan <- &Relation{
+					startID: fromFunctionFullName,
+					endID:   calledFunctionFullName,
+					relType: callRelation,
+				}
+
+				csvChannels.RelationChan <- &Relation{
+					startID: fullRequiredModuleName,
+					endID:   calledFunctionFullName,
+					relType: containsFunction,
+				}
+			} else if call.ClassName != "" {
+				// case where call is to outside module class function
+				fullRequiredModuleName := fmt.Sprintf("%s|%s", requiredPackageName, importedModuleName)
+				csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
+				csvChannels.RelationChan <- &Relation{
+					startID: fullModuleName,
+					endID:   fullRequiredModuleName,
+					relType: requiresModule,
+				}
+
+				csvChannels.PackageChan <- &Package{name: requiredPackageName}
+				csvChannels.RelationChan <- &Relation{
+					startID: pkgName,
+					endID:   requiredPackageName,
+					relType: requiresPackage,
+				}
+				csvChannels.RelationChan <- &Relation{
+					startID: requiredPackageName,
+					endID:   fullRequiredModuleName,
+					relType: containsModule,
+				}
+
+				classFunctionFullName := fmt.Sprintf("%s|%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName, call.ToFunction)
+				csvChannels.FunctionChan <- &Function{
+					name:         classFunctionFullName,
+					functionName: call.ToFunction,
+					functionType: "class",
+				}
+				csvChannels.RelationChan <- &Relation{
+					startID: fromFunctionFullName,
+					endID:   classFunctionFullName,
+					relType: callRelation,
+				}
+
+				classFullName := fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName)
+				csvChannels.ClassChan <- &Class{name: classFullName, className: call.ClassName}
+				csvChannels.RelationChan <- &Relation{
+					startID: fullRequiredModuleName,
+					endID:   classFullName,
+					relType: containsClass,
+				}
+				csvChannels.RelationChan <- &Relation{
+					startID: classFullName,
+					endID:   classFunctionFullName,
+					relType: containsClassFunction,
+				}
+
+			} else {
+				// case where call is to outside module
+				fullRequiredModuleName := fmt.Sprintf("%s|%s", requiredPackageName, importedModuleName)
+				csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
+				csvChannels.RelationChan <- &Relation{
+					startID: fullModuleName,
+					endID:   fullRequiredModuleName,
+					relType: requiresModule,
+				}
+
+				csvChannels.PackageChan <- &Package{name: requiredPackageName}
+				csvChannels.RelationChan <- &Relation{
+					startID: pkgName,
+					endID:   requiredPackageName,
+					relType: requiresPackage,
+				}
+				csvChannels.RelationChan <- &Relation{
+					startID: requiredPackageName,
+					endID:   fullRequiredModuleName,
+					relType: containsModule,
+				}
+
+				calledFunctionFullName := fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ToFunction)
+
+				csvChannels.FunctionChan <- &Function{
+					name:         calledFunctionFullName,
+					functionName: call.ToFunction,
+					functionType: getFunctionType(call),
+				}
+				csvChannels.RelationChan <- &Relation{
+					startID: fromFunctionFullName,
+					endID:   calledFunctionFullName,
+					relType: callRelation,
+				}
+
+				csvChannels.RelationChan <- &Relation{
+					startID: fullRequiredModuleName,
+					endID:   calledFunctionFullName,
+					relType: containsFunction,
+				}
 			}
 
-			calledFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, m, call.ToFunction)
-			csvChannels.FunctionChan <- &Function{
-				name:         calledFunctionFullName,
-				functionName: call.ToFunction,
-				functionType: getFunctionType(call),
-			}
-			csvChannels.RelationChan <- &Relation{
-				startID: fromFunctionFullName,
-				endID:   calledFunctionFullName,
-				relType: callRelation,
-			}
-
-			csvChannels.RelationChan <- &Relation{
-				startID: fullRequiredModuleName,
-				endID:   calledFunctionFullName,
-				relType: containsFunction,
-			}
-		} else if call.ClassName != "" {
-			// case where call is to outside module class function
-			fullRequiredModuleName := fmt.Sprintf("%s|%s", requiredPackageName, importedModuleName)
-			csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
-			csvChannels.RelationChan <- &Relation{
-				startID: fullModuleName,
-				endID:   fullRequiredModuleName,
-				relType: requiresModule,
-			}
-
-			csvChannels.PackageChan <- &Package{name: requiredPackageName}
-			csvChannels.RelationChan <- &Relation{
-				startID: pkgName,
-				endID:   requiredPackageName,
-				relType: requiresPackage,
-			}
-			csvChannels.RelationChan <- &Relation{
-				startID: requiredPackageName,
-				endID:   fullRequiredModuleName,
-				relType: containsModule,
-			}
-
-			classFunctionFullName := fmt.Sprintf("%s|%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName, call.ToFunction)
-			csvChannels.FunctionChan <- &Function{
-				name:         classFunctionFullName,
-				functionName: call.ToFunction,
-				functionType: "class",
-			}
-			csvChannels.RelationChan <- &Relation{
-				startID: fromFunctionFullName,
-				endID:   classFunctionFullName,
-				relType: callRelation,
-			}
-
-			classFullName := fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName)
-			csvChannels.ClassChan <- &Class{name: classFullName, className: call.ClassName}
-			csvChannels.RelationChan <- &Relation{
-				startID: fullRequiredModuleName,
-				endID:   classFullName,
-				relType: containsClass,
-			}
-			csvChannels.RelationChan <- &Relation{
-				startID: classFullName,
-				endID:   classFunctionFullName,
-				relType: containsClassFunction,
-			}
-
-		} else {
-			// case where call is to outside module
-			fullRequiredModuleName := fmt.Sprintf("%s|%s", requiredPackageName, importedModuleName)
-			csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
-			csvChannels.RelationChan <- &Relation{
-				startID: fullModuleName,
-				endID:   fullRequiredModuleName,
-				relType: requiresModule,
-			}
-
-			csvChannels.PackageChan <- &Package{name: requiredPackageName}
-			csvChannels.RelationChan <- &Relation{
-				startID: pkgName,
-				endID:   requiredPackageName,
-				relType: requiresPackage,
-			}
-			csvChannels.RelationChan <- &Relation{
-				startID: requiredPackageName,
-				endID:   fullRequiredModuleName,
-				relType: containsModule,
-			}
-
-			calledFunctionFullName := fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ToFunction)
-
-			csvChannels.FunctionChan <- &Function{
-				name:         calledFunctionFullName,
-				functionName: call.ToFunction,
-				functionType: getFunctionType(call),
-			}
-			csvChannels.RelationChan <- &Relation{
-				startID: fromFunctionFullName,
-				endID:   calledFunctionFullName,
-				relType: callRelation,
-			}
-
-			csvChannels.RelationChan <- &Relation{
-				startID: fullRequiredModuleName,
-				endID:   calledFunctionFullName,
-				relType: containsFunction,
-			}
 		}
-
-	}
-
-	// special case where modules is empty
-	if len(modules) == 0 {
+	} else {
+		// special case where modules is empty
 		if call.IsLocal || call.Receiver == "this" {
 			calledFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, call.FromModule, call.ToFunction)
 
