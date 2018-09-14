@@ -11,6 +11,7 @@ var callgraphInputExports string
 var callgraphNeo4jUrl string
 var callgraphWorkerNumber int
 var callgraphMysqlUrl string
+var callgraphCSVFolder string
 
 // callgraphCmd represents the callgraph command
 var callgraphCmd = &cobra.Command{
@@ -35,10 +36,18 @@ var callgraphCmd = &cobra.Command{
 		if callgraphInputCallgraph == "" {
 			logger.Info("Skipping callgraph creation")
 		} else {
-			callEdgeCreator := packagecallgraph.NewCallEdgeCreator(callgraphNeo4jUrl, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
-			err = callEdgeCreator.Exec()
-			if err != nil {
-				logger.Fatal(err)
+			if callgraphCSVFolder != "" {
+				callEdgeCreator := packagecallgraph.NewCallEdgeCreatorCSV(callgraphCSVFolder, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
+				err = callEdgeCreator.Exec()
+				if err != nil {
+					logger.Fatal(err)
+				}
+			} else {
+				callEdgeCreator := packagecallgraph.NewCallEdgeCreator(callgraphNeo4jUrl, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
+				err = callEdgeCreator.Exec()
+				if err != nil {
+					logger.Fatal(err)
+				}
 			}
 		}
 
@@ -63,4 +72,5 @@ func init() {
 	callgraphCmd.Flags().StringVarP(&callgraphNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7688", "Neo4j bolt url")
 	callgraphCmd.Flags().StringVarP(&callgraphMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
 	callgraphCmd.Flags().IntVarP(&callgraphWorkerNumber, "worker", "w", 8, "Number of workers")
+	callgraphCmd.Flags().StringVarP(&callgraphCSVFolder, "csvoutput", "o", "", "Output folder for csv files")
 }

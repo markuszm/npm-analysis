@@ -26,3 +26,12 @@ Metadata for all packages is stored in database `npm` in the collection `package
 
 Run go tools using Docker with `runWithDocker.sh <exec name> <args>` 
 For available tools see `cmd` folder
+
+
+#### Package Callgraph
+
+Example usage of neo4j import:
+
+`neo4j-admin import --nodes /csvs/packages-header.csv,/csvs/packages.csv --nodes /csvs/modules-header.csv,/csvs/modules.csv --nodes /csvs/classes-header.csv,/csvs/classes.csv --nodes /csvs/functions-header.csv,/csvs/functions.csv --relationships /csvs/relations-header.csv,/csvs/relations.csv --database=callgraph --multiline-fields --ignore-duplicate-nodes
+`
+with /csvs being the volume containing the csv files with the package callgraph
