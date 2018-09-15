@@ -40,6 +40,6 @@ Run `sortCSVs.sh` to sort all csv files.
 
 Example usage of neo4j import:
 
-`neo4j-admin import --nodes /csvs/packages-header.csv,/csvs/packages.csv --nodes /csvs/modules-header.csv,/csvs/modules.csv --nodes /csvs/classes-header.csv,/csvs/classes.csv --nodes /csvs/functions-header.csv,/csvs/functions.csv --relationships /csvs/relations-header.csv,/csvs/relations.csv --database=callgraph --multiline-fields --ignore-duplicate-nodes --high-io
+`neo4j-admin import --nodes /csvs/packages-header.csv,/csvs/packagesU.csv --nodes /csvs/modules-header.csv,/csvs/modulesU.csv --nodes /csvs/classes-header.csv,/csvs/classesU.csv --nodes /csvs/functions-header.csv,/csvs/functionsU.csv --relationships /csvs/relations-header.csv,/csvs/relationsU.csv --database=callgraph --multiline-fields --ignore-duplicate-nodes --ignore-missing-nodes --high-io
 `
 with /csvs being the volume containing the csv files with the package callgraph
