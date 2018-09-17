@@ -46,19 +46,25 @@ func (f *Function) GetFields() []string {
 }
 
 type Relation struct {
-	startID, endID, relType string
+	startID, endID string
 }
 
 func (r *Relation) GetFields() []string {
-	return []string{removeNewLines(r.startID), removeNewLines(r.endID), r.relType}
+	return []string{removeNewLines(r.startID), removeNewLines(r.endID)}
 }
 
 type CSVChannels struct {
-	PackageChan  chan WriteObject
-	ModuleChan   chan WriteObject
-	ClassChan    chan WriteObject
-	FunctionChan chan WriteObject
-	RelationChan chan WriteObject
+	PackageChan               chan WriteObject
+	ModuleChan                chan WriteObject
+	ClassChan                 chan WriteObject
+	FunctionChan              chan WriteObject
+	CallsChan                 chan WriteObject
+	ContainsClassChan         chan WriteObject
+	ContainsClassFunctionChan chan WriteObject
+	ContainsFunctionChan      chan WriteObject
+	ContainsModuleChan        chan WriteObject
+	RequiresModuleChan        chan WriteObject
+	RequiresPackageChan       chan WriteObject
 }
 
 func removeNewLines(str string) string {
@@ -66,11 +72,17 @@ func removeNewLines(str string) string {
 }
 
 func CreateHeaderFiles(folder string) error {
-	headerPackages := "name:ID,:LABEL"
-	headerModules := "name:ID,moduleName,:LABEL"
-	headerClasses := "name:ID,className,:LABEL"
-	headerFunctions := "name:ID,functionName,functionType,:LABEL"
-	headerRelations := ":START_ID,:END_ID,:TYPE"
+	headerPackages := "name:ID(Package-ID),:LABEL"
+	headerModules := "name:ID(Module-ID),moduleName,:LABEL"
+	headerClasses := "name:ID(Class-ID),className,:LABEL"
+	headerFunctions := "name:ID(Function-ID),functionName,functionType,:LABEL"
+	headerCall := ":START_ID(Function-ID),:END_ID(Function-ID)"
+	headerContainsClass := ":START_ID(Module-ID),:END_ID(Class-ID)"
+	headerContainsClassFunction := ":START_ID(Class-ID),:END_ID(Function-ID)"
+	headerContainsFunction := ":START_ID(Module-ID),:END_ID(Function-ID)"
+	headerContainsModule := ":START_ID(Package-ID),:END_ID(Module-ID)"
+	headerRequiresPackage := ":START_ID(Package-ID),:END_ID(Package-ID)"
+	headerRequiresModule := ":START_ID(Module-ID),:END_ID(Module-ID)"
 
 	err := ioutil.WriteFile(path.Join(folder, "packages-header.csv"), []byte(headerPackages), os.ModePerm)
 	if err != nil {
@@ -92,7 +104,37 @@ func CreateHeaderFiles(folder string) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(path.Join(folder, "relations-header.csv"), []byte(headerRelations), os.ModePerm)
+	err = ioutil.WriteFile(path.Join(folder, "calls-header.csv"), []byte(headerCall), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path.Join(folder, "containsclass-header.csv"), []byte(headerContainsClass), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path.Join(folder, "containsclassfunction-header.csv"), []byte(headerContainsClassFunction), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path.Join(folder, "containsfunction-header.csv"), []byte(headerContainsFunction), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path.Join(folder, "containsmodule-header.csv"), []byte(headerContainsModule), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path.Join(folder, "requiresmodule-header.csv"), []byte(headerRequiresModule), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(path.Join(folder, "requirespackage-header.csv"), []byte(headerRequiresPackage), os.ModePerm)
 	return err
 }
 

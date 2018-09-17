@@ -48,19 +48,31 @@ func (c *CallEdgeCreatorCSV) Exec() error {
 	jobs := make(chan model.PackageResult, c.workers)
 
 	csvChannels := CSVChannels{
-		PackageChan:  make(chan WriteObject, 10),
-		ModuleChan:   make(chan WriteObject, 10),
-		ClassChan:    make(chan WriteObject, 10),
-		FunctionChan: make(chan WriteObject, 10),
-		RelationChan: make(chan WriteObject, 10),
+		PackageChan:               make(chan WriteObject, 10),
+		ModuleChan:                make(chan WriteObject, 10),
+		ClassChan:                 make(chan WriteObject, 10),
+		FunctionChan:              make(chan WriteObject, 10),
+		CallsChan:                 make(chan WriteObject, 10),
+		ContainsClassChan:         make(chan WriteObject, 10),
+		ContainsClassFunctionChan: make(chan WriteObject, 10),
+		ContainsFunctionChan:      make(chan WriteObject, 10),
+		ContainsModuleChan:        make(chan WriteObject, 10),
+		RequiresModuleChan:        make(chan WriteObject, 10),
+		RequiresPackageChan:       make(chan WriteObject, 10),
 	}
 
-	csvWorkerWait.Add(5)
+	csvWorkerWait.Add(11)
 	go c.csvWorker(path.Join(c.outputFolder, "packages.csv"), csvChannels.PackageChan, &csvWorkerWait)
 	go c.csvWorker(path.Join(c.outputFolder, "modules.csv"), csvChannels.ModuleChan, &csvWorkerWait)
 	go c.csvWorker(path.Join(c.outputFolder, "classes.csv"), csvChannels.ClassChan, &csvWorkerWait)
 	go c.csvWorker(path.Join(c.outputFolder, "functions.csv"), csvChannels.FunctionChan, &csvWorkerWait)
-	go c.csvWorker(path.Join(c.outputFolder, "relations.csv"), csvChannels.RelationChan, &csvWorkerWait)
+	go c.csvWorker(path.Join(c.outputFolder, "calls.csv"), csvChannels.CallsChan, &csvWorkerWait)
+	go c.csvWorker(path.Join(c.outputFolder, "containsclass.csv"), csvChannels.ContainsClassChan, &csvWorkerWait)
+	go c.csvWorker(path.Join(c.outputFolder, "containsclassfunction.csv"), csvChannels.ContainsClassFunctionChan, &csvWorkerWait)
+	go c.csvWorker(path.Join(c.outputFolder, "containsfunction.csv"), csvChannels.ContainsFunctionChan, &csvWorkerWait)
+	go c.csvWorker(path.Join(c.outputFolder, "containsmodule.csv"), csvChannels.ContainsModuleChan, &csvWorkerWait)
+	go c.csvWorker(path.Join(c.outputFolder, "requiresmodule.csv"), csvChannels.RequiresModuleChan, &csvWorkerWait)
+	go c.csvWorker(path.Join(c.outputFolder, "requirespackage.csv"), csvChannels.RequiresPackageChan, &csvWorkerWait)
 
 	for w := 1; w <= c.workers; w++ {
 		packageWorkerWait.Add(1)
@@ -89,7 +101,13 @@ func (c *CallEdgeCreatorCSV) Exec() error {
 	close(csvChannels.ModuleChan)
 	close(csvChannels.ClassChan)
 	close(csvChannels.FunctionChan)
-	close(csvChannels.RelationChan)
+	close(csvChannels.CallsChan)
+	close(csvChannels.ContainsClassChan)
+	close(csvChannels.ContainsClassFunctionChan)
+	close(csvChannels.ContainsFunctionChan)
+	close(csvChannels.ContainsModuleChan)
+	close(csvChannels.RequiresModuleChan)
+	close(csvChannels.RequiresPackageChan)
 	csvWorkerWait.Wait()
 
 	return err
@@ -161,16 +179,15 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 
 	csvChannels.ModuleChan <- &Module{name: fullModuleName, moduleName: call.FromModule}
 	csvChannels.PackageChan <- &Package{name: pkgName}
-	csvChannels.RelationChan <- &Relation{startID: pkgName, endID: fullModuleName, relType: containsModule}
+	csvChannels.ContainsModuleChan <- &Relation{startID: pkgName, endID: fullModuleName}
 	csvChannels.FunctionChan <- &Function{
 		name:         fromFunctionFullName,
 		functionName: call.FromFunction,
-		functionType: "local",
+		functionType: "unknown",
 	}
-	csvChannels.RelationChan <- &Relation{
+	csvChannels.ContainsFunctionChan <- &Relation{
 		startID: fullModuleName,
 		endID:   fromFunctionFullName,
-		relType: containsFunction,
 	}
 
 	modules := call.Modules
@@ -189,10 +206,9 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 			if codeanalysis.IsLocalImport(m) {
 				fullRequiredModuleName := fmt.Sprintf("%s|%s", pkgName, m)
 				csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.RequiresModuleChan <- &Relation{
 					startID: fullModuleName,
 					endID:   fullRequiredModuleName,
-					relType: requiresModule,
 				}
 
 				calledFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, m, call.ToFunction)
@@ -201,37 +217,32 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 					functionName: call.ToFunction,
 					functionType: getFunctionType(call),
 				}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.CallsChan <- &Relation{
 					startID: fromFunctionFullName,
 					endID:   calledFunctionFullName,
-					relType: callRelation,
 				}
 
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.ContainsFunctionChan <- &Relation{
 					startID: fullRequiredModuleName,
 					endID:   calledFunctionFullName,
-					relType: containsFunction,
 				}
 			} else if call.ClassName != "" {
 				// case where call is to outside module class function
 				fullRequiredModuleName := fmt.Sprintf("%s|%s", requiredPackageName, importedModuleName)
 				csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.RequiresModuleChan <- &Relation{
 					startID: fullModuleName,
 					endID:   fullRequiredModuleName,
-					relType: requiresModule,
 				}
 
 				csvChannels.PackageChan <- &Package{name: requiredPackageName}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.RequiresPackageChan <- &Relation{
 					startID: pkgName,
 					endID:   requiredPackageName,
-					relType: requiresPackage,
 				}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.ContainsModuleChan <- &Relation{
 					startID: requiredPackageName,
 					endID:   fullRequiredModuleName,
-					relType: containsModule,
 				}
 
 				classFunctionFullName := fmt.Sprintf("%s|%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName, call.ToFunction)
@@ -240,45 +251,39 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 					functionName: call.ToFunction,
 					functionType: "class",
 				}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.CallsChan <- &Relation{
 					startID: fromFunctionFullName,
 					endID:   classFunctionFullName,
-					relType: callRelation,
 				}
 
 				classFullName := fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ClassName)
 				csvChannels.ClassChan <- &Class{name: classFullName, className: call.ClassName}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.ContainsClassChan <- &Relation{
 					startID: fullRequiredModuleName,
 					endID:   classFullName,
-					relType: containsClass,
 				}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.ContainsClassFunctionChan <- &Relation{
 					startID: classFullName,
 					endID:   classFunctionFullName,
-					relType: containsClassFunction,
 				}
 
 			} else {
 				// case where call is to outside module
 				fullRequiredModuleName := fmt.Sprintf("%s|%s", requiredPackageName, importedModuleName)
 				csvChannels.ModuleChan <- &Module{name: fullRequiredModuleName, moduleName: m}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.RequiresModuleChan <- &Relation{
 					startID: fullModuleName,
 					endID:   fullRequiredModuleName,
-					relType: requiresModule,
 				}
 
 				csvChannels.PackageChan <- &Package{name: requiredPackageName}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.RequiresPackageChan <- &Relation{
 					startID: pkgName,
 					endID:   requiredPackageName,
-					relType: requiresPackage,
 				}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.ContainsModuleChan <- &Relation{
 					startID: requiredPackageName,
 					endID:   fullRequiredModuleName,
-					relType: containsModule,
 				}
 
 				calledFunctionFullName := fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ToFunction)
@@ -288,16 +293,14 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 					functionName: call.ToFunction,
 					functionType: getFunctionType(call),
 				}
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.CallsChan <- &Relation{
 					startID: fromFunctionFullName,
 					endID:   calledFunctionFullName,
-					relType: callRelation,
 				}
 
-				csvChannels.RelationChan <- &Relation{
+				csvChannels.ContainsFunctionChan <- &Relation{
 					startID: fullRequiredModuleName,
 					endID:   calledFunctionFullName,
-					relType: containsFunction,
 				}
 			}
 
@@ -310,18 +313,16 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 			csvChannels.FunctionChan <- &Function{
 				name:         calledFunctionFullName,
 				functionName: call.ToFunction,
-				functionType: "local",
+				functionType: "unknown",
 			}
-			csvChannels.RelationChan <- &Relation{
+			csvChannels.CallsChan <- &Relation{
 				startID: fromFunctionFullName,
 				endID:   calledFunctionFullName,
-				relType: callRelation,
 			}
 
-			csvChannels.RelationChan <- &Relation{
+			csvChannels.ContainsFunctionChan <- &Relation{
 				startID: fullModuleName,
 				endID:   calledFunctionFullName,
-				relType: containsFunction,
 			}
 		} else if call.ClassName != "" {
 			classFunctionFullName := fmt.Sprintf("%s|%s", call.ClassName, call.ToFunction)
@@ -331,17 +332,15 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 				functionName: call.ToFunction,
 				functionType: "class",
 			}
-			csvChannels.RelationChan <- &Relation{
+			csvChannels.CallsChan <- &Relation{
 				startID: fromFunctionFullName,
 				endID:   classFunctionFullName,
-				relType: callRelation,
 			}
 
 			csvChannels.ClassChan <- &Class{name: call.ClassName, className: call.ClassName}
-			csvChannels.RelationChan <- &Relation{
+			csvChannels.ContainsClassFunctionChan <- &Relation{
 				startID: call.ClassName,
 				endID:   classFunctionFullName,
-				relType: containsClassFunction,
 			}
 
 		} else {
@@ -350,10 +349,9 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 				functionName: call.ToFunction,
 				functionType: "export",
 			}
-			csvChannels.RelationChan <- &Relation{
+			csvChannels.CallsChan <- &Relation{
 				startID: fromFunctionFullName,
 				endID:   call.ToFunction,
-				relType: callRelation,
 			}
 		}
 	}

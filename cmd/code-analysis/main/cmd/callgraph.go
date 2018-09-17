@@ -4,6 +4,7 @@ import (
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/packagecallgraph"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 var callgraphInputCallgraph string
@@ -28,21 +29,26 @@ var callgraphCmd = &cobra.Command{
 		}
 		defer mysql.Close()
 
-		err := packagecallgraph.InitSchema(callgraphNeo4jUrl)
-		if err != nil {
-			logger.Fatal(err)
-		}
-
 		if callgraphInputCallgraph == "" {
 			logger.Info("Skipping callgraph creation")
 		} else {
 			if callgraphCSVFolder != "" {
+				err := os.MkdirAll(callgraphCSVFolder, os.ModePerm)
+				if err != nil {
+					logger.Fatalw("could not create output folder", "err", err)
+				}
+
 				callEdgeCreator := packagecallgraph.NewCallEdgeCreatorCSV(callgraphCSVFolder, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
 				err = callEdgeCreator.Exec()
 				if err != nil {
 					logger.Fatal(err)
 				}
 			} else {
+				err := packagecallgraph.InitSchema(callgraphNeo4jUrl)
+				if err != nil {
+					logger.Fatal(err)
+				}
+
 				callEdgeCreator := packagecallgraph.NewCallEdgeCreator(callgraphNeo4jUrl, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
 				err = callEdgeCreator.Exec()
 				if err != nil {
@@ -54,6 +60,11 @@ var callgraphCmd = &cobra.Command{
 		if callgraphInputExports == "" {
 			logger.Info("Skipping export creation")
 		} else {
+			err := packagecallgraph.InitSchema(callgraphNeo4jUrl)
+			if err != nil {
+				logger.Fatal(err)
+			}
+
 			exportEdgeCreator := packagecallgraph.NewExportEdgeCreator(callgraphNeo4jUrl, callgraphInputExports, 1, logger)
 			err = exportEdgeCreator.Exec()
 			if err != nil {
