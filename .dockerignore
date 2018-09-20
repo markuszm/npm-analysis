@@ -4,3 +4,6 @@ thirdparty
 *.zip
 .git
 *.tar.gz
+codeanalysis/callgraph-analysis
+codeanalysis/exports-analysis
+codeanalysis/import-analysis
