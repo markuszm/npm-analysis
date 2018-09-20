@@ -13,6 +13,7 @@ var callgraphNeo4jUrl string
 var callgraphWorkerNumber int
 var callgraphMysqlUrl string
 var callgraphCSVFolder string
+var callgraphInitSchema bool
 
 // callgraphCmd represents the callgraph command
 var callgraphCmd = &cobra.Command{
@@ -60,13 +61,15 @@ var callgraphCmd = &cobra.Command{
 		if callgraphInputExports == "" {
 			logger.Info("Skipping export creation")
 		} else {
-			err := packagecallgraph.InitSchema(callgraphNeo4jUrl)
-			if err != nil {
-				logger.Fatal(err)
+			if callgraphInitSchema {
+				err := packagecallgraph.InitSchema(callgraphNeo4jUrl)
+				if err != nil {
+					logger.Fatal(err)
+				}
 			}
 
 			exportEdgeCreator := packagecallgraph.NewExportEdgeCreator(callgraphNeo4jUrl, callgraphInputExports, 1, logger)
-			err = exportEdgeCreator.Exec()
+			err := exportEdgeCreator.Exec()
 			if err != nil {
 				logger.Fatal(err)
 			}
@@ -84,4 +87,5 @@ func init() {
 	callgraphCmd.Flags().StringVarP(&callgraphMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
 	callgraphCmd.Flags().IntVarP(&callgraphWorkerNumber, "worker", "w", 8, "Number of workers")
 	callgraphCmd.Flags().StringVarP(&callgraphCSVFolder, "csvoutput", "o", "", "Output folder for csv files")
+	callgraphCmd.Flags().BoolVarP(&callgraphInitSchema, "init", "i", false, "Whether to init db schema ")
 }
