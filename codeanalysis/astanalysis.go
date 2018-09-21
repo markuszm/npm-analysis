@@ -6,6 +6,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const FileSizeLimit = "10000"
+
 type ASTAnalysis struct {
 	logger       *zap.SugaredLogger
 	analysisPath string
@@ -16,7 +18,7 @@ func NewASTAnalysis(logger *zap.SugaredLogger, analysisPath string) *ASTAnalysis
 }
 
 func (e *ASTAnalysis) AnalyzePackage(packagePath string) (interface{}, error) {
-	result, err := ExecuteCommand(e.analysisPath, packagePath)
+	result, err := ExecuteCommand(e.analysisPath, packagePath, FileSizeLimit)
 	if err != nil {
 		return nil, errors.Wrap(err, "error executing ast analysis")
 	}

@@ -10,6 +10,8 @@ import readdirp from "readdirp";
 
 import { TernClient } from "./ternClient";
 import * as path from "path";
+import {execSync} from 'child_process';
+
 
 /* argument parsing */
 let debug = false;
@@ -18,7 +20,8 @@ if (args.length === 0) {
     console.error("missing folder path");
 }
 const entryPath = args[0];
-if (args.length > 1 && args[1] === "debug") {
+const lineLimit = Number(args[1]);
+if (args.length > 2 && args[2] === "debug") {
     debug = true;
 }
 
@@ -47,7 +50,9 @@ if (stats.isDirectory()) {
                     const ext = path.extname(fileName);
                     switch (ext) {
                         case ".js":
-                            return true;
+                            const result = execSync('wc -l ' + fileInfo.fullPath).toString("utf8");
+                            const numberOfLines = Number(result.split(" ")[0]);
+                            return numberOfLines <= lineLimit;
                         case "":
                             const file = fs.readFileSync(fileInfo.fullPath, { encoding: "utf8" });
                             return file.startsWith("#!/usr/bin/env node");
