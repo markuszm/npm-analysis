@@ -42,7 +42,7 @@ func TestCallgraphES6Module(t *testing.T) {
 	expectedCalls := []resultprocessing.Call{
 		{FromModule: "call", FromFunction: "foo", Receiver: "_", Modules: []string{"underscore"}, ToFunction: "map", Arguments: []string{"aList", "(i) => {...}"}},
 		{FromModule: "call", FromFunction: "foo", Receiver: "bar", Modules: []string{"foobar"}, ToFunction: "add", Arguments: []string{"i"}},
-		{FromModule: "call", FromFunction: "foo", Receiver: "", Modules: []string{"b"}, ToFunction: "a", Arguments: []string{"mappedList"}},
+		{FromModule: "call", FromFunction: "foo", Receiver: "", Modules: []string{"b"}, ToFunction: "default", Arguments: []string{"mappedList"}},
 	}
 
 	assert.ElementsMatch(t, calls, expectedCalls, fmt.Sprint(calls))
@@ -237,7 +237,7 @@ func TestCallgraphEdgecases(t *testing.T) {
 			FromFunction: ".root",
 			Receiver:     "",
 			Modules:      []string{"foo"},
-			ToFunction:   "bar",
+			ToFunction:   "default",
 			Arguments:    []string{},
 		},
 		{
@@ -357,7 +357,7 @@ func TestCallgraphEdgecases(t *testing.T) {
 			Receiver:     "",
 			ClassName:    "",
 			Modules:      []string{"mem"},
-			ToFunction:   "mem",
+			ToFunction:   "default",
 			Arguments:    []string{"() => {...}"},
 			IsLocal:      false,
 		},
@@ -377,7 +377,7 @@ func TestCallgraphEdgecases(t *testing.T) {
 			Receiver:     "",
 			ClassName:    "",
 			Modules:      []string{"mem"},
-			ToFunction:   "mem",
+			ToFunction:   "default",
 			Arguments:    []string{"exec()"},
 			IsLocal:      false,
 		},

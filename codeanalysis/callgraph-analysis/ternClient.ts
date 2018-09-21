@@ -110,18 +110,25 @@ export class TernClient {
                     requiredModules.get(callExpression.receiver),
                     requiredModules.get(callExpression.name)
                 );
+                const call = new Call(
+                    trimExt(callExpression.file),
+                    callExpression.outerMethod,
+                    callExpression.receiver,
+                    callExpression.className,
+                    Array.of(...modules.values()),
+                    toFunction,
+                    callExpression.args,
+                    declaredFunctions.some(declFunc => declFunc.id === callExpression.name) &&
+                    (callExpression.receiver === "" || callExpression.receiver === "this")
+                );
+
+                // set function name to default if receiver is empty but module reference is found
+                if (call.receiver === "" && call.modules.length > 0 && !importedName) {
+                    call.toFunction = "default"
+                }
+
                 calls.push(
-                    new Call(
-                        trimExt(callExpression.file),
-                        callExpression.outerMethod,
-                        callExpression.receiver,
-                        callExpression.className,
-                        Array.of(...modules.values()),
-                        toFunction,
-                        callExpression.args,
-                        declaredFunctions.some(declFunc => declFunc.id === callExpression.name) &&
-                            (callExpression.receiver === "" || callExpression.receiver === "this")
-                    )
+                    call
                 );
             });
         });
