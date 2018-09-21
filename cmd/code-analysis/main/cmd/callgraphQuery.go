@@ -7,11 +7,13 @@ import (
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 var cgQueryNeo4jUrl string
 var cgQueryMysqlUrl string
 var cgQueryOutput string
+var cgQueryInputFile string
 
 // callgraphCmd represents the callgraph command
 var cgQueryCmd = &cobra.Command{
@@ -29,11 +31,21 @@ var cgQueryCmd = &cobra.Command{
 
 		functionChan := make(chan string, 0)
 
-		go queries.StreamExportedFunctions(functionChan)
-
-		var apiUsages []ApiUsageStats
+		if cgQueryInputFile == "" {
+			go queries.StreamExportedFunctions(functionChan)
+		} else {
+			go streamFunctionNamesFromFile(functionChan)
+		}
 
 		count := 0
+
+		file, err := os.Create(cgQueryOutput)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		encoder := json.NewEncoder(file)
 
 		for expFunc := range functionChan {
 			callCount, err := queries.GetCallCountForExportedFunction(expFunc)
@@ -46,12 +58,17 @@ var cgQueryCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 
-			apiUsages = append(apiUsages, ApiUsageStats{
+			apiUsageStat := ApiUsageStats{
 				FunctionName:  expFunc,
 				CallCount:     callCount,
 				Packages:      packages,
 				PackagesCount: len(packages),
-			})
+			}
+
+			err = encoder.Encode(apiUsageStat)
+			if err != nil {
+				log.Fatal("Cannot write to result file", err)
+			}
 
 			count++
 
@@ -60,24 +77,33 @@ var cgQueryCmd = &cobra.Command{
 			}
 		}
 
-		marshal, err := json.Marshal(apiUsages)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = ioutil.WriteFile(cgQueryOutput, marshal, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
 	},
+}
+
+func streamFunctionNamesFromFile(functionChan chan string) {
+	logger.Infow("using package input file", "file", cgQueryInputFile)
+	file, err := ioutil.ReadFile(cgQueryInputFile)
+	if err != nil {
+		logger.Fatalw("could not read file", "err", err)
+	}
+	lines := strings.Split(string(file), "\n")
+	for _, l := range lines {
+		if l == "" {
+			continue
+		}
+		functionChan <- l
+	}
+
+	close(functionChan)
 }
 
 func init() {
 	rootCmd.AddCommand(cgQueryCmd)
 
-	cgQueryCmd.Flags().StringVarP(&cgQueryNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7688", "Neo4j bolt url")
+	cgQueryCmd.Flags().StringVarP(&cgQueryNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7689", "Neo4j bolt url")
 	cgQueryCmd.Flags().StringVarP(&cgQueryMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
 	cgQueryCmd.Flags().StringVarP(&cgQueryOutput, "output", "o", "/home/markus/npm-analysis/apiUsage.json", "output file")
+	cgQueryCmd.Flags().StringVarP(&cgQueryInputFile, "input", "i", "", "input file containing list with full function names")
 }
 
 type ApiUsageStats struct {

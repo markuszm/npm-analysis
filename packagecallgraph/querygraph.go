@@ -33,7 +33,7 @@ func (q *GraphQueries) StreamExportedFunctions(functionChan chan string) {
 
 	resultChan := make(chan []interface{}, 0)
 
-	go database.QueryStream("MATCH (e:ExportedFunction) RETURN e.name", map[string]interface{}{}, resultChan)
+	go database.QueryStream("MATCH (e:Function {functionType: \"export\"}) RETURN e.name", map[string]interface{}{}, resultChan)
 
 	for r := range resultChan {
 		// TODO: very unsafe - should check if result is valid
@@ -44,7 +44,7 @@ func (q *GraphQueries) StreamExportedFunctions(functionChan chan string) {
 }
 
 func (q *GraphQueries) GetCallCountForExportedFunction(exportedFunction string) (int64, error) {
-	result, err := q.db.Query("MATCH (e:ExportedFunction)<-[:CALL]-(l:LocalFunction) WHERE e.name = {name} RETURN count(l)",
+	result, err := q.db.Query("MATCH (e:Function)<-[:CALL]-(l:Function) WHERE e.name = {name} RETURN count(l)",
 		map[string]interface{}{"name": exportedFunction})
 	if err != nil {
 		return 0, err
@@ -55,7 +55,7 @@ func (q *GraphQueries) GetCallCountForExportedFunction(exportedFunction string) 
 }
 
 func (q *GraphQueries) GetPackagesThatCallExportedFunction(exportedFunction string) ([]string, error) {
-	result, err := q.db.Query("MATCH (e:ExportedFunction)-[:CALL]-(:LocalFunction)-[:CONTAINS_FUNCTION]-(:Module)-[:CONTAINS_MODULE]-(p:Package) WHERE e.name = {name} RETURN DISTINCT p.name",
+	result, err := q.db.Query("MATCH (e:Function)<-[:CALL]-(:Function)<-[:CONTAINS_FUNCTION]-(:Module)<-[:CONTAINS_MODULE]-(p:Package) WHERE e.name = {name} RETURN DISTINCT p.name",
 		map[string]interface{}{"name": exportedFunction})
 	if err != nil {
 		return nil, err
