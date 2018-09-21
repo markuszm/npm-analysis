@@ -31,7 +31,9 @@ var neoQueryGeneratorCmd = &cobra.Command{
 					returnClause += fmt.Sprintf("f%v", i)
 				} else {
 					chainMatch += fmt.Sprintf("<-[:CALL]-(f%v:Function)", i)
-					if i != 2 && !neoQueryGeneratorInitialFunctionBuiltIn {
+					if i == 2 && neoQueryGeneratorInitialFunctionBuiltIn {
+						whereClause += fmt.Sprintf("p%v.name ", i)
+					} else {
 						whereClause += fmt.Sprintf("<> p%v.name ", i)
 					}
 					returnClause += fmt.Sprintf(",f%v", i)
