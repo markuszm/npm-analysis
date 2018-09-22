@@ -11,9 +11,15 @@ import readdirp from "readdirp";
 import { TernClient } from "./ternClient";
 import * as path from "path";
 
+// R2C metadata
+const VERSION = "0.1.0";
+const SPEC_VERSION = "0.1.0";
+const NAME = "callgraph-analysis";
 
 /* argument parsing */
 let debug = false;
+let r2c = false;
+
 const args = process.argv.slice(2);
 if (args.length === 0) {
     console.error("missing folder path");
@@ -22,6 +28,10 @@ const entryPath = args[0];
 const sizeLimit = Number(args[1]);
 if (args.length > 2 && args[2] === "debug") {
     debug = true;
+}
+
+if (args.length > 3 && args[3] === "r2c") {
+    r2c = true;
 }
 
 const calls: Call[] = [];
@@ -36,6 +46,21 @@ function getFileNameInsidePackage(fileInfo: any) {
         return !fileName || fileName === "" ? fileInfo.name : fileName;
     }
     return fileInfo.name;
+}
+
+function transformToR2CFormat(calls: Call[]): string {
+    let results = [];
+    for (let call of calls) {
+        results.push({file: call.fromModule, check_id: "call", extra: call})
+    }
+    let jsonObject = {
+        name: NAME,
+        spec_version: SPEC_VERSION,
+        version: VERSION,
+        results: results
+
+    };
+    return JSON.stringify(jsonObject)
 }
 
 if (stats.isDirectory()) {
@@ -90,7 +115,12 @@ if (stats.isDirectory()) {
                 if (debug) console.log({ requiredModules, declaredFunctions });
             },
             () => {
-                console.log(JSON.stringify(calls));
+                if (r2c) {
+                    const json = transformToR2CFormat(calls);
+                    console.log(json);
+                } else {
+                    console.log(JSON.stringify(calls));
+                }
             }
         );
     } catch (e) {
