@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"database/sql"
 	"encoding/csv"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/packagecallgraph"
@@ -10,14 +11,20 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var (
-	packageReachMysqlUrl    string
-	packageReachPackageName string
-	packageReachFile        string
-	packageReachOutput      string
+	packageReachMysqlUrl     string
+	packageReachPackageName  string
+	packageReachFile         string
+	packageReachOutput       string
+	packageReachWorkerNumber int
 )
+
+var reachSyncMap = sync.Map{}
+
+var db *sql.DB
 
 // callgraphCmd represents the callgraph command
 var packageReachCmd = &cobra.Command{
@@ -28,11 +35,12 @@ var packageReachCmd = &cobra.Command{
 		initializeLogger()
 
 		mysqlInitializer := &database.Mysql{}
-		mysql, err := mysqlInitializer.InitDB(packageReachMysqlUrl)
+		var err error
+		db, err = mysqlInitializer.InitDB(packageReachMysqlUrl)
 		if err != nil {
 			logger.Fatal(err)
 		}
-		defer mysql.Close()
+		defer db.Close()
 
 		var packages []string
 
@@ -56,44 +64,95 @@ var packageReachCmd = &cobra.Command{
 			packages = append(packages, packageReachPackageName)
 		}
 
-		file, err := os.Create(path.Join(packageReachOutput, "packagesReach.csv"))
-		if err != nil {
-			logger.Fatal("cannot create result file")
+		reachWorkerWait := sync.WaitGroup{}
+		csvWorkerWait := sync.WaitGroup{}
+
+		jobs := make(chan string, 10)
+		csvChan := make(chan []string, 10)
+
+		csvWorkerWait.Add(1)
+		go csvWorker(csvChan, &csvWorkerWait)
+
+		for w := 1; w <= packageReachWorkerNumber; w++ {
+			reachWorkerWait.Add(1)
+			go reachWorker(w, jobs, csvChan, &reachWorkerWait)
 		}
-
-		csvWriter := csv.NewWriter(file)
-
-		packagesReached := make(map[string]bool, 0)
 
 		for _, p := range packages {
-			packagesReachedIndependent := make(map[string]bool, 0)
-			packagecallgraph.PackageReach(p, packagesReachedIndependent, mysql)
-			count := 0
-			for _, ok := range packagesReachedIndependent {
-				if ok {
-					count++
-				}
-			}
-			err := csvWriter.Write([]string{p, strconv.Itoa(count)})
-			if err != nil {
-				logger.Fatal("cannot write result to csv")
-			}
-
-			packagecallgraph.PackageReach(p, packagesReached, mysql)
-			logger.Infow("Finished", "package", p)
+			jobs <- p
 		}
-		csvWriter.Flush()
+
+		close(jobs)
+
+		logger.Info("closed jobs channel")
+
+		reachWorkerWait.Wait()
+
+		close(csvChan)
+		logger.Info("closed csv channels")
+
+		csvWorkerWait.Wait()
 
 		combinedCount := 0
-		for _, ok := range packagesReached {
-			if ok {
+		reachSyncMap.Range(func(key, value interface{}) bool {
+			if value.(bool) {
 				combinedCount++
+			}
+			return true
+		})
+
+		logger.Infof("Combined package reach is %v", combinedCount)
+	},
+}
+
+func csvWorker(csvChan chan []string, waitGroup *sync.WaitGroup) {
+	file, err := os.Create(path.Join(packageReachOutput, "packagesReach.csv"))
+	if err != nil {
+		logger.Fatal("cannot create result file")
+	}
+	defer file.Close()
+
+	csvWriter := csv.NewWriter(file)
+
+	for r := range csvChan {
+		err := csvWriter.Write(r)
+		if err != nil {
+			logger.Fatal("cannot write result to csv")
+		}
+		csvWriter.Flush()
+	}
+
+	waitGroup.Done()
+}
+
+func reachWorker(id int, jobs chan string, csvChan chan []string, waitGroup *sync.WaitGroup) {
+	combinedPackageReach := make(map[string]bool, 0)
+
+	for p := range jobs {
+		packagesReachedIndependent := make(map[string]bool, 0)
+		packagecallgraph.PackageReach(p, packagesReachedIndependent, db)
+		count := 0
+		for _, ok := range packagesReachedIndependent {
+			if ok {
+				count++
 			}
 		}
 
-		logger.Infof("Combined package reach is %v", combinedCount)
+		result := []string{p, strconv.Itoa(count)}
+		csvChan <- result
 
-	},
+		packagecallgraph.PackageReach(p, combinedPackageReach, db)
+
+		logger.Infow("Finished", "worker", id, "package", p)
+	}
+
+	for p, ok := range combinedPackageReach {
+		if ok {
+			reachSyncMap.Store(p, ok)
+		}
+	}
+
+	waitGroup.Done()
 }
 
 func init() {
@@ -103,4 +162,5 @@ func init() {
 	packageReachCmd.Flags().StringVarP(&packageReachPackageName, "package", "p", "", "package name")
 	packageReachCmd.Flags().StringVarP(&packageReachFile, "file", "f", "", "file name to load package names from")
 	packageReachCmd.Flags().StringVarP(&packageReachOutput, "output", "o", "/home/markus/npm-analysis", "output folder")
+	packageReachCmd.Flags().IntVarP(&packageReachWorkerNumber, "worker", "w", 20, "number of workers")
 }
