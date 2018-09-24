@@ -51,6 +51,11 @@ export class TernClient {
         this.ternServer.flush(() => void 0)
     }
 
+    deleteFile(fileName: string): void {
+        this.ternServer.delFile(fileName);
+        this.ternServer.flush(() => void 0)
+    }
+
     requestCallExpression(
         callExpression: CallExpression,
         requiredModules: Map<string|number, any>,

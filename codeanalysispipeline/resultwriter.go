@@ -88,6 +88,7 @@ func NewJSONWriter(filePath string) *JSONWriter {
 }
 
 func (j *JSONWriter) WriteAll(results map[string]model.PackageResult) error {
+	// TODO: needs to also use json decoder else all result processing fails
 	bytes, err := json.MarshalIndent(results, "", "\t")
 	if err != nil {
 		return errors.Wrap(err, "error marshalling results as json")

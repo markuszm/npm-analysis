@@ -113,6 +113,8 @@ if (stats.isDirectory()) {
                 }
 
                 if (debug) console.log({ requiredModules, declaredFunctions });
+
+                ternClient.deleteFile(fileName);
             },
             () => {
                 if (r2c) {
