@@ -3,12 +3,13 @@ package resultprocessing
 import (
 	"encoding/csv"
 	"encoding/json"
-	"github.com/markuszm/npm-analysis/model"
 	"log"
 	"os"
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/markuszm/npm-analysis/model"
 )
 
 func CalculateUsedDependenciesRatio(resultPath string) (map[string]float64, map[string]float64, error) {
