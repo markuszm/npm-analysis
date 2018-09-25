@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const FileSizeLimit = "500000"
+const FileSizeLimit = "250000"
 
 type ASTAnalysis struct {
 	logger       *zap.SugaredLogger
