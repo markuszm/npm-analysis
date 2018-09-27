@@ -51,6 +51,7 @@ export function Visitors(
         return (
             decl &&
             decl.type === "CallExpression" &&
+            decl.callee &&
             decl.callee.type === "Identifier" &&
             decl.callee.name === "require"
         );
