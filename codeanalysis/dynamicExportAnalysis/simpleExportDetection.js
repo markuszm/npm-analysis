@@ -1,5 +1,8 @@
 const process = require("process");
 
+const ANALYSIS_NAME = "dynamic-exports";
+const ANALYSIS_VERSION = "0.1.0";
+
 // argument parsing
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -7,6 +10,7 @@ if (args.length === 0) {
     process.exit(1);
 }
 const packageName = args[0];
+const isR2C = args[1];
 
 // model
 let exportedFunctions = [];
@@ -26,4 +30,22 @@ for (let prop of props) {
 }
 
 // JSON output
-console.log(JSON.stringify(exportedFunctions));
+if (isR2C) {
+    r2cResults = [];
+    for (let exportedFunction of exportedFunctions) {
+        r2cResults.push({
+            check_id: "export",
+            file: packageName,
+            extra: exportedFunction
+        });
+    }
+    const output = {
+        spec_version: "0.1.0",
+        name: ANALYSIS_NAME,
+        version: ANALYSIS_VERSION,
+        results: r2cResults
+    };
+    console.log(JSON.stringify(output));
+} else {
+    console.log(JSON.stringify(exportedFunctions));
+}

@@ -1,6 +1,7 @@
 #!/bin/bash
 # arguments
 PACKAGE_PATH=$1
+IS_R2C=$2
 
 # copy analysis to tmp folder
 cp ./simpleExportDetection.js $PACKAGE_PATH/.
@@ -21,4 +22,9 @@ fi
 yarn add $PACKAGE_NAME@$PACKAGE_VERSION --ignore-scripts --non-interactive --silent --no-lockfile > /dev/null 2>&1
 
 # run analysis
-node ./simpleExportDetection.js $PACKAGE_NAME
+if [ "$IS_R2C" = "r2c" ]; then
+    node ./simpleExportDetection.js $PACKAGE_NAME "r2c"
+else 
+    node ./simpleExportDetection.js $PACKAGE_NAME
+fi
+
