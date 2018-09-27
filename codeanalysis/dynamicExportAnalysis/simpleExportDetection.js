@@ -25,6 +25,5 @@ for (let prop of props) {
     } catch (error) {}
 }
 
-
 // JSON output
 console.log(JSON.stringify(exportedFunctions));
