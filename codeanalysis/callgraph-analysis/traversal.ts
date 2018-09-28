@@ -4,8 +4,7 @@ import { Function } from "./model";
 
 import { expressionToString, extractFunctionInfo, patternToString } from "./util";
 import {
-    AssignmentExpression,
-    BaseFunction,
+    AssignmentExpression, BaseCallExpression,
     CallExpression,
     Expression,
     FunctionDeclaration,
@@ -113,7 +112,7 @@ export function Visitors(
         }
 
         if (outerMethodName === "module.exports" || outerMethodName === "exports") {
-            outerMethodName = "default"
+            outerMethodName = "default";
         }
         return outerMethodName;
     }
@@ -121,6 +120,21 @@ export function Visitors(
     var crossReferences: any = {};
 
     var classReceivers: any = {};
+
+    function getEndForCallExpression(callNode: BaseCallExpression) {
+        if (callNode.callee.type === "MemberExpression") {
+            const calleeObject = callNode.callee.object;
+            if (
+                calleeObject.type === "Identifier" &&
+                (calleeObject.name === "this" || calleeObject.name === "self")
+            ) {
+                return callNode.callee.end;
+            } else {
+                return callNode.callee.object.end;
+            }
+        }
+        return callNode.callee.end;
+    }
 
     return {
         /* detect imports */
@@ -151,8 +165,8 @@ export function Visitors(
                         const variableName = patternToString(decl.id);
                         const firstArg = callExpr.arguments[0];
                         const moduleName = firstArg.type === "Literal" ? firstArg.value : "";
-                        requiredModules.set(decl.start, moduleName);
-                        crossReferences[variableName] = decl.start;
+                        requiredModules.set(decl.id.end, moduleName);
+                        crossReferences[variableName] = decl.id.end;
                         if (debug) {
                             console.log("\nModule Declaration: \n", {
                                 Variable: variableName,
@@ -178,7 +192,7 @@ export function Visitors(
                         const regexp = declarator as RegExpLiteral;
                         if (regexp.regex) {
                             classReceivers[patternToString(decl.id)] = {
-                                start: decl.id.start,
+                                start: decl.id.end,
                                 className: "RegExp"
                             };
                         }
@@ -186,21 +200,21 @@ export function Visitors(
 
                     // check for references of the expression in same scope to add module reference for left side
                     let rightSideExpr = expressionToString(declarator);
-                    if(declarator.type === "CallExpression") {
-                        rightSideExpr = expressionToString(declarator.callee)
+                    if (declarator.type === "CallExpression") {
+                        rightSideExpr = expressionToString(declarator.callee);
                     }
                     const crPosition = crossReferences[rightSideExpr];
                     ternClient.requestReferences(
                         declarator.start,
                         declNode.sourceFile.name,
                         function(err, data) {
-                            if(debug) {
-                                console.log("Found following references: ", data)
+                            if (debug) {
+                                console.log("Found following references: ", data);
                             }
                             if (err) return;
-                            const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
+                            const crossRef = data.refs.find((ref: any) => ref.end === crPosition);
                             if (crossRef) {
-                                requiredModules.set(decl.start, requiredModules.get(crPosition));
+                                requiredModules.set(decl.id.end, requiredModules.get(crPosition));
                             }
                         }
                     );
@@ -227,8 +241,8 @@ export function Visitors(
                 const variableName = patternToString(left);
                 const firstArg = callExpr.arguments[0];
                 const moduleName = firstArg.type === "Literal" ? firstArg.value : "";
-                requiredModules.set(left.start, moduleName);
-                crossReferences[variableName] = left.start;
+                requiredModules.set(left.end, moduleName);
+                crossReferences[variableName] = left.end;
                 if (debug) {
                     console.log("\nModule Declaration: \n", {
                         Variable: variableName,
@@ -250,7 +264,7 @@ export function Visitors(
                 const regexp = right as RegExpLiteral;
                 if (regexp.regex) {
                     classReceivers[patternToString(left)] = {
-                        start: left.start,
+                        start: left.end,
                         className: "RegExp"
                     };
                 }
@@ -258,8 +272,8 @@ export function Visitors(
 
             // check for references of the expression in same scope to add module reference for left side
             let rightSideExpr = expressionToString(right);
-            if(right.type === "CallExpression") {
-                rightSideExpr = expressionToString(right.callee)
+            if (right.type === "CallExpression") {
+                rightSideExpr = expressionToString(right.callee);
             }
             const crPosition = crossReferences[rightSideExpr];
             ternClient.requestReferences(right.start, assignmentExpr.sourceFile.name, function(
@@ -267,9 +281,9 @@ export function Visitors(
                 data
             ) {
                 if (err) return;
-                const crossRef = data.refs.find((ref: any) => ref.start === crPosition);
+                const crossRef = data.refs.find((ref: any) => ref.end === crPosition);
                 if (crossRef) {
-                    requiredModules.set(assignmentExpr.left.start, requiredModules.get(crPosition));
+                    requiredModules.set(assignmentExpr.left.end, requiredModules.get(crPosition));
                 }
             });
         },
@@ -366,13 +380,13 @@ export function Visitors(
             if (receiver != "") {
                 const classForReceiver = classReceivers[receiver];
                 if (classForReceiver) {
-                    ternClient.requestReferences(callNode.start, callNode.sourceFile.name, function(
+                    ternClient.requestReferences(getEndForCallExpression(callNode), callNode.sourceFile.name, function(
                         err,
                         data
                     ) {
                         if (err) return;
                         const ref = data.refs.find(
-                            (ref: any) => ref.start === classForReceiver.start
+                            (ref: any) => ref.end === classForReceiver.start
                         );
                         if (ref) {
                             className = classForReceiver.className;
@@ -385,7 +399,7 @@ export function Visitors(
                 new model.CallExpression(
                     callNode.sourceFile.name,
                     callNode.start,
-                    callNode.end,
+                    getEndForCallExpression(callNode),
                     functionName,
                     outerMethodName,
                     receiver,
@@ -448,10 +462,10 @@ export function Visitors(
 
             if (outerDeclarator) {
                 receiver = patternToString(outerDeclarator.id);
-                receiverStart = outerDeclarator.id.start;
+                receiverStart = outerDeclarator.id.end;
                 if (crossReferences[functionName]) {
                     requiredModules.set(
-                        outerDeclarator.start,
+                        receiverStart,
                         requiredModules.get(crossReferences[functionName])
                     );
                 }
@@ -459,10 +473,10 @@ export function Visitors(
 
             if (outerAssignment) {
                 receiver = patternToString(outerAssignment.left);
-                receiverStart = outerAssignment.left.start;
+                receiverStart = outerAssignment.left.end;
                 if (crossReferences[functionName]) {
                     requiredModules.set(
-                        outerAssignment.start,
+                        receiverStart,
                         requiredModules.get(crossReferences[functionName])
                     );
                 }
@@ -476,7 +490,7 @@ export function Visitors(
                 new model.CallExpression(
                     newExpr.sourceFile.name,
                     newExpr.callee.start,
-                    newExpr.callee.end,
+                    getEndForCallExpression(newExpr),
                     "new " + functionName,
                     outerMethodName,
                     receiver,

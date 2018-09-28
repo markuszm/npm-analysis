@@ -10,6 +10,7 @@ import { Call, CallExpression, Function } from "./model";
 import * as path from "path";
 import { Visitors } from "./traversal";
 
+
 export class TernClient {
     private ternServer: any;
 
@@ -74,7 +75,7 @@ export class TernClient {
         const queryRefs = {
             query: {
                 type: "refs",
-                end: callExpression.start,
+                end: callExpression.end,
                 file: callExpression.file
             }
         };
@@ -99,7 +100,7 @@ export class TernClient {
 
                 if (dataRefs) {
                     for (let ref of dataRefs.refs) {
-                        safePush(modules, requiredModules.get(ref.start));
+                        safePush(modules, requiredModules.get(ref.end));
                     }
                 }
 
@@ -120,11 +121,10 @@ export class TernClient {
                     callExpression.outerMethod,
                     callExpression.receiver,
                     callExpression.className,
-                    Array.of(...modules.values()),
+                    isLocalFunction(declaredFunctions, callExpression) ? [] : Array.of(...modules.values()),
                     toFunction,
                     callExpression.args,
-                    declaredFunctions.some(declFunc => declFunc.id === callExpression.name) &&
-                    (callExpression.receiver === "" || callExpression.receiver === "this")
+                    isLocalFunction(declaredFunctions, callExpression)
                 );
 
                 // set function name to default if receiver is empty but module reference is found
@@ -162,4 +162,9 @@ function safePush<T>(array: Set<T>, ...items: Array<T>) {
 
 function trimExt(fileName: string): string {
     return fileName.replace(path.extname(fileName), "");
+}
+
+function isLocalFunction(declaredFunctions: Function[], callExpression: CallExpression) {
+    return declaredFunctions.some(declFunc => declFunc.id === callExpression.name) &&
+        (callExpression.receiver === "" || callExpression.receiver === "this");
 }
