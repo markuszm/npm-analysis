@@ -3,6 +3,7 @@ package codeanalysis
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -22,7 +23,7 @@ func NewUsedDependenciesAnalysis(logger *zap.SugaredLogger, importAnalysisPath s
 	return &UsedDependenciesAnalysis{logger, importAnalysisPath}
 }
 
-func (d *UsedDependenciesAnalysis) AnalyzePackage(packagePath string) (interface{}, error) {
+func (d *UsedDependenciesAnalysis) AnalyzePackageFiles(packagePath string) (interface{}, error) {
 	importAnalysisResult, err := ExecuteCommand(d.importAnalysisPath, packagePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "error executing ast analysis")
@@ -187,4 +188,8 @@ type MinimalPackage struct {
 	DevDependencies      map[string]string `json:"devDependencies"`
 	PeerDependencies     map[string]string `json:"peerDependencies"`
 	OptionalDependencies map[string]string `json:"optionalDependencies"`
+}
+
+func (e *UsedDependenciesAnalysis) AnalyzePackage(version model.PackageVersionPair) (interface{}, error) {
+	return nil, errors.New("Unsupported for this analysis")
 }

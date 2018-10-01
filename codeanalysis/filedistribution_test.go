@@ -9,7 +9,7 @@ import (
 func TestFileDistribution(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	analysis := NewFileDistributionAnalysis(logger)
-	result, err := analysis.AnalyzePackage("./testfiles/filedistribution")
+	result, err := analysis.AnalyzePackageFiles("./testfiles/filedistribution")
 
 	if err != nil {
 		t.Fatal(err)

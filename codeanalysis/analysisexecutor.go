@@ -3,13 +3,15 @@ package codeanalysis
 import (
 	"bytes"
 	"context"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"os/exec"
 	"time"
 )
 
 type AnalysisExecutor interface {
-	AnalyzePackage(packagePath string) (interface{}, error)
+	AnalyzePackageFiles(packagePath string) (interface{}, error)
+	AnalyzePackage(version model.PackageVersionPair) (interface{}, error)
 }
 
 func ExecuteCommand(path string, args ...string) (string, error) {
@@ -38,7 +40,7 @@ func AnalyzePackages(packages map[string]string, executor AnalysisExecutor) (map
 	results := make(map[string]interface{}, len(packages))
 
 	for pkg, pkgPath := range packages {
-		result, err := executor.AnalyzePackage(pkgPath)
+		result, err := executor.AnalyzePackageFiles(pkgPath)
 		if err != nil {
 			return results, err
 		}

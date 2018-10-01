@@ -11,13 +11,14 @@ import (
 )
 
 type Pipeline struct {
-	collector NameCollector
-	loader    PackageLoader
-	unpacker  Unpacker
-	analysis  codeanalysis.AnalysisExecutor
-	writer    ResultWriter
-	logger    *zap.SugaredLogger
-	cleanup   bool
+	collector              NameCollector
+	loader                 PackageLoader
+	unpacker               Unpacker
+	analysis               codeanalysis.AnalysisExecutor
+	writer                 ResultWriter
+	logger                 *zap.SugaredLogger
+	cleanup                bool
+	isPackageFilesAnalysis bool
 }
 
 func NewPipeline(collector NameCollector,
@@ -26,15 +27,16 @@ func NewPipeline(collector NameCollector,
 	analysis codeanalysis.AnalysisExecutor,
 	writer ResultWriter,
 	logger *zap.SugaredLogger,
-	cleanup bool) *Pipeline {
+	cleanup, isPackageFilesAnalysis bool) *Pipeline {
 	return &Pipeline{
-		collector: collector,
-		loader:    loader,
-		unpacker:  unpacker,
-		analysis:  analysis,
-		writer:    writer,
-		logger:    logger,
-		cleanup:   cleanup,
+		collector:              collector,
+		loader:                 loader,
+		unpacker:               unpacker,
+		analysis:               analysis,
+		writer:                 writer,
+		logger:                 logger,
+		cleanup:                cleanup,
+		isPackageFilesAnalysis: isPackageFilesAnalysis,
 	}
 }
 
@@ -54,7 +56,7 @@ func (p *Pipeline) Execute() (err error) {
 			p.logger.Infof("Finished analyzing %d packages", i)
 		}
 
-		result, err := p.executePackageAnalysis(pkg)
+		result, err := p.executePackageFilesAnalysis(pkg)
 		if err != nil {
 			return err
 		}
@@ -110,7 +112,13 @@ func (p *Pipeline) ExecuteParallel(maxWorkers int) (err error) {
 
 func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, results chan model.PackageResult, workerGroup *sync.WaitGroup) {
 	for pkg := range packages {
-		result, err := p.executePackageAnalysis(pkg)
+		var result interface{}
+		var err error
+		if p.isPackageFilesAnalysis {
+			result, err = p.executePackageFilesAnalysis(pkg)
+		} else {
+			result, err = p.executePackageAnalysis(pkg)
+		}
 		if err != nil {
 			errorStr := fmt.Sprintf("ERROR with package %v: \n %v", pkg, err)
 			p.logger.Errorf(errorStr)
@@ -124,7 +132,7 @@ func (p *Pipeline) worker(workerId int, packages chan model.PackageVersionPair, 
 	workerGroup.Done()
 }
 
-func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) (result interface{}, err error) {
+func (p *Pipeline) executePackageFilesAnalysis(packageName model.PackageVersionPair) (result interface{}, err error) {
 	pkg, err := p.loader.LoadPackage(packageName)
 	if err != nil {
 		err = errors.Wrap(err, "loading package")
@@ -142,7 +150,7 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 		//}
 	}
 
-	result, err = p.analysis.AnalyzePackage(packageFolderPath)
+	result, err = p.analysis.AnalyzePackageFiles(packageFolderPath)
 	if err != nil {
 		err = errors.Wrap(err, "analyzing package")
 		return
@@ -161,6 +169,15 @@ func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) 
 				err = errors.Wrap(err, "removing tmp package file")
 			}
 		}
+	}
+	return
+}
+
+func (p *Pipeline) executePackageAnalysis(packageName model.PackageVersionPair) (result interface{}, err error) {
+	result, err = p.analysis.AnalyzePackage(packageName)
+	if err != nil {
+		err = errors.Wrap(err, "analyzing package")
+		return
 	}
 	return
 }

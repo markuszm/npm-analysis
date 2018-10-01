@@ -65,6 +65,8 @@ var analysisCmd = &cobra.Command{
 
 		unpacker := codeanalysispipeline.NewDiskUnpacker(tmpPath)
 
+		isPackageFilesAnalysis := true
+
 		var analysis codeanalysis.AnalysisExecutor
 		switch analysisFlag {
 		case "file_distribution":
@@ -76,6 +78,10 @@ var analysisCmd = &cobra.Command{
 		case "ast":
 			logger.Info("executing ast analysis")
 			analysis = codeanalysis.NewASTAnalysis(logger, analysisExecPath)
+		case "dynamic_export":
+			logger.Info("executing dynamic export analysis")
+			isPackageFilesAnalysis = false
+			analysis = codeanalysis.NewDynamicExportsAnalysis(logger, analysisExecPath)
 		}
 
 		var writer codeanalysispipeline.ResultWriter
@@ -88,7 +94,7 @@ var analysisCmd = &cobra.Command{
 			writer = codeanalysispipeline.NewJSONWriter(resultPath)
 		}
 
-		pipeline := codeanalysispipeline.NewPipeline(collector, loader, unpacker, analysis, writer, logger, !nocleanup)
+		pipeline := codeanalysispipeline.NewPipeline(collector, loader, unpacker, analysis, writer, logger, !nocleanup, isPackageFilesAnalysis)
 
 		var err error
 		if parallel {

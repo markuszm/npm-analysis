@@ -121,8 +121,6 @@ func CreateTables(db *sql.DB) error {
 		return errors.Wrap(execErr, "Error creating files table")
 	}
 
-	// TODO: add directories table if necessary
-
 	createRepository := `
 	CREATE TABLE IF NOT EXISTS repository(
 		id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, 
@@ -300,8 +298,6 @@ func CreateTables(db *sql.DB) error {
 	if execErr != nil {
 		return errors.Wrap(execErr, "Error creating dist table")
 	}
-
-	// TODO: add publishConfig table if necessary
 
 	return nil
 }

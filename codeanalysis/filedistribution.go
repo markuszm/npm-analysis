@@ -1,6 +1,7 @@
 package codeanalysis
 
 import (
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"path"
@@ -15,7 +16,7 @@ func NewFileDistributionAnalysis(logger *zap.SugaredLogger) *FileDistributionAna
 	return &FileDistributionAnalysis{logger}
 }
 
-func (e *FileDistributionAnalysis) AnalyzePackage(packagePath string) (interface{}, error) {
+func (e *FileDistributionAnalysis) AnalyzePackageFiles(packagePath string) (interface{}, error) {
 	extensionMap := make(map[string]int, 0)
 	result, err := ExecuteCommand("find", packagePath, "-type", "f")
 	if err != nil {
@@ -49,4 +50,8 @@ func (e *FileDistributionAnalysis) AnalyzePackage(packagePath string) (interface
 	}
 
 	return extensionMap, nil
+}
+
+func (e *FileDistributionAnalysis) AnalyzePackage(version model.PackageVersionPair) (interface{}, error) {
+	return nil, errors.New("Unsupported for this analysis")
 }

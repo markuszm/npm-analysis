@@ -514,7 +514,7 @@ func getImportsFromPackagePath(packagePath string, t *testing.T) []resultprocess
 	const analysisPath = "./import-analysis/analysis"
 	logger := zap.NewNop().Sugar()
 	analysis := NewASTAnalysis(logger, analysisPath)
-	result, err := analysis.AnalyzePackage(packagePath)
+	result, err := analysis.AnalyzePackageFiles(packagePath)
 	if err != nil {
 		t.Fatal(err)
 	}
