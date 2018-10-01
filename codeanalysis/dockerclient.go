@@ -3,6 +3,7 @@ package codeanalysis
 import (
 	"bytes"
 	"context"
+	"github.com/dustinkirkland/golang-petname"
 	"github.com/pkg/errors"
 	"os/exec"
 	"time"
@@ -24,10 +25,12 @@ func BuildImage(contextPath, tag string) error {
 }
 
 func RunDockerContainer(tag string, arguments ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	cmdArgs := append([]string{"run", "--rm", tag}, arguments...)
+	containerName := petname.Generate(2, "-")
+
+	cmdArgs := append([]string{"run", "--rm", "--name", containerName, tag}, arguments...)
 	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
 
 	var out bytes.Buffer
@@ -37,6 +40,8 @@ func RunDockerContainer(tag string, arguments ...string) (string, error) {
 	err := cmd.Run()
 
 	if ctx.Err() == context.DeadlineExceeded {
+		cmd := exec.Command("docker", "stop", containerName)
+		cmd.Run()
 		return "", errors.New("command timed out")
 	}
 
