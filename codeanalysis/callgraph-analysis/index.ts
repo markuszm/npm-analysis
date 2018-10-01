@@ -12,7 +12,7 @@ import { TernClient } from "./ternClient";
 import * as path from "path";
 
 // R2C metadata
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const SPEC_VERSION = "0.1.0";
 const NAME = "callgraph-analysis";
 
@@ -51,16 +51,23 @@ function getFileNameInsidePackage(fileInfo: any) {
 function transformToR2CFormat(calls: Call[]): string {
     let results = [];
     for (let call of calls) {
-        results.push({file: call.fromModule, check_id: "call", extra: call})
+        results.push({ file: call.fromModule, check_id: "call", extra: call });
     }
     let jsonObject = {
         name: NAME,
         spec_version: SPEC_VERSION,
         version: VERSION,
         results: results
-
     };
-    return JSON.stringify(jsonObject)
+
+    function replacer(_: string, value: any) {
+        if (typeof value === "string") {
+            return value.replace("\u0000", "");
+        }
+        return value;
+    }
+
+    return JSON.stringify(jsonObject, replacer);
 }
 
 if (stats.isDirectory()) {
@@ -87,7 +94,7 @@ if (stats.isDirectory()) {
             (fileInfo: any) => {
                 const callExpressions: CallExpression[] = [];
                 const declaredFunctions: Function[] = [];
-                const requiredModules = new Map<string|number, any>(); // map global variable name -> module name
+                const requiredModules = new Map<string | number, any>(); // map global variable name -> module name
                 const importedMethods = new Map<string, string>(); // map local import name to imported name
                 const ternClient = new TernClient(
                     callExpressions,
@@ -132,7 +139,7 @@ if (stats.isDirectory()) {
 } else {
     const callExpressions: CallExpression[] = [];
     const declaredFunctions: Function[] = [];
-    const requiredModules = new Map<string|number, any>(); // map global variable name -> module name
+    const requiredModules = new Map<string | number, any>(); // map global variable name -> module name
     const importedMethods = new Map<string, string>(); // map local import name to imported name
 
     const ternClient = new TernClient(
