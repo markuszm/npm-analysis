@@ -443,7 +443,7 @@ func TestCallgraphEdgecases(t *testing.T) {
 		},
 		{
 			FromModule:   "classReceivers",
-			FromFunction: "self.state",
+			FromFunction: "constructor",
 			Receiver:     "",
 			ClassName:    "",
 			Modules:      []string{},
@@ -453,7 +453,7 @@ func TestCallgraphEdgecases(t *testing.T) {
 		},
 		{
 			FromModule:   "classReceivers",
-			FromFunction: "self.log",
+			FromFunction: "constructor",
 			Receiver:     "",
 			ClassName:    "",
 			Modules:      []string{"debug"},
@@ -463,7 +463,7 @@ func TestCallgraphEdgecases(t *testing.T) {
 		},
 		{
 			FromModule:   "classReceivers",
-			FromFunction: ".root",
+			FromFunction: "constructor",
 			Receiver:     "self",
 			ClassName:    "",
 			Modules:      []string{"debug"},
@@ -476,7 +476,7 @@ func TestCallgraphEdgecases(t *testing.T) {
 		},
 		{
 			FromModule:   "classReceivers",
-			FromFunction: ".root",
+			FromFunction: "constructor",
 			Receiver:     "self.state",
 			ClassName:    "",
 			Modules:      []string{"./state"},

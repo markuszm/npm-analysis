@@ -5,10 +5,10 @@ import { Function } from "./model";
 import { expressionToString, extractFunctionInfo, patternToString } from "./util";
 import {
     AssignmentExpression, BaseCallExpression,
-    CallExpression,
+    CallExpression, ClassBody,
     Expression,
     FunctionDeclaration,
-    ImportDeclaration,
+    ImportDeclaration, MethodDefinition,
     NewExpression,
     Node,
     RegExpLiteral,
@@ -70,6 +70,9 @@ export function Visitors(
         const outerDeclaration: FunctionDeclaration | undefined = ancestors
             .filter((node: Node) => node.type === "FunctionDeclaration")
             .pop() as FunctionDeclaration;
+        const outerClassMethod: MethodDefinition | undefined = ancestors
+            .filter((node: Node) => node.type === "MethodDefinition")
+            .pop() as MethodDefinition;
         const outerExpression: Node | undefined = ancestors
             .filter(
                 (node: Node) =>
@@ -81,6 +84,10 @@ export function Visitors(
         let outerMethodName = ".root";
         if (outerDeclaration) {
             outerMethodName = outerDeclaration.id ? outerDeclaration.id.name : "default";
+            return outerMethodName;
+        }
+        if (outerClassMethod && outerClassMethod.key.type === "Identifier") {
+            outerMethodName = outerClassMethod.key.name;
         }
         if (outerExpression) {
             for (let ancestor of ancestors) {
@@ -92,9 +99,12 @@ export function Visitors(
                     ) {
                         break;
                     }
-                    outerMethodName = leftSideName;
-                    outerMethodName = replaceCommonjsExportPrefix(outerMethodName);
-                    break;
+
+                    if (ancestor.init === outerExpression) {
+                        outerMethodName = leftSideName;
+                        outerMethodName = replaceCommonjsExportPrefix(outerMethodName);
+                        break;
+                    }
                 }
                 if (ancestor.type === "AssignmentExpression") {
                     const leftSideName = patternToString(ancestor.left);
@@ -104,9 +114,11 @@ export function Visitors(
                     ) {
                         break;
                     }
-                    outerMethodName = leftSideName;
-                    outerMethodName = replaceCommonjsExportPrefix(outerMethodName);
-                    break;
+                    if(ancestor.right === outerExpression) {
+                        outerMethodName = leftSideName;
+                        outerMethodName = replaceCommonjsExportPrefix(outerMethodName);
+                        break;
+                    }
                 }
             }
         }
