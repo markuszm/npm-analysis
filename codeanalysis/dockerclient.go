@@ -5,9 +5,14 @@ import (
 	"context"
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/pkg/errors"
+	"math/rand"
 	"os/exec"
 	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 func BuildImage(contextPath, tag string) error {
 	cmd := exec.Command("docker", "build", "-t", tag, contextPath)
