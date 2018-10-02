@@ -45,7 +45,11 @@ func RunDockerContainer(tag string, arguments ...string) (string, error) {
 	err := cmd.Run()
 
 	if ctx.Err() == context.DeadlineExceeded {
+		// no error handling as if this fails there is nothing we can do
 		cmd := exec.Command("docker", "stop", containerName)
+		cmd.Run()
+
+		cmd = exec.Command("docker", "rm", containerName)
 		cmd.Run()
 		return "", errors.New("command timed out")
 	}
