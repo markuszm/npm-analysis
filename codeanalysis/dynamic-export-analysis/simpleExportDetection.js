@@ -17,12 +17,14 @@ let exportedFunctions = [];
 
 // requiring package and retrieving function definitions
 const imported = require(packageName);
+
 const props = Object.getOwnPropertyNames(imported);
 for (let prop of props) {
     try {
         if (typeof imported[prop] === "function") {
             exportedFunctions.push({
                 Name: prop,
+                InternalName: imported[prop].name,
                 Contents: Buffer.from(imported[prop].toString()).toString('base64')
             });
         }
