@@ -10,20 +10,19 @@ import (
 	"strings"
 )
 
-var cgQueryNeo4jUrl string
-var cgQueryMysqlUrl string
-var cgQueryOutput string
-var cgQueryInputFile string
+var apiUsageNeo4jUrl string
+var apiUsageMysqlUrl string
+var apiUsageOutput string
+var apiUsageInputFile string
 
 // callgraphCmd represents the callgraph command
-var cgQueryCmd = &cobra.Command{
-	Use:   "cgQuery",
-	Short: "Queries package callgraph",
-	Long:  `Queries callgraph using neo4j database`,
+var apiUsageCmd = &cobra.Command{
+	Use:   "apiUsage",
+	Short: "Generates api usage stats for functions",
 	Run: func(cmd *cobra.Command, args []string) {
 		initializeLogger()
 
-		queries, err := packagecallgraph.NewGraphQueries(cgQueryNeo4jUrl)
+		queries, err := packagecallgraph.NewGraphQueries(apiUsageNeo4jUrl)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -31,7 +30,7 @@ var cgQueryCmd = &cobra.Command{
 
 		functionChan := make(chan string, 0)
 
-		if cgQueryInputFile == "" {
+		if apiUsageInputFile == "" {
 			go queries.StreamExportedFunctions(functionChan)
 		} else {
 			go streamFunctionNamesFromFile(functionChan)
@@ -39,7 +38,7 @@ var cgQueryCmd = &cobra.Command{
 
 		count := 0
 
-		file, err := os.Create(cgQueryOutput)
+		file, err := os.Create(apiUsageOutput)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -81,8 +80,8 @@ var cgQueryCmd = &cobra.Command{
 }
 
 func streamFunctionNamesFromFile(functionChan chan string) {
-	logger.Infow("using package input file", "file", cgQueryInputFile)
-	file, err := ioutil.ReadFile(cgQueryInputFile)
+	logger.Infow("using package input file", "file", apiUsageInputFile)
+	file, err := ioutil.ReadFile(apiUsageInputFile)
 	if err != nil {
 		logger.Fatalw("could not read file", "err", err)
 	}
@@ -98,12 +97,12 @@ func streamFunctionNamesFromFile(functionChan chan string) {
 }
 
 func init() {
-	rootCmd.AddCommand(cgQueryCmd)
+	rootCmd.AddCommand(apiUsageCmd)
 
-	cgQueryCmd.Flags().StringVarP(&cgQueryNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7689", "Neo4j bolt url")
-	cgQueryCmd.Flags().StringVarP(&cgQueryMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
-	cgQueryCmd.Flags().StringVarP(&cgQueryOutput, "output", "o", "/home/markus/npm-analysis/apiUsage.json", "output file")
-	cgQueryCmd.Flags().StringVarP(&cgQueryInputFile, "input", "i", "", "input file containing list with full function names")
+	apiUsageCmd.Flags().StringVarP(&apiUsageNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7689", "Neo4j bolt url")
+	apiUsageCmd.Flags().StringVarP(&apiUsageMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
+	apiUsageCmd.Flags().StringVarP(&apiUsageOutput, "output", "o", "/home/markus/npm-analysis/apiUsage.json", "output file")
+	apiUsageCmd.Flags().StringVarP(&apiUsageInputFile, "input", "i", "", "input file containing list with full function names")
 }
 
 type ApiUsageStats struct {
