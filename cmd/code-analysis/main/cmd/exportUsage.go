@@ -12,12 +12,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 var exportUsageNeo4jUrl string
 var exportUsageMysqlUrl string
 var exportUsageOutput string
 var exportUsageInputFile string
+var exportUsageWorkers int
+
+var mysql *sql.DB
 
 var exportUsageCmd = &cobra.Command{
 	Use:   "exportUsage",
@@ -25,93 +29,107 @@ var exportUsageCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		initializeLogger()
 
-		queries, err := packagecallgraph.NewGraphQueries(exportUsageNeo4jUrl)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer queries.Close()
-
+		var err error
 		mysqlInitializer := &database.Mysql{}
-		mysql, databaseInitErr := mysqlInitializer.InitDB(callgraphMysqlUrl)
-		if databaseInitErr != nil {
-			logger.Fatal(databaseInitErr)
+		mysql, err = mysqlInitializer.InitDB(callgraphMysqlUrl)
+		if err != nil {
+			logger.Fatal(err)
 		}
 		defer mysql.Close()
 
 		packageChan := make(chan string, 0)
+		resultsChan := make(chan ExportUsageStats, 0)
 
 		if exportUsageInputFile == "" {
+			queries, err := packagecallgraph.NewGraphQueries(exportUsageNeo4jUrl)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer queries.Close()
+
 			go queries.StreamPackages(packageChan)
 		} else {
 			go streamPackageNamesFromFile(packageChan)
 		}
 
-		count := 0
+		writerWait := sync.WaitGroup{}
+		workerWait := sync.WaitGroup{}
+		writerWait.Add(1)
+		go writeResults(resultsChan, &writerWait)
 
-		file, err := os.Create(exportUsageOutput)
+		for w := 1; w <= exportUsageWorkers; w++ {
+			workerWait.Add(1)
+			go exportUsageCalculator(w, packageChan, resultsChan, &workerWait)
+		}
+
+		workerWait.Wait()
+		close(resultsChan)
+
+		writerWait.Wait()
+	},
+}
+
+func exportUsageCalculator(workerId int, packageChan chan string, resultsChan chan ExportUsageStats, workerWait *sync.WaitGroup) {
+	queries, err := packagecallgraph.NewGraphQueries(exportUsageNeo4jUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer queries.Close()
+
+	for pkg := range packageChan {
+		requiredPackages, err := queries.GetRequiredPackagesForPackage(pkg)
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer file.Close()
 
-		encoder := json.NewEncoder(file)
+		functionsUsedMap := make(map[string][]string, 0)
+		percentageUsedMap := make(map[string]float64, 0)
 
-		for pkg := range packageChan {
-			requiredPackages, err := queries.GetRequiredPackagesForPackage(pkg)
+		for _, requiredPkg := range requiredPackages {
+			mainModuleName := getMainModuleName(mysql, requiredPkg)
+			exportedFunctions, err := queries.GetExportedFunctionsForPackage(requiredPkg, mainModuleName)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			functionsUsedMap := make(map[string][]string, 0)
-			percentageUsedMap := make(map[string]float64, 0)
-
-			for _, requiredPkg := range requiredPackages {
-				mainModuleName := getMainModuleName(mysql, requiredPkg)
-				exportedFunctions, err := queries.GetExportedFunctionsForPackage(requiredPkg, mainModuleName)
+			var usedFunctions []string
+			for _, function := range exportedFunctions {
+				packageFunctions, err := queries.GetFunctionsFromPackageThatCallAnotherFunctionDirectly(pkg, function)
 				if err != nil {
 					log.Fatal(err)
 				}
-
-				var usedFunctions []string
-				for _, function := range exportedFunctions {
-					packageFunctions, err := queries.GetFunctionsFromPackageThatCallAnotherFunctionDirectly(pkg, function)
-					if err != nil {
-						log.Fatal(err)
-					}
-					if len(packageFunctions) > 0 {
-						usedFunctions = append(usedFunctions, function)
-					}
-
+				if len(packageFunctions) > 0 {
+					usedFunctions = append(usedFunctions, function)
 				}
 
-				numberOfExportedFunctions := len(exportedFunctions)
-				numberOfUsedFunctions := len(usedFunctions)
-
-				functionsUsedMap[requiredPkg] = usedFunctions
-				percentageUsedMap[requiredPkg] = float64(numberOfUsedFunctions) / float64(numberOfExportedFunctions)
 			}
 
-			exportUsageStat := ExportUsageStats{
-				PackageName:       pkg,
-				PackagesUsed:      requiredPackages,
-				FunctionsUsed:     functionsUsedMap,
-				PercentageUsed:    percentageUsedMap,
-				PackagesUsedCount: len(requiredPackages),
+			numberOfExportedFunctions := len(exportedFunctions)
+			numberOfUsedFunctions := len(usedFunctions)
+
+			percentage := float64(numberOfUsedFunctions) / float64(numberOfExportedFunctions)
+			if numberOfExportedFunctions == 0 {
+				percentage = -1.0
+				logger.Warnw("exported functions is zero", "package", requiredPkg)
 			}
 
-			err = encoder.Encode(exportUsageStat)
-			if err != nil {
-				log.Fatal("Cannot write to result file", err)
-			}
-
-			count++
-
-			if count%1000 == 0 {
-				logger.Infof("Finished %v packages", count)
-			}
+			functionsUsedMap[requiredPkg] = usedFunctions
+			percentageUsedMap[requiredPkg] = percentage
 		}
 
-	},
+		exportUsageStat := ExportUsageStats{
+			PackageName:       pkg,
+			PackagesUsed:      requiredPackages,
+			FunctionsUsed:     functionsUsedMap,
+			PercentageUsed:    percentageUsedMap,
+			PackagesUsedCount: len(requiredPackages),
+		}
+		resultsChan <- exportUsageStat
+
+		logger.Infof("Worker %v finished with package %s", workerId, pkg)
+	}
+
+	workerWait.Done()
 }
 
 func getMainModuleName(mysql *sql.DB, packageName string) string {
@@ -127,6 +145,25 @@ func getMainModuleName(mysql *sql.DB, packageName string) string {
 	}
 
 	return fmt.Sprintf("%s|%s", packageName, mainFile)
+}
+
+func writeResults(resultStream chan ExportUsageStats, waitGroup *sync.WaitGroup) {
+	file, err := os.Create(exportUsageOutput)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+
+	for r := range resultStream {
+		err = encoder.Encode(r)
+		if err != nil {
+			log.Fatal("Cannot write to result file ", err)
+		}
+	}
+
+	waitGroup.Done()
 }
 
 func streamPackageNamesFromFile(packageChan chan string) {
@@ -153,6 +190,7 @@ func init() {
 	exportUsageCmd.Flags().StringVarP(&exportUsageMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
 	exportUsageCmd.Flags().StringVarP(&exportUsageOutput, "output", "o", "/home/markus/npm-analysis/exportUsage.json", "output file")
 	exportUsageCmd.Flags().StringVarP(&exportUsageInputFile, "input", "i", "", "input file containing list with package names")
+	exportUsageCmd.Flags().IntVarP(&exportUsageWorkers, "worker", "w", 20, "number of workers")
 }
 
 type ExportUsageStats struct {

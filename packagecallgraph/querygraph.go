@@ -113,7 +113,7 @@ func (q *GraphQueries) GetExportedFunctionsForPackage(packageName string, mainMo
 	result, err := q.db.Query("MATCH (n:Package)-[:CONTAINS_MODULE]->(m:Module)-[:CONTAINS_FUNCTION]->(e:Function) "+
 		"WHERE n.name = {name} AND m.name = {main} "+
 		"WITH e MATCH (e)<-[c:CALL]-(:Function) WITH e, count(c) as calls "+
-		"WHERE calls > 10 RETURN e.name", map[string]interface{}{"name": packageName, "main": mainModuleName})
+		"WHERE calls > 1 RETURN e.name", map[string]interface{}{"name": packageName, "main": mainModuleName})
 
 	if err != nil {
 		return nil, err
