@@ -12,7 +12,7 @@ import { TernClient } from "./ternClient";
 import * as path from "path";
 
 // R2C metadata
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const SPEC_VERSION = "0.1.0";
 const NAME = "callgraph-analysis";
 
@@ -63,6 +63,17 @@ function transformToR2CFormat(calls: Call[]): string {
     function replacer(_: string, value: any) {
         if (typeof value === "string") {
             return value.replace("\u0000", "");
+        }
+        if (Array.isArray(value)) {
+            let newArray = [];
+            for (let el of value) {
+                if (typeof el === "string") {
+                    newArray.push(el.replace("\u0000", ""));
+                } else {
+                    newArray.push(el);
+                }
+            }
+            return newArray;
         }
         return value;
     }
