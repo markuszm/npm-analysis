@@ -81,7 +81,7 @@ func (q *GraphQueries) GetPackagesThatCallExportedFunction(exportedFunction stri
 		return nil, err
 	}
 
-	var packages []string
+	packages := make([]string, 0)
 	for _, row := range result {
 		// TODO: very unsafe - should check if result is valid
 		pkg := row[0].(string)
@@ -99,7 +99,7 @@ func (q *GraphQueries) GetRequiredPackagesForPackage(packageName string) ([]stri
 		return nil, err
 	}
 
-	var packages []string
+	packages := make([]string, 0)
 	for _, row := range result {
 		// TODO: very unsafe - should check if result is valid
 		pkg := row[0].(string)
@@ -119,7 +119,7 @@ func (q *GraphQueries) GetExportedFunctionsForPackage(packageName string, mainMo
 		return nil, err
 	}
 
-	var functions []string
+	functions := make([]string, 0)
 	for _, row := range result {
 		// TODO: very unsafe - should check if result is valid
 		pkg := row[0].(string)
@@ -138,7 +138,7 @@ func (q *GraphQueries) GetFunctionsFromPackageThatCallAnotherFunctionDirectly(pa
 		return nil, err
 	}
 
-	var functions []string
+	functions := make([]string, 0)
 	for _, row := range result {
 		// TODO: very unsafe - should check if result is valid
 		pkg := row[0].(string)
