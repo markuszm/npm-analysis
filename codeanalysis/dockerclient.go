@@ -30,7 +30,7 @@ func BuildImage(contextPath, tag string) error {
 }
 
 func RunDockerContainer(tag string, arguments ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	containerName := petname.Generate(2, "-")

@@ -6,4 +6,6 @@ WORKDIR /analyzer
 
 COPY . .
 
+RUN yarn add readdirp --silent --non-interactive --no-lockfile 1>&2
+
 ENTRYPOINT [ "./analyze.sh" ]
