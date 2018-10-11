@@ -61,7 +61,8 @@ func main() {
 				}
 			} else {
 				log.Printf("ERROR: parsing metadata for id after last id %v with error %v", lastSeq, err)
-				continue
+				err = ioutil.WriteFile(lastSeqFile, []byte(strconv.Itoa(lastSeq+1)), os.ModePerm)
+				log.Fatalf("EOF restarting with latest sequence stored")
 			}
 		}
 
