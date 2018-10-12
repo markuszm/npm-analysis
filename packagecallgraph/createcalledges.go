@@ -5,15 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/codeanalysis"
-	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/graph"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -148,7 +145,7 @@ func (c *CallEdgeCreator) createQueries(pkgName string, call resultprocessing.Ca
 	}
 
 	for _, m := range modules {
-		importedModuleName := c.getModuleNameForPackageImport(m)
+		importedModuleName := getMainModuleForPackage(c.mysqlDatabase, m)
 		requiredPackageName := getRequiredPackageName(m)
 		if codeanalysis.IsLocalImport(m) {
 			queryChannel <- Neo4jQuery{`
@@ -397,37 +394,6 @@ func (c *CallEdgeCreator) execWorker(workerId int, jobs chan Neo4jQuery, workerW
 		}
 	}
 	workerWait.Done()
-}
-
-func (c *CallEdgeCreator) getModuleNameForPackageImport(moduleName string) string {
-	packageName := getRequiredPackageName(moduleName)
-	if strings.Contains(moduleName, "/") && packageName != moduleName {
-		moduleName := strings.Replace(moduleName, packageName+"/", "", -1)
-		return moduleName
-	}
-	mainFile, err := database.MainFileForPackage(c.mysqlDatabase, packageName)
-	if err != nil {
-		c.logger.Fatalf("error getting mainFile from database for moduleName %s with error %s", moduleName, err)
-	}
-	// cleanup main file
-	mainFile = strings.TrimSuffix(mainFile, filepath.Ext(mainFile))
-	mainFile = strings.TrimLeft(mainFile, "./")
-
-	if mainFile == "" {
-		return "index"
-	}
-	return mainFile
-}
-
-func getRequiredPackageName(moduleName string) string {
-	if strings.Contains(moduleName, "/") {
-		parts := strings.Split(moduleName, "/")
-		if strings.HasPrefix(moduleName, "@") {
-			return fmt.Sprintf("%s/%s", parts[0], parts[1])
-		}
-		return parts[0]
-	}
-	return moduleName
 }
 
 func getFunctionType(call resultprocessing.Call) string {

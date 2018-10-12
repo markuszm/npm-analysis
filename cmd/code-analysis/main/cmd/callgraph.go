@@ -14,6 +14,7 @@ var callgraphWorkerNumber int
 var callgraphMysqlUrl string
 var callgraphCSVFolder string
 var callgraphInitSchema bool
+var callgraphDynamicExports bool
 
 // callgraphCmd represents the callgraph command
 var callgraphCmd = &cobra.Command{
@@ -33,28 +34,27 @@ var callgraphCmd = &cobra.Command{
 		if callgraphInputCallgraph == "" {
 			logger.Info("Skipping callgraph creation")
 		} else {
+			var callEdgeCreator packagecallgraph.EdgeCreator
+
 			if callgraphCSVFolder != "" {
 				err := os.MkdirAll(callgraphCSVFolder, os.ModePerm)
 				if err != nil {
 					logger.Fatalw("could not create output folder", "err", err)
 				}
 
-				callEdgeCreator := packagecallgraph.NewCallEdgeCreatorCSV(callgraphCSVFolder, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
-				err = callEdgeCreator.Exec()
-				if err != nil {
-					logger.Fatal(err)
-				}
+				callEdgeCreator = packagecallgraph.NewCallEdgeCreatorCSV(callgraphCSVFolder, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
 			} else {
 				err := packagecallgraph.InitSchema(callgraphNeo4jUrl)
 				if err != nil {
 					logger.Fatal(err)
 				}
 
-				callEdgeCreator := packagecallgraph.NewCallEdgeCreator(callgraphNeo4jUrl, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
-				err = callEdgeCreator.Exec()
-				if err != nil {
-					logger.Fatal(err)
-				}
+				callEdgeCreator = packagecallgraph.NewCallEdgeCreator(callgraphNeo4jUrl, callgraphInputCallgraph, callgraphWorkerNumber, mysql, logger)
+			}
+
+			err := callEdgeCreator.Exec()
+			if err != nil {
+				logger.Fatal(err)
 			}
 		}
 
@@ -68,7 +68,12 @@ var callgraphCmd = &cobra.Command{
 				}
 			}
 
-			exportEdgeCreator := packagecallgraph.NewExportEdgeCreator(callgraphNeo4jUrl, callgraphInputExports, 1, logger)
+			var exportEdgeCreator packagecallgraph.EdgeCreator
+			if callgraphDynamicExports {
+				exportEdgeCreator = packagecallgraph.NewDynamicExportEdgeCreator(callgraphNeo4jUrl, callgraphInputExports, 1, mysql, logger)
+			} else {
+				exportEdgeCreator = packagecallgraph.NewExportEdgeCreator(callgraphNeo4jUrl, callgraphInputExports, 1, logger)
+			}
 			err := exportEdgeCreator.Exec()
 			if err != nil {
 				logger.Fatal(err)
@@ -88,4 +93,5 @@ func init() {
 	callgraphCmd.Flags().IntVarP(&callgraphWorkerNumber, "worker", "w", 8, "Number of workers")
 	callgraphCmd.Flags().StringVarP(&callgraphCSVFolder, "csvoutput", "o", "", "Output folder for csv files")
 	callgraphCmd.Flags().BoolVarP(&callgraphInitSchema, "init", "i", false, "Whether to init db schema ")
+	callgraphCmd.Flags().BoolVarP(&callgraphDynamicExports, "dynamic", "d", true, "Whether to use dynamic export merge logic")
 }

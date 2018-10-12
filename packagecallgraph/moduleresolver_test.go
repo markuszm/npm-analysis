@@ -3,7 +3,6 @@ package packagecallgraph
 import (
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
-	"go.uber.org/zap"
 	"testing"
 )
 
@@ -55,10 +54,9 @@ func TestModuleNameForPackageImport(t *testing.T) {
 		t.Fatal(databaseInitErr)
 	}
 
-	callEdgeCreator := NewCallEdgeCreator("", "", 10, mysql, zap.NewNop().Sugar())
 	for _, test := range testCases {
 		t.Run(fmt.Sprint(test), func(t *testing.T) {
-			actual := callEdgeCreator.getModuleNameForPackageImport(test.moduleName)
+			actual := getMainModuleForPackage(mysql, test.moduleName)
 			if actual != test.expected {
 				t.Errorf("FAIL: Expected %v but got %v", test.expected, actual)
 			}

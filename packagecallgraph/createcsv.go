@@ -6,15 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/codeanalysis"
-	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"os"
 	"path"
-	"path/filepath"
-	"strings"
 	"sync"
 )
 
@@ -200,7 +197,7 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 
 	if hasValidModules(call) {
 		for _, m := range modules {
-			importedModuleName := c.getModuleNameForPackageImport(m)
+			importedModuleName := getMainModuleForPackage(c.mysqlDatabase, m)
 			requiredPackageName := getRequiredPackageName(m)
 
 			if codeanalysis.IsLocalImport(m) {
@@ -355,24 +352,4 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 			}
 		}
 	}
-}
-
-func (c *CallEdgeCreatorCSV) getModuleNameForPackageImport(moduleName string) string {
-	packageName := getRequiredPackageName(moduleName)
-	if strings.Contains(moduleName, "/") && packageName != moduleName {
-		moduleName := strings.Replace(moduleName, packageName+"/", "", -1)
-		return moduleName
-	}
-	mainFile, err := database.MainFileForPackage(c.mysqlDatabase, packageName)
-	if err != nil {
-		c.logger.Fatalf("error getting mainFile from database for moduleName %s with error %s", moduleName, err)
-	}
-	// cleanup main file
-	mainFile = strings.TrimSuffix(mainFile, filepath.Ext(mainFile))
-	mainFile = strings.TrimLeft(mainFile, "./")
-
-	if mainFile == "" {
-		return "index"
-	}
-	return mainFile
 }
