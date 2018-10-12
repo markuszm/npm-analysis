@@ -4,8 +4,6 @@ import { Call, CallExpression, Function } from "./model";
 
 import * as fs from "fs";
 
-import * as process from "process";
-
 import readdirp from "readdirp";
 
 import { TernClient } from "./ternClient";

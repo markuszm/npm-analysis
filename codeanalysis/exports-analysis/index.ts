@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as process from "process";
 
 import readdirp from "readdirp";
 
