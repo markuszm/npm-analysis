@@ -81,16 +81,10 @@ func (e *DynamicExportEdgeCreator) worker(workerId int, jobs chan model.PackageR
 			e.logger.With("package", j.Name).Error(err)
 		}
 
-		retry := 0
-
 		for _, export := range exports {
 			err := e.addExportEdges(pkg, export, neo4JDatabase)
 
 			if err != nil {
-				for retry < 3 && err != nil {
-					err = e.addExportEdges(pkg, export, neo4JDatabase)
-					retry++
-				}
 				if err != nil {
 					e.logger.With("package", pkg, "error", err).Error("error merging exports")
 					continue
@@ -112,22 +106,7 @@ func (e *DynamicExportEdgeCreator) addExportEdges(pkgName string, export resultp
 
 	// if no locations are found we assume that the method is an redirect export or we just did not found it and keep it on the main module as actual export
 	if len(moduleNames) == 0 {
-		_, err := database.Exec(`
-		MERGE (e:Function {name: {exportFullName}}) 
-			ON CREATE SET e.functionName = {exportName}, e.functionType = "export", e.actualExport = true
-			ON MATCH SET e.actualExport = true
-		MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
-		MERGE (p:Package {name: {packageName}})
-		MERGE (p)-[:CONTAINS_MODULE]->(m)
-		MERGE (m)-[:CONTAINS_FUNCTION]->(e)
-		`,
-			map[string]interface{}{
-				"exportFullName": fmt.Sprintf("%s|%s|%s", pkgName, mainModule, exportName),
-				"exportName":     exportName,
-				"packageName":    pkgName,
-				"fullModuleName": fmt.Sprintf("%s|%s", pkgName, mainModule),
-				"moduleName":     mainModule,
-			})
+		err := e.addExportedMethod(database, pkgName, mainModule, exportName)
 
 		if err != nil {
 			return errors.Wrap(err, "error adding exported method")
@@ -138,20 +117,39 @@ func (e *DynamicExportEdgeCreator) addExportEdges(pkgName string, export resultp
 	for _, module := range moduleNames {
 		moduleName := trimExt(module.File)
 
-		_, err := database.Exec(`
-		MATCH (l:Function {name: {localFullName}})
-		MERGE (e:Function {name: {exportFullName}}) 
-			ON CREATE SET e.functionName = {exportName}, e.functionType = "export", e.actualExport = true
-			ON MATCH SET e.actualExport = true
-		MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
-		MERGE (p:Package {name: {packageName}})
-		MERGE (p)-[:CONTAINS_MODULE]->(m)
-		MERGE (m)-[:CONTAINS_FUNCTION]->(e)
-		WITH [e,l] as nodes CALL apoc.refactor.mergeNodes(nodes,{properties:"override", mergeRels:true}) yield node return *
-		`,
+		localFullName := fmt.Sprintf("%s|%s|%s", pkgName, moduleName, localName)
+		exportFullName := fmt.Sprintf("%s|%s|%s", pkgName, mainModule, exportName)
+
+		localFunctionResult, err := database.Query(`MATCH (l:Function {name: {localFullName}}) RETURN l`, map[string]interface{}{
+			"localFullName": localFullName,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "error querying for local function: %s", localFullName)
+		}
+
+		if len(localFunctionResult) == 0 || localFullName == exportFullName {
+			err := e.addExportedMethod(database, pkgName, mainModule, exportName)
+
+			if err != nil {
+				return errors.Wrap(err, "error adding exported method")
+			}
+			continue
+		}
+
+		_, err = database.Exec(`
+				MATCH (l:Function {name: {localFullName}}) 
+				MERGE (e:Function {name: {exportFullName}}) 
+					ON CREATE SET e.functionName = {exportName}, e.functionType = "export", e.actualExport = true
+					ON MATCH SET e.actualExport = true
+				MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
+				MERGE (p:Package {name: {packageName}})
+				MERGE (p)-[:CONTAINS_MODULE]->(m)
+				MERGE (m)-[:CONTAINS_FUNCTION]->(e)
+				WITH [e,l] as nodes CALL apoc.refactor.mergeNodes(nodes,{properties:"discard", mergeRels:true}) yield node return *
+				`,
 			map[string]interface{}{
-				"localFullName":  fmt.Sprintf("%s|%s|%s", pkgName, moduleName, localName),
-				"exportFullName": fmt.Sprintf("%s|%s|%s", pkgName, mainModule, exportName),
+				"localFullName":  localFullName,
+				"exportFullName": exportFullName,
 				"exportName":     exportName,
 				"packageName":    pkgName,
 				"fullModuleName": fmt.Sprintf("%s|%s", pkgName, mainModule),
@@ -159,11 +157,32 @@ func (e *DynamicExportEdgeCreator) addExportEdges(pkgName string, export resultp
 			})
 
 		if err != nil {
-			return errors.Wrapf(err, "error merging export and local function nodes with module: %s export: %s local function: %s", moduleName, exportName, localName)
+			e.logger.Debug(localFunctionResult)
+			return errors.Wrapf(err, "error merging export and local function nodes with module: %s export: %s local function: %s", moduleName, exportFullName, localFullName)
 		}
 	}
 
 	return nil
+}
+
+func (e *DynamicExportEdgeCreator) addExportedMethod(database graph.Database, pkgName string, mainModule string, exportName string) error {
+	_, err := database.Exec(`
+				MERGE (e:Function {name: {exportFullName}}) 
+					ON CREATE SET e.functionName = {exportName}, e.functionType = "export", e.actualExport = true
+					ON MATCH SET e.actualExport = true
+				MERGE (m:Module {name: {fullModuleName}, moduleName: {moduleName}})
+				MERGE (p:Package {name: {packageName}})
+				MERGE (p)-[:CONTAINS_MODULE]->(m)
+				MERGE (m)-[:CONTAINS_FUNCTION]->(e)
+				`,
+		map[string]interface{}{
+			"exportFullName": fmt.Sprintf("%s|%s|%s", pkgName, mainModule, exportName),
+			"exportName":     exportName,
+			"packageName":    pkgName,
+			"fullModuleName": fmt.Sprintf("%s|%s", pkgName, mainModule),
+			"moduleName":     mainModule,
+		})
+	return err
 }
 
 func (e *DynamicExportEdgeCreator) getLocalName(export resultprocessing.DynamicExport) string {
