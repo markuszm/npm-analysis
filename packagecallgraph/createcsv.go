@@ -10,21 +10,24 @@ import (
 	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"io/ioutil"
 	"os"
 	"path"
 	"sync"
 )
 
 type CallEdgeCreatorCSV struct {
-	mysqlDatabase *sql.DB
-	inputFile     string
-	logger        *zap.SugaredLogger
-	workers       int
-	outputFolder  string
+	mysqlDatabase  *sql.DB
+	callgraphInput string
+	exportsInput   string
+	logger         *zap.SugaredLogger
+	workers        int
+	outputFolder   string
+	exportResults  ExportResults
 }
 
-func NewCallEdgeCreatorCSV(output, callgraphInput string, workerNumber int, sql *sql.DB, logger *zap.SugaredLogger) *CallEdgeCreatorCSV {
-	return &CallEdgeCreatorCSV{inputFile: callgraphInput, workers: workerNumber, logger: logger, mysqlDatabase: sql, outputFolder: output}
+func NewCallEdgeCreatorCSV(output, callgraphInput string, exportsInput string, workerNumber int, sql *sql.DB, logger *zap.SugaredLogger) *CallEdgeCreatorCSV {
+	return &CallEdgeCreatorCSV{callgraphInput: callgraphInput, exportsInput: exportsInput, workers: workerNumber, logger: logger, mysqlDatabase: sql, outputFolder: output}
 }
 
 func (c *CallEdgeCreatorCSV) Exec() error {
@@ -33,10 +36,21 @@ func (c *CallEdgeCreatorCSV) Exec() error {
 		c.logger.Fatalw("could not create csv header files", "err", err)
 	}
 
-	file, err := os.Open(c.inputFile)
+	file, err := os.Open(c.callgraphInput)
 	if err != nil {
 		return errors.Wrap(err, "error opening callgraph result file - does it exist?")
 	}
+
+	bytes, err := ioutil.ReadFile(c.exportsInput)
+	if err != nil {
+		return errors.Wrap(err, "error opening exports result file - does it exist?")
+	}
+	exportResults := ExportResults{}
+	err = json.Unmarshal(bytes, exportResults)
+	if err != nil {
+		return errors.Wrap(err, "error in unmarshal of exports")
+	}
+	c.exportResults = exportResults
 
 	decoder := json.NewDecoder(file)
 
@@ -172,6 +186,10 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 	}
 
 	fromFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, call.FromModule, call.FromFunction)
+
+	// map local function name to exported function name if it exists
+	fromFunctionFullName = c.mapToExportedFunction(fromFunctionFullName)
+
 	fullModuleName := fmt.Sprintf("%s|%s", pkgName, call.FromModule)
 
 	csvChannels.ModuleChan <- &Module{name: fullModuleName, moduleName: call.FromModule}
@@ -180,7 +198,7 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 	csvChannels.FunctionChan <- &Function{
 		name:         fromFunctionFullName,
 		functionName: call.FromFunction,
-		functionType: "unknown",
+		functionType: c.getFunctionTypeForFunctionName(fromFunctionFullName),
 	}
 	csvChannels.ContainsFunctionChan <- &Relation{
 		startID: fullModuleName,
@@ -209,10 +227,17 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 				}
 
 				calledFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, m, call.ToFunction)
+				calledFunctionFullName = c.mapToExportedFunction(calledFunctionFullName)
+
+				functionType := c.getFunctionTypeForFunctionName(calledFunctionFullName)
+				if functionType == "unknown" {
+					functionType = c.getFunctionTypeFromCall(call)
+				}
+
 				csvChannels.FunctionChan <- &Function{
 					name:         calledFunctionFullName,
 					functionName: call.ToFunction,
-					functionType: getFunctionType(call),
+					functionType: functionType,
 				}
 				csvChannels.CallsChan <- &Relation{
 					startID: fromFunctionFullName,
@@ -284,11 +309,17 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 				}
 
 				calledFunctionFullName := fmt.Sprintf("%s|%s|%s", requiredPackageName, importedModuleName, call.ToFunction)
+				calledFunctionFullName = c.mapToExportedFunction(calledFunctionFullName)
+
+				functionType := c.getFunctionTypeForFunctionName(calledFunctionFullName)
+				if functionType == "unknown" {
+					functionType = c.getFunctionTypeFromCall(call)
+				}
 
 				csvChannels.FunctionChan <- &Function{
 					name:         calledFunctionFullName,
 					functionName: call.ToFunction,
-					functionType: getFunctionType(call),
+					functionType: functionType,
 				}
 				csvChannels.CallsChan <- &Relation{
 					startID: fromFunctionFullName,
@@ -306,11 +337,12 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 		// special case where modules is empty
 		if call.IsLocal || call.Receiver == "this" {
 			calledFunctionFullName := fmt.Sprintf("%s|%s|%s", pkgName, call.FromModule, call.ToFunction)
+			calledFunctionFullName = c.mapToExportedFunction(calledFunctionFullName)
 
 			csvChannels.FunctionChan <- &Function{
 				name:         calledFunctionFullName,
 				functionName: call.ToFunction,
-				functionType: "unknown",
+				functionType: c.getFunctionTypeForFunctionName(calledFunctionFullName),
 			}
 			csvChannels.CallsChan <- &Relation{
 				startID: fromFunctionFullName,
@@ -352,4 +384,26 @@ func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing
 			}
 		}
 	}
+}
+
+func (c *CallEdgeCreatorCSV) getFunctionTypeForFunctionName(functionName string) string {
+	if c.exportResults.ExportedFunctions[functionName] {
+		return "actualExport"
+	}
+	return "unknown"
+}
+
+func (c *CallEdgeCreatorCSV) mapToExportedFunction(functionName string) string {
+	actualExportedFunctionName := c.exportResults.LocalFunctionsMap[functionName]
+	if actualExportedFunctionName != "" {
+		functionName = actualExportedFunctionName
+	}
+	return functionName
+}
+
+func (c *CallEdgeCreatorCSV) getFunctionTypeFromCall(call resultprocessing.Call) string {
+	if call.IsLocal || call.Receiver == "this" {
+		return "local"
+	}
+	return "export"
 }
