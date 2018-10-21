@@ -20,9 +20,9 @@ func Init(database Database) error {
 	return nil
 }
 
-func InsertPackage(database Database, name string) error {
+func InsertPackage(database Database, packageVersionPair model.PackageVersionPair) error {
 	_, insertErr := database.Exec(`
-		MERGE (p:Package {name: {p1}})`, map[string]interface{}{"p1": name})
+		MERGE (p:Package {name: {p1}}) ON CREATE SET p.version = {version} ON MATCH SET p.version = {version}`, map[string]interface{}{"p1": packageVersionPair.Name, "version": packageVersionPair.Version})
 	return insertErr
 }
 

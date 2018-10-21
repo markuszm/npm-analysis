@@ -58,9 +58,9 @@ func main() {
 		persons, retrieveErr = database.GetMaintainers(mysql)
 		jobItems = transformPersonToInterfaceSlice(persons)
 	case "package":
-		var packages []string
-		packages, retrieveErr = database.GetPackages(mysql)
-		jobItems = transformStringToInterfaceSlice(packages)
+		var packages []model.PackageVersionPair
+		packages, retrieveErr = database.GetPackagesWithVersion(mysql)
+		jobItems = transformPackagesToInterfaceSlice(packages)
 	}
 	if retrieveErr != nil {
 		log.Fatal(retrieveErr)
@@ -85,9 +85,9 @@ func transformPersonToInterfaceSlice(persons []database.Person) []interface{} {
 	return result
 }
 
-func transformStringToInterfaceSlice(strings []string) []interface{} {
+func transformPackagesToInterfaceSlice(packages []model.PackageVersionPair) []interface{} {
 	var result []interface{}
-	for _, p := range strings {
+	for _, p := range packages {
 		result = append(result, p)
 	}
 	return result
@@ -136,8 +136,8 @@ func worker(workerId int, jobs chan interface{}, workerWait *sync.WaitGroup) {
 
 			insertErr = graph.InsertMaintainerRelation(neo4JDatabase, person, packageName)
 		case "package":
-			packageName := j.(string)
-			insertErr = graph.InsertPackage(neo4JDatabase, packageName)
+			packageVersionPair := j.(model.PackageVersionPair)
+			insertErr = graph.InsertPackage(neo4JDatabase, packageVersionPair)
 		}
 
 		if insertErr != nil {
