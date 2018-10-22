@@ -74,7 +74,7 @@ var callgraphCmd = &cobra.Command{
 			}
 
 			var exportEdgeCreator packagecallgraph.EdgeCreator
-			if callgraphDynamicExports {
+			if callgraphDynamicExports && callgraphInputCallgraph == "" {
 				exportedFunctionProcessor := packagecallgraph.NewExportedFunctionProcessor(callgraphInputExports, callgraphOutputExports, mysql, logger)
 				err := exportedFunctionProcessor.WriteProcessedExportResults()
 				if err != nil {

@@ -46,7 +46,7 @@ func (c *CallEdgeCreatorCSV) Exec() error {
 		return errors.Wrap(err, "error opening exports result file - does it exist?")
 	}
 	exportResults := ExportResults{}
-	err = json.Unmarshal(bytes, exportResults)
+	err = json.Unmarshal(bytes, &exportResults)
 	if err != nil {
 		return errors.Wrap(err, "error in unmarshal of exports")
 	}
