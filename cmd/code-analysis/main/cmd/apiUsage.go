@@ -31,7 +31,7 @@ var apiUsageCmd = &cobra.Command{
 		functionChan := make(chan string, 0)
 
 		if apiUsageInputFile == "" {
-			go queries.StreamExportedFunctions(functionChan)
+			go queries.StreamExportedFunctions("actualExport", functionChan)
 		} else {
 			go streamFunctionNamesFromFile(functionChan)
 		}

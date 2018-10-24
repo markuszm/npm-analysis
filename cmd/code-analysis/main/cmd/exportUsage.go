@@ -87,9 +87,16 @@ func exportUsageCalculator(workerId int, packageChan chan string, resultsChan ch
 
 		for _, requiredPkg := range requiredPackages {
 			mainModuleName := getMainModuleName(mysql, requiredPkg)
-			exportedFunctions, err := queries.GetExportedFunctionsForPackage(requiredPkg, mainModuleName)
+			exportedFunctions, err := queries.GetActualExportedFunctionsForPackage(requiredPkg, mainModuleName)
 			if err != nil {
 				log.Fatal(err)
+			}
+
+			if len(exportedFunctions) == 0 {
+				exportedFunctions, err = queries.GetExportedFunctionsForPackage(requiredPkg, mainModuleName)
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 
 			var usedFunctions []string

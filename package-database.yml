@@ -1,0 +1,13 @@
+version: '3.1'
+
+services:
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: npm-analysis
+      MYSQL_DATABASE: npm
+    volumes:
+    - ./db-data/mysql:/var/lib/mysql
+    ports:
+    - 3306:3306

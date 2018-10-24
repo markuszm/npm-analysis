@@ -23,7 +23,7 @@ func (q *GraphQueries) Close() {
 	q.db.Close()
 }
 
-func (q *GraphQueries) StreamExportedFunctions(functionChan chan string) {
+func (q *GraphQueries) StreamExportedFunctions(functionType string, functionChan chan string) {
 	database := graph.NewNeo4JDatabase()
 	defer database.Close()
 	err := database.InitDB(q.neo4jUrl)
@@ -33,7 +33,9 @@ func (q *GraphQueries) StreamExportedFunctions(functionChan chan string) {
 
 	resultChan := make(chan []interface{}, 0)
 
-	go database.QueryStream("MATCH (e:Function {functionType: \"export\"}) RETURN e.name", map[string]interface{}{}, resultChan)
+	go database.QueryStream("MATCH (e:Function {functionType: {type}}) RETURN e.name", map[string]interface{}{
+		"type": functionType,
+	}, resultChan)
 
 	for r := range resultChan {
 		// TODO: very unsafe - should check if result is valid
@@ -107,6 +109,25 @@ func (q *GraphQueries) GetRequiredPackagesForPackage(packageName string) ([]stri
 	}
 
 	return packages, nil
+}
+
+func (q *GraphQueries) GetActualExportedFunctionsForPackage(packageName string, mainModuleName string) ([]string, error) {
+	result, err := q.db.Query("MATCH (n:Package)-[:CONTAINS_MODULE]->(m:Module)-[:CONTAINS_FUNCTION]->(e:Function) "+
+		"WHERE n.name = {name} AND m.name = {main} AND e.functionType = \"actualExport\" RETURN e.name",
+		map[string]interface{}{"name": packageName, "main": mainModuleName})
+
+	if err != nil {
+		return nil, err
+	}
+
+	functions := make([]string, 0)
+	for _, row := range result {
+		// TODO: very unsafe - should check if result is valid
+		pkg := row[0].(string)
+		functions = append(functions, pkg)
+	}
+
+	return functions, nil
 }
 
 func (q *GraphQueries) GetExportedFunctionsForPackage(packageName string, mainModuleName string) ([]string, error) {
