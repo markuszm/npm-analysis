@@ -111,10 +111,12 @@ func (q *GraphQueries) GetRequiredPackagesForPackage(packageName string) ([]stri
 	return packages, nil
 }
 
-func (q *GraphQueries) GetActualExportedFunctionsForPackage(packageName string, mainModuleName string) ([]string, error) {
-	result, err := q.db.Query("MATCH (n:Package)-[:CONTAINS_MODULE]->(m:Module)-[:CONTAINS_FUNCTION]->(e:Function) "+
-		"WHERE n.name = {name} AND m.name = {main} AND e.functionType = \"actualExport\" RETURN e.name",
-		map[string]interface{}{"name": packageName, "main": mainModuleName})
+func (q *GraphQueries) GetExportedFunctionsForPackageActual(packageName string, mainModuleName string) ([]string, error) {
+	result, err := q.db.Query(
+		"MATCH (e:Function) "+
+			"WHERE e.name starts with {main} AND e.functionType = \"actualExport\" "+
+			"RETURN e.name",
+		map[string]interface{}{"main": mainModuleName})
 
 	if err != nil {
 		return nil, err
@@ -130,11 +132,11 @@ func (q *GraphQueries) GetActualExportedFunctionsForPackage(packageName string, 
 	return functions, nil
 }
 
-func (q *GraphQueries) GetExportedFunctionsForPackage(packageName string, mainModuleName string) ([]string, error) {
-	result, err := q.db.Query("MATCH (n:Package)-[:CONTAINS_MODULE]->(m:Module)-[:CONTAINS_FUNCTION]->(e:Function) "+
-		"WHERE n.name = {name} AND m.name = {main} "+
-		"WITH e MATCH (e)<-[c:CALL]-(:Function) WITH e, count(c) as calls "+
-		"WHERE calls > 1 RETURN e.name", map[string]interface{}{"name": packageName, "main": mainModuleName})
+func (q *GraphQueries) GetExportedFunctionsForPackageHeuristic(packageName string, mainModuleName string) ([]string, error) {
+	result, err := q.db.Query(
+		"MATCH (e:Function) WHERE e.name starts with {main} "+
+			"WITH e, size((e)<-[:CALL]-()) as calls "+
+			"WHERE calls > 1 RETURN e.name", map[string]interface{}{"main": mainModuleName})
 
 	if err != nil {
 		return nil, err
@@ -151,9 +153,11 @@ func (q *GraphQueries) GetExportedFunctionsForPackage(packageName string, mainMo
 }
 
 func (q *GraphQueries) GetFunctionsFromPackageThatCallAnotherFunctionDirectly(packageName, otherFunction string) ([]string, error) {
-	result, err := q.db.Query("MATCH (f1:Function)<-[:CALL]-(pFunc:Function)<-[:CONTAINS_FUNCTION]-(:Module)<-[:CONTAINS_MODULE]-(p:Package) "+
-		"WHERE f1.name = {functionName} AND p.name = {packageName} "+
-		"RETURN pFunc.name", map[string]interface{}{"packageName": packageName, "functionName": otherFunction})
+	result, err := q.db.Query(
+		"MATCH (f:Function)<-[:CONTAINS_FUNCTION]-(:Module)<-[:CONTAINS_MODULE]-(p:Package {name: {packageName}}) "+
+			"WITH DISTINCT f "+
+			"MATCH (f1:Function {name: {functionName} })<-[:CALL]-(f) "+
+			"RETURN f.name", map[string]interface{}{"packageName": packageName, "functionName": otherFunction})
 
 	if err != nil {
 		return nil, err

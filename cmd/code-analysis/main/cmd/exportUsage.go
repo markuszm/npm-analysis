@@ -20,6 +20,7 @@ var exportUsageMysqlUrl string
 var exportUsageOutput string
 var exportUsageInputFile string
 var exportUsageWorkers int
+var exportUsageHeuristic bool
 
 var mysql *sql.DB
 
@@ -39,6 +40,10 @@ var exportUsageCmd = &cobra.Command{
 
 		packageChan := make(chan string, 0)
 		resultsChan := make(chan ExportUsageStats, 0)
+
+		if exportUsageHeuristic {
+			logger.Info("Using heuristic to calculate exported functions")
+		}
 
 		if exportUsageInputFile == "" {
 			queries, err := packagecallgraph.NewGraphQueries(exportUsageNeo4jUrl)
@@ -87,15 +92,17 @@ func exportUsageCalculator(workerId int, packageChan chan string, resultsChan ch
 
 		for _, requiredPkg := range requiredPackages {
 			mainModuleName := getMainModuleName(mysql, requiredPkg)
-			exportedFunctions, err := queries.GetActualExportedFunctionsForPackage(requiredPkg, mainModuleName)
+			exportedFunctions, err := queries.GetExportedFunctionsForPackageActual(requiredPkg, mainModuleName)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			if len(exportedFunctions) == 0 {
-				exportedFunctions, err = queries.GetExportedFunctionsForPackage(requiredPkg, mainModuleName)
-				if err != nil {
-					log.Fatal(err)
+				if exportUsageHeuristic {
+					exportedFunctions, err = queries.GetExportedFunctionsForPackageHeuristic(requiredPkg, mainModuleName)
+					if err != nil {
+						log.Fatal(err)
+					}
 				}
 			}
 
@@ -198,6 +205,7 @@ func init() {
 	exportUsageCmd.Flags().StringVarP(&exportUsageOutput, "output", "o", "/home/markus/npm-analysis/exportUsage.json", "output file")
 	exportUsageCmd.Flags().StringVarP(&exportUsageInputFile, "input", "i", "", "input file containing list with package names")
 	exportUsageCmd.Flags().IntVarP(&exportUsageWorkers, "worker", "w", 20, "number of workers")
+	exportUsageCmd.Flags().BoolVar(&exportUsageHeuristic, "heuristic", true, "use heuristic for packages that have no actual exports")
 }
 
 type ExportUsageStats struct {
