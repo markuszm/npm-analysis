@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"sync"
 )
 
@@ -168,6 +169,9 @@ func (c *CallEdgeCreatorCSV) queryWorker(workerId int, jobs chan model.PackageRe
 				receiverModuleMap[call.FromModule+call.Receiver] = call.Modules
 			}
 
+			if isInvalidFileOrigin(call) {
+				continue
+			}
 			c.createCSVRows(pkg, call, receiverModuleMap, csvChannels)
 		}
 
@@ -178,6 +182,11 @@ func (c *CallEdgeCreatorCSV) queryWorker(workerId int, jobs chan model.PackageRe
 		receiverModuleMap = nil
 	}
 	workerWait.Done()
+}
+
+func isInvalidFileOrigin(call resultprocessing.Call) bool {
+	// filter out files from node_modules folder
+	return strings.Contains(call.FromModule, ".node_modules.ember-try")
 }
 
 func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing.Call, receiverModuleMap map[string][]string, csvChannels CSVChannels) {

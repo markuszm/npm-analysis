@@ -98,7 +98,7 @@ if (stats.isDirectory()) {
                             return false;
                     }
                 },
-                directoryFilter: ["!.git", "!node_modules", "!assets"]
+                directoryFilter: ["!.git", "!node_modules", "!assets", "!.node_modules.ember-try"]
             },
             (fileInfo: any) => {
                 const callExpressions: CallExpression[] = [];
