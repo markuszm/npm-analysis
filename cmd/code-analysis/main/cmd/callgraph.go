@@ -63,7 +63,7 @@ var callgraphCmd = &cobra.Command{
 			}
 		}
 
-		if callgraphInputExports == "" {
+		if callgraphInputExports == "" || callgraphDynamicExports {
 			logger.Info("Skipping export creation")
 		} else {
 			if callgraphInitSchema {

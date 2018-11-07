@@ -186,7 +186,7 @@ func (c *CallEdgeCreatorCSV) queryWorker(workerId int, jobs chan model.PackageRe
 
 func isInvalidFileOrigin(call resultprocessing.Call) bool {
 	// filter out files from node_modules folder
-	return strings.Contains(call.FromModule, ".node_modules.ember-try")
+	return strings.Contains(call.FromModule, "node_modules")
 }
 
 func (c *CallEdgeCreatorCSV) createCSVRows(pkgName string, call resultprocessing.Call, receiverModuleMap map[string][]string, csvChannels CSVChannels) {
