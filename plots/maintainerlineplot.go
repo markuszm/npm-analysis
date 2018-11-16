@@ -57,12 +57,12 @@ func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64)
 	SaveMaintainerPlot(maintainerName, "maintainer-reach", p)
 }
 
-func GenerateLinePlotForAverageMaintainerReach(counts []float64) {
+func GenerateLinePlotForAverageMaintainerReach(outputName string, counts []float64) {
 	p, err := plot.New()
 	if err != nil {
 		log.Fatal(err)
 	}
-	p.Title.Text = fmt.Sprintf("Average Maintainer Reach over all packages")
+	p.Title.Text = fmt.Sprintf("Average Reach over all packages")
 	p.X.Label.Text = "Time"
 	p.X.Tick.Marker = YearTicks{startYear: 2011}
 	p.Y.Label.Text = "Reach"
@@ -72,7 +72,7 @@ func GenerateLinePlotForAverageMaintainerReach(counts []float64) {
 		log.Fatal(err)
 	}
 
-	SavePlot("/home/markus/npm-analysis/averageMaintainerReach.png", p)
+	SavePlot("/home/markus/npm-analysis/"+outputName+".png", p)
 }
 
 func GenerateLinePlotForAverageMaintainerPackageCount(counts []float64) {

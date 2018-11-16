@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func CalculateMaintainerReachDiff(resultMap *sync.Map) {
+func CalculateMaintainerReachDiff(outputName string, resultMap *sync.Map) {
 	maintainerReachDiffMap := make(map[time.Time][]util.MaintainerReachDiff, 0)
 
 	resultMap.Range(func(key, value interface{}) bool {
@@ -89,11 +89,11 @@ func CalculateMaintainerReachDiff(resultMap *sync.Map) {
 		}
 	}
 
-	outputPath := "/home/markus/npm-analysis/maintainerReachDiffs.txt"
+	outputPath := "/home/markus/npm-analysis/" + outputName + ".txt"
 	ioutil.WriteFile(outputPath, []byte(builder.String()), os.ModePerm)
 }
 
-func CalculateAverageMaintainerReach(resultMap *sync.Map) {
+func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
 	maintainerReachCount := make(map[time.Time]float64, 0)
 	maintainerCount := make(map[time.Time]float64, 0)
 	averageMaintainerReachPerMonth := make(map[time.Time]float64, 0)
@@ -156,5 +156,5 @@ func CalculateAverageMaintainerReach(resultMap *sync.Map) {
 		avgValues = append(avgValues, v.Value)
 	}
 
-	plots.GenerateLinePlotForAverageMaintainerReach(avgValues)
+	plots.GenerateLinePlotForAverageMaintainerReach(outputName, avgValues)
 }

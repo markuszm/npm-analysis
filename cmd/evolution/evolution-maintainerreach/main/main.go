@@ -108,9 +108,9 @@ func calculatePackageReach(maintainer string) {
 
 		log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 
-		reach.CalculateAverageMaintainerReach(&resultMap)
+		reach.CalculateAverageMaintainerReach("averageMaintainerReach", &resultMap)
 
-		reach.CalculateMaintainerReachDiff(&resultMap)
+		reach.CalculateMaintainerReachDiff("maintainerReachDiff", &resultMap)
 	} else {
 		// calculate for one maintainer the reach of each package per month and overall reach
 
