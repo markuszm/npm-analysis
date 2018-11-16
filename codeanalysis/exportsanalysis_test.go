@@ -2,7 +2,7 @@ package codeanalysis
 
 import (
 	"fmt"
-	"github.com/markuszm/npm-analysis/resultprocessing"
+	"github.com/markuszm/npm-analysis/codeanalysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
@@ -176,7 +176,7 @@ func TestExportEdgecases(t *testing.T) {
 }
 
 func getExportsFromPackagePath(packagePath string, t *testing.T) []resultprocessing.Export {
-	const analysisPath = "./exports-analysis/analysis"
+	const analysisPath = "./js/exports-analysis/analysis"
 	logger := zap.NewNop().Sugar()
 	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackageFiles(packagePath)

@@ -2,7 +2,7 @@ package codeanalysis
 
 import (
 	"fmt"
-	"github.com/markuszm/npm-analysis/resultprocessing"
+	"github.com/markuszm/npm-analysis/codeanalysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
@@ -490,7 +490,7 @@ func TestCallgraphEdgecases(t *testing.T) {
 }
 
 func getCallsFromPackagePath(packagePath string, t *testing.T) []resultprocessing.Call {
-	const analysisPath = "./callgraph-analysis/analysis"
+	const analysisPath = "./js/callgraph-analysis/analysis"
 	logger := zap.NewNop().Sugar()
 	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackageFiles(packagePath)

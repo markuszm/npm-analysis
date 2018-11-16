@@ -3,8 +3,8 @@ package cmd
 import (
 	"database/sql"
 	"encoding/csv"
+	"github.com/markuszm/npm-analysis/codeanalysis/packagecallgraph"
 	"github.com/markuszm/npm-analysis/database"
-	"github.com/markuszm/npm-analysis/packagecallgraph"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"

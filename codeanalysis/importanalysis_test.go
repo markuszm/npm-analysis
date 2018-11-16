@@ -2,7 +2,7 @@ package codeanalysis
 
 import (
 	"fmt"
-	"github.com/markuszm/npm-analysis/resultprocessing"
+	"github.com/markuszm/npm-analysis/codeanalysis/resultprocessing"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"testing"
@@ -511,7 +511,7 @@ func TestImportReassignments(t *testing.T) {
 }
 
 func getImportsFromPackagePath(packagePath string, t *testing.T) []resultprocessing.Import {
-	const analysisPath = "./import-analysis/analysis"
+	const analysisPath = "./js/import-analysis/analysis"
 	logger := zap.NewNop().Sugar()
 	analysis := NewASTAnalysis(logger, analysisPath)
 	result, err := analysis.AnalyzePackageFiles(packagePath)

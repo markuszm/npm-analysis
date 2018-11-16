@@ -3,7 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"github.com/johnnadratowski/golang-neo4j-bolt-driver/log"
-	"github.com/markuszm/npm-analysis/packagecallgraph"
+	"github.com/markuszm/npm-analysis/codeanalysis/packagecallgraph"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"

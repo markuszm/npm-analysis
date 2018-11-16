@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const analysisPath = "./import-analysis/analysis"
+const analysisPath = "./js/import-analysis/analysis"
 
 func TestRequireDetected(t *testing.T) {
 	logger := zap.NewNop().Sugar()

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dependency Analysis</title>
+
+    <style type="text/css">
+        html,
+        body {
+            font: 16pt arial;
+        }
+
+        #viz {
+            width: 900px;
+            height: 700px;
+            border: 1px solid lightgray;
+            font: 22pt arial;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/neo4j-driver"></script>
+    <script type="text/javascript" src="https://rawgit.com/sim51/neosig/master/docs/neosig-1.2.1.js"></script>
+
+
+</head>
+
+<body onload="draw()">
+    <div id="viz"></div>
+    <script type="text/javascript">
+        var viz;
+
+        function draw() {
+            var neo4j = {
+                url: 'bolt://localhost:7687',
+                user: 'neo4j',
+                password: 'npm',
+                driver: {}
+            };
+
+            var style = {
+                labels: {
+                    Package: {
+                        // field to display (if ommit, node's id will be displayed)
+                        label: 'name',
+                        color: 'black',
+                        size: 30,
+                    }
+                },
+                edges: {
+                    DEPEND: {
+                        color: 'red',
+                        size: 3
+                    },
+                    DEPEND_DEV: {
+                        color: 'green',
+                        size: 3
+                    },
+                    DEPEND_PEER: {
+                        color: 'blue',
+                        size: 2
+                    },
+                    DEPEND_OPTIONAL: {
+                        color: "grey",
+                        size: 1
+                    }
+                }
+            };
+
+
+            Neo4jGraph(neo4j, style, 'MATCH (n)-[r]-(m) WHERE n.pagerank > 10 AND m.pagerank > 10 RETURN * ').then(function (result) {
+
+                var sig = new sigma({
+                    graph: result,
+                    renderer: {
+                        container: 'viz',
+                        type: "canvas"
+                    },
+                    settings: {
+                        edgeLabelThreshold: 1,
+                        drawEdgeLabels: false,
+                        enableEdgeHovering: true,
+                        edgeHoverExtremities: true
+                    }
+                });
+
+                // enable drag'n'drop
+                sigma.plugins.dragNodes(sig, sig.renderers[0]);
+
+                // start layout
+                sig.startForceAtlas2();
+                setTimeout(() => { sig.stopForceAtlas2() }, Math.log(result.nodes.length * result.edges.length) * 1000);
+            });
+        }
+    </script>
+</body>
+
+</html>

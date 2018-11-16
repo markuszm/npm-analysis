@@ -9,7 +9,6 @@ require (
 	github.com/buger/jsonparser v0.0.0-20180910192245-6acdf747ae99
 	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
 	github.com/dustinkirkland/golang-petname v0.0.0-20170921220637-d3c2ba80e75e
-	github.com/go-gl/glfw v0.0.0-20180813204114-2484f3e51bc4 // indirect
 	github.com/go-ini/ini v1.38.3 // indirect
 	github.com/go-sql-driver/mysql v1.4.0
 	github.com/go-stack/stack v1.8.0 // indirect
@@ -21,7 +20,6 @@ require (
 	github.com/johnnadratowski/golang-neo4j-bolt-driver v0.0.0-20180812033109-f96710402a3d
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/kr/pty v1.1.3 // indirect
 	github.com/llgcode/draw2d v0.0.0-20180825133448-f52c8a71aff0 // indirect
 	github.com/mattn/go-sqlite3 v1.9.0
 	github.com/mholt/archiver v2.1.0+incompatible
@@ -51,7 +49,6 @@ require (
 	golang.org/x/net v0.0.0-20181005035420-146acd28ed58 // indirect
 	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f // indirect
 	golang.org/x/sys v0.0.0-20181005133103-4497e2df6f9e // indirect
-	golang.org/x/tools v0.0.0-20181006002542-f60d9635b16a // indirect
 	gonum.org/v1/gonum v0.0.0-20181004200513-7f00e2522436 // indirect
 	gonum.org/v1/netlib v0.0.0-20180930160340-e150bd5bba73 // indirect
 	gonum.org/v1/plot v0.0.0-20180905080458-5f3c436ce602

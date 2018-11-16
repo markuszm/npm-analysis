@@ -3,8 +3,8 @@ package codeanalysis
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/markuszm/npm-analysis/codeanalysis/resultprocessing"
 	"github.com/markuszm/npm-analysis/model"
-	"github.com/markuszm/npm-analysis/resultprocessing"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"io/ioutil"
