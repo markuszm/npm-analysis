@@ -74,3 +74,9 @@ type PackageResult struct {
 	Version string
 	Result  interface{}
 }
+
+type SlimPackageData struct {
+	Dependencies []string `json:"dependencies"`
+	Maintainers  []string `json:"maintainers"`
+	Version      string   `json:"version"`
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/markuszm/npm-analysis/database"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"io/ioutil"
 	"log"
@@ -83,7 +84,7 @@ func GenerateTimeLatestVersionMap(mongoUrl, outputPath string) {
 			log.Fatal(err)
 		}
 
-		var timeMap map[time.Time]SlimPackageData
+		var timeMap map[time.Time]model.SlimPackageData
 
 		err = json.Unmarshal([]byte(doc.Value), &timeMap)
 		if err != nil {
@@ -117,8 +118,4 @@ func GenerateTimeLatestVersionMap(mongoUrl, outputPath string) {
 	}
 	log.Print("Finished transforming to JSON")
 	ioutil.WriteFile(outputPath, bytes, os.ModePerm)
-}
-
-type SlimPackageData struct {
-	Dependencies []string `json:"dependencies"`
 }
