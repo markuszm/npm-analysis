@@ -6,16 +6,27 @@ import (
 )
 
 func StoreVersionChanges(db *sql.DB, changes []evolution.VersionChange) error {
+	query := `
+		INSERT INTO versionChanges(version, versionPrev, versionDiff, package, timeDiff, releaseTime) values(?,?,?,?,?,?)
+	`
+	return StoreVersionChangesInternal(db, changes, query)
+}
+
+func StoreVersionChangesNormalized(db *sql.DB, changes []evolution.VersionChange) error {
+	query := `
+		INSERT INTO versionChangesNormalized(version, versionPrev, versionDiff, package, timeDiff, releaseTime) values(?,?,?,?,?,?)
+	`
+
+	return StoreVersionChangesInternal(db, changes, query)
+}
+
+func StoreVersionChangesInternal(db *sql.DB, changes []evolution.VersionChange, query string) error {
 	tx, txErr := db.Begin()
 	if txErr != nil {
 		return txErr
 	}
 
-	queryInsert := `
-		INSERT INTO versionChanges(version, versionPrev, versionDiff, package, timeDiff, releaseTime) values(?,?,?,?,?,?)
-	`
-
-	insertStmt, prepareErr := tx.Prepare(queryInsert)
+	insertStmt, prepareErr := tx.Prepare(query)
 	if prepareErr != nil {
 		return prepareErr
 	}

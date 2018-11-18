@@ -68,6 +68,8 @@ func main() {
 		createError = database.CreateDependencyChangeTable(mysql)
 	case "version":
 		createError = database.CreateVersionChangeTable(mysql)
+	case "versionNormalized":
+		createError = database.CreateVersionChangeNormalizedTable(mysql)
 	default:
 		log.Print("WARNING: Wrong insert type - no changes")
 	}
@@ -179,6 +181,8 @@ func processDocument(doc database.Document) int {
 		insertError = insertDependencyChanges(metadata)
 	case "version":
 		insertError = insertVersionChanges(metadata)
+	case "versionNormalized":
+		insertError = insertVersionChangesNormalized(metadata)
 	}
 
 	if insertError != nil {
@@ -249,6 +253,18 @@ func insertVersionChanges(metadata model.Metadata) error {
 		log.Fatalf("ERROR: Processing versions in package: %v with error: %v", metadata.Name, err)
 	}
 	err = insert.StoreVersionChanges(db, versionChanges)
+	if err != nil {
+		log.Fatalf("ERROR: inserting version changes of package %v with error: %v", metadata.Name, err)
+	}
+	return nil
+}
+
+func insertVersionChangesNormalized(metadata model.Metadata) error {
+	versionChanges, err := evolution.ProcessVersionsNormalized(metadata, timeCutoff)
+	if err != nil {
+		log.Fatalf("ERROR: Processing versions in package: %v with error: %v", metadata.Name, err)
+	}
+	err = insert.StoreVersionChangesNormalized(db, versionChanges)
 	if err != nil {
 		log.Fatalf("ERROR: inserting version changes of package %v with error: %v", metadata.Name, err)
 	}

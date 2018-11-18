@@ -4,6 +4,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/util"
+	"log"
 	"reflect"
 	"time"
 )
@@ -56,6 +57,76 @@ func ProcessVersions(metadata model.Metadata, timeCutoff time.Time) ([]VersionCh
 		lastVersion = v
 		lastReleaseTime = &releaseTime
 	}
+	return changes, nil
+}
+
+func ProcessVersionsNormalized(metadata model.Metadata, timeCutoff time.Time) ([]VersionChange, error) {
+	var changes []VersionChange
+
+	versions := metadata.Versions
+	var semvers semver.Versions
+	for _, v := range versions {
+		semverParsed := semver.MustParse(v.Version)
+		semvers = append(semvers, semverParsed)
+	}
+	semver.Sort(semvers)
+
+	lastVersion := ""
+	var lastReleaseTime *time.Time = nil
+
+	for _, s := range semvers {
+		diff := ""
+		if lastVersion == "" {
+			diff = "publish"
+		} else {
+			diff = SemverDiff(semver.MustParse(lastVersion), s)
+		}
+		v := s.String()
+
+		releaseTime := GetTimeForVersion(metadata, v)
+
+		if releaseTime.After(timeCutoff) {
+			continue
+		}
+
+		var timeDiff float64
+		if lastReleaseTime == nil {
+			timeDiff = 0.0
+		} else {
+			timeDiff = releaseTime.Sub(*lastReleaseTime).Hours()
+		}
+
+		change := VersionChange{
+			PackageName: metadata.Name,
+			Version:     v,
+			VersionPrev: lastVersion,
+			VersionDiff: diff,
+			TimeDiff:    timeDiff,
+			ReleaseTime: releaseTime,
+		}
+		changes = append(changes, change)
+		lastVersion = v
+		lastReleaseTime = &releaseTime
+	}
+
+	if lastReleaseTime == nil {
+		log.Printf("Warning: package: %v has no versions %v with metadata %v", metadata.Name, metadata.Versions, metadata)
+		return changes, nil
+	}
+
+	// adds artificial release at the end
+	artificialReleaseTime := timeCutoff.AddDate(0, 0, 1)
+	timeDiff := artificialReleaseTime.Sub(*lastReleaseTime).Hours()
+
+	change := VersionChange{
+		PackageName: metadata.Name,
+		Version:     "artificial",
+		VersionPrev: lastVersion,
+		VersionDiff: "none",
+		TimeDiff:    timeDiff,
+		ReleaseTime: artificialReleaseTime,
+	}
+	changes = append(changes, change)
 
 	return changes, nil
 }
