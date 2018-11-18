@@ -58,3 +58,16 @@ type PackageReachResultList []PackageReachResult
 func (p PackageReachResultList) Len() int           { return len(p) }
 func (p PackageReachResultList) Less(i, j int) bool { return p[i].Count < p[j].Count }
 func (p PackageReachResultList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+type MaintainerReachResult struct {
+	Count      int
+	Name       string
+	Packages   []string
+	Dependents []string
+}
+
+type MaintainerReachResultList []MaintainerReachResult
+
+func (p MaintainerReachResultList) Len() int           { return len(p) }
+func (p MaintainerReachResultList) Less(i, j int) bool { return p[i].Count < p[j].Count }
+func (p MaintainerReachResultList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
