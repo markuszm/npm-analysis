@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"time"
 )
 
@@ -77,6 +78,9 @@ func collectData(depCountMap, packageCountMap map[time.Time]int) error {
 		log.Fatal(err)
 	}
 	i := 0
+
+	packageTimemap := make(map[time.Time][]string)
+
 	for cursor.Next(context.Background()) {
 		doc, err := mongoDB.DecodeValue(cursor)
 		if err != nil {
@@ -94,6 +98,11 @@ func collectData(depCountMap, packageCountMap map[time.Time]int) error {
 			if data.Version == "unreleased" {
 				continue
 			}
+			if packageTimemap[t] == nil {
+				packageTimemap[t] = []string{doc.Key}
+			} else {
+				packageTimemap[t] = append(packageTimemap[t], doc.Key)
+			}
 			packageCountMap[t]++
 
 			if data.Dependencies != nil {
@@ -109,5 +118,17 @@ func collectData(depCountMap, packageCountMap map[time.Time]int) error {
 	cursor.Close(context.Background())
 	endTime := time.Now()
 	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
+
+	jsonBytes, err := json.Marshal(packageTimemap)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	filePath := path.Join("/home/markus/npm-analysis/", "packageTimemap.json")
+	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return nil
 }

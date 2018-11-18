@@ -1,12 +1,15 @@
 package maintainerreach
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/markuszm/npm-analysis/util"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"sync"
@@ -154,6 +157,17 @@ func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
 
 	for _, v := range sortedList {
 		avgValues = append(avgValues, v.Value)
+	}
+
+	jsonBytes, err := json.Marshal(sortedList)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	filePath := path.Join("/home/markus/npm-analysis/", "averagePackageReach.json")
+	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	plots.GenerateLinePlotForAverageMaintainerReach(outputName, avgValues)
