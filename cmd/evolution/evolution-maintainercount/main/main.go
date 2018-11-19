@@ -134,6 +134,8 @@ func calculateAverageMaintainerCount(countMap map[string]evolution.MaintainerCou
 	for k, v := range averageMaintainerPackageCountPerMonth {
 		if !math.IsNaN(v) {
 			resultList = append(resultList, util.TimeValue{Key: k, Value: v})
+		} else {
+			resultList = append(resultList, util.TimeValue{Key: k, Value: 0})
 		}
 	}
 	sortedList := util.TimeValueList(resultList)

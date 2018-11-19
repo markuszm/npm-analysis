@@ -148,6 +148,8 @@ func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
 	for k, v := range averageMaintainerReachPerMonth {
 		if !math.IsNaN(v) {
 			resultList = append(resultList, util.TimeValue{Key: k, Value: v})
+		} else {
+			resultList = append(resultList, util.TimeValue{Key: k, Value: 0})
 		}
 	}
 	sortedList := util.TimeValueList(resultList)
