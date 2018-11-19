@@ -66,13 +66,15 @@ func loadPackagesToReachedMap(packagesInput string) error {
 		return errors.Wrap(err, "could not read file")
 	}
 
+	var packages []string
+	json.Unmarshal(file, &packages)
+
 	packageReachedMap = make(map[string]bool, 0)
-	lines := strings.Split(string(file), "\n")
-	for _, l := range lines {
-		if l == "" {
+	for _, p := range packages {
+		if p == "" {
 			continue
 		}
-		packageReachedMap[l] = false
+		packageReachedMap[p] = false
 	}
 
 	return nil
