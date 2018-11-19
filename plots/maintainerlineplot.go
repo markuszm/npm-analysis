@@ -2,6 +2,7 @@ package plots
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/evolution"
@@ -9,13 +10,14 @@ import (
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 )
 
-func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) {
+func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB, createPlot bool) {
 	maintainerCount, err := database.GetMaintainerCountsForMaintainer(maintainerName, db)
 	if err != nil {
 		log.Fatal(err)
@@ -29,17 +31,26 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB) 
 	p.X.Tick.Marker = YearTicks{startYear: 2010}
 	p.Y.Label.Text = "Count"
 
-	err = plotutil.AddLinePoints(p, GeneratePointsFromMaintainerCounts(maintainerCount))
+	points := GeneratePointsFromMaintainerCounts(maintainerCount)
+	err = plotutil.AddLinePoints(p, points)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	SaveMaintainerPlot(maintainerName, "maintainer-evolution", p)
+	if createPlot {
+		SaveMaintainerPlot(maintainerName, "maintainer-evolution", p)
+	} else {
+		jsonBytes, err := json.Marshal(points)
+		if err != nil {
+			log.Fatal(err)
+		}
+		SaveValues(maintainerName, "maintainer-evolution", jsonBytes)
+	}
 
 	log.Printf("Finished maintainer %v", maintainerName)
 }
 
-func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64) {
+func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64, createPlot bool) {
 	p, err := plot.New()
 	if err != nil {
 		log.Fatal(err)
@@ -49,12 +60,21 @@ func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64)
 	p.X.Tick.Marker = YearTicks{startYear: 2010}
 	p.Y.Label.Text = "Reach"
 
-	err = plotutil.AddLinePoints(p, GeneratePointsFromFloatArray(counts))
+	points := GeneratePointsFromFloatArray(counts)
+	err = plotutil.AddLinePoints(p, points)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	SaveMaintainerPlot(maintainerName, "maintainer-reach", p)
+	if createPlot {
+		SaveMaintainerPlot(maintainerName, "maintainer-reach", p)
+	} else {
+		jsonBytes, err := json.Marshal(points)
+		if err != nil {
+			log.Fatal(err)
+		}
+		SaveValues(maintainerName, "maintainer-reach", jsonBytes)
+	}
 }
 
 func GenerateLinePlotForAverageMaintainerReach(outputName string, counts []float64) {
@@ -159,6 +179,24 @@ func SaveMaintainerPlot(maintainerName string, dir string, p *plot.Plot) {
 	}
 	// Save the plot to a PNG file.
 	if err := p.Save(8*vg.Inch, 8*vg.Inch, GetPlotFileName(maintainerName, dir)); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func SaveValues(maintainerName string, dir string, data []byte) {
+	nestedDir := GetNestedDirName(maintainerName, dir)
+	err := os.MkdirAll(nestedDir, os.ModePerm)
+	if err != nil {
+		log.Fatalf("Could not create nested directory with %v", err)
+	}
+
+	maintainerName = strings.Replace(maintainerName, "/", "", -1)
+	maintainerName = strings.Replace(maintainerName, " ", "", -1)
+	// Save the plot to a PNG file.
+	filePath := fmt.Sprintf("%v/%v.json", nestedDir, maintainerName)
+
+	err = ioutil.WriteFile(filePath, data, os.ModePerm)
+	if err != nil {
 		log.Fatal(err)
 	}
 }

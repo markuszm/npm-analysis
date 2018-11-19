@@ -21,8 +21,11 @@ var db *sql.DB
 
 var workerNumber = 100
 
+var createPlot bool
+
 func main() {
 	plotType := flag.String("type", "", "specify which plot type")
+	flag.BoolVar(&createPlot, "createPlot", false, "whether to create plot or just get values as json")
 	flag.Parse()
 
 	mysqlInitializer := &database.Mysql{}
@@ -106,7 +109,7 @@ func worker(id int, jobs chan string, workerWait *sync.WaitGroup) {
 	for maintainerName := range jobs {
 		fileName := plots.GetPlotFileName(maintainerName, "maintainer-evolution")
 		if _, err := os.Stat(fileName); err != nil {
-			plots.CreateLinePlotForMaintainerPackageCount(maintainerName, db)
+			plots.CreateLinePlotForMaintainerPackageCount(maintainerName, db, createPlot)
 		}
 	}
 	workerWait.Done()

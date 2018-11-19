@@ -164,7 +164,7 @@ func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
 		log.Fatal(err)
 	}
 
-	filePath := path.Join("/home/markus/npm-analysis/", "averagePackageReach.json")
+	filePath := path.Join("/home/markus/npm-analysis/", outputName+".json")
 	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 	if err != nil {
 		log.Fatal(err)

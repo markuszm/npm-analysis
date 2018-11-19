@@ -14,6 +14,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"path"
 	"sort"
 	"sync"
 	"time"
@@ -53,14 +54,14 @@ func main() {
 
 	log.Print("Finished retrieving changes from db")
 
-	err = database.CreateMaintainerCount(db)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	countMap := evolution.CalculateMaintainerCounts(changes)
 
 	if insertDB {
+		err = database.CreateMaintainerCount(db)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		workerWait := sync.WaitGroup{}
 
 		jobs := make(chan evolution.MaintainerCount, 100)
@@ -142,6 +143,17 @@ func calculateAverageMaintainerCount(countMap map[string]evolution.MaintainerCou
 
 	for _, v := range sortedList {
 		avgValues = append(avgValues, v.Value)
+	}
+
+	jsonBytes, err := json.Marshal(sortedList)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	filePath := path.Join("/home/markus/npm-analysis/", "averageMaintainerPackageCount.json")
+	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	plots.GenerateLinePlotForAverageMaintainerPackageCount(avgValues)
