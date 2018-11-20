@@ -57,16 +57,33 @@ func initializeLogger() {
 }
 
 func streamPackageNamesFromFile(packageChan chan string) {
-	file, err := ioutil.ReadFile(*packagesInput)
-	if err != nil {
-		logger.Fatalw("could not read file", "err", err)
-	}
-	lines := strings.Split(string(file), "\n")
-	for _, l := range lines {
-		if l == "" {
-			continue
+	if strings.HasSuffix(*packagesInput, ".json") {
+		file, err := ioutil.ReadFile(*packagesInput)
+		if err != nil {
+			logger.Fatalw("could not read file", "err", err)
 		}
-		packageChan <- l
+
+		var packages []string
+		json.Unmarshal(file, &packages)
+
+		for _, p := range packages {
+			if p == "" {
+				continue
+			}
+			packageChan <- p
+		}
+	} else {
+		file, err := ioutil.ReadFile(*packagesInput)
+		if err != nil {
+			logger.Fatalw("could not read file", "err", err)
+		}
+		lines := strings.Split(string(file), "\n")
+		for _, l := range lines {
+			if l == "" {
+				continue
+			}
+			packageChan <- l
+		}
 	}
 
 	close(packageChan)
@@ -100,6 +117,11 @@ func calculatePackageReach(pkg string) {
 		reach.CalculateAverageMaintainerReach("averagePackageReach", &resultMap)
 
 		reach.CalculateMaintainerReachDiff("packageReachDiff", &resultMap)
+
+		err := reach.CalculatePackageReachDiff(&resultMap)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else {
 		// calculate for one maintainer the reach of each package per month and overall reach
 
@@ -186,7 +208,9 @@ func worker(workerId int, jobs chan string, dependentsMaps map[time.Time]map[str
 			if _, err := os.Stat(fileName); err == nil {
 				continue
 			}
-			plots.GenerateLinePlotForMaintainerReach(j, counts)
+			plots.GenerateLinePlotForMaintainerReach("package-reach", j, counts, *createPlot)
+		} else {
+			plots.GenerateLinePlotForMaintainerReach("package-reach", j, counts, *createPlot)
 		}
 
 		//log.Printf("Finished %v", j.Name)

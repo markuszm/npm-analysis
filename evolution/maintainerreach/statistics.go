@@ -96,6 +96,59 @@ func CalculateMaintainerReachDiff(outputName string, resultMap *sync.Map) {
 	ioutil.WriteFile(outputPath, []byte(builder.String()), os.ModePerm)
 }
 
+type PackageReachDiff struct {
+	Diff float64
+	Time time.Time
+}
+
+func CalculatePackageReachDiff(resultMap *sync.Map) error {
+	packageReachDiffMap := make(map[string][]PackageReachDiff, 0)
+
+	resultMap.Range(func(key, value interface{}) bool {
+		counts := value.([]float64)
+		x := 0
+		isActive := false
+		previousCount := math.MaxFloat64
+		pkg := key.(string)
+		var packageReachDiffs []PackageReachDiff
+		for year := 2010; year < 2019; year++ {
+			startMonth := 1
+			endMonth := 12
+			if year == 2010 {
+				startMonth = 11
+			}
+			if year == 2018 {
+				endMonth = 4
+			}
+			for month := startMonth; month <= endMonth; month++ {
+				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+				count := counts[x]
+				if count > 0 || isActive {
+					diff := count - previousCount
+					if previousCount == math.MaxFloat64 {
+						diff = count
+					}
+					packageReachDiffs = append(packageReachDiffs, PackageReachDiff{Diff: diff, Time: date})
+					isActive = true
+					previousCount = count
+				}
+				x++
+			}
+		}
+		packageReachDiffMap[pkg] = packageReachDiffs
+		return true
+	})
+
+	bytes, err := json.Marshal(packageReachDiffMap)
+	if err != nil {
+		return err
+	}
+
+	outputPath := "/home/markus/npm-analysis/packageReachDiffs.json"
+	err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+	return err
+}
+
 func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
 	maintainerReachCount := make(map[time.Time]float64, 0)
 	maintainerCount := make(map[time.Time]float64, 0)

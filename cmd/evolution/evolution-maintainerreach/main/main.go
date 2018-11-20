@@ -213,9 +213,9 @@ func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[
 			if _, err := os.Stat(fileName); err == nil {
 				continue
 			}
-			plots.GenerateLinePlotForMaintainerReach(j.Name, counts, *createPlot)
+			plots.GenerateLinePlotForMaintainerReach("maintainer-reach", j.Name, counts, *createPlot)
 		} else {
-			plots.GenerateLinePlotForMaintainerReach(j.Name, counts, *createPlot)
+			plots.GenerateLinePlotForMaintainerReach("maintainer-reach", j.Name, counts, *createPlot)
 		}
 
 		//log.Printf("Finished %v", j.Name)

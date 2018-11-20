@@ -50,7 +50,7 @@ func CreateLinePlotForMaintainerPackageCount(maintainerName string, db *sql.DB, 
 	log.Printf("Finished maintainer %v", maintainerName)
 }
 
-func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64, createPlot bool) {
+func GenerateLinePlotForMaintainerReach(outputFolder string, maintainerName string, counts []float64, createPlot bool) {
 	p, err := plot.New()
 	if err != nil {
 		log.Fatal(err)
@@ -67,13 +67,13 @@ func GenerateLinePlotForMaintainerReach(maintainerName string, counts []float64,
 	}
 
 	if createPlot {
-		SaveMaintainerPlot(maintainerName, "maintainer-reach", p)
+		SaveMaintainerPlot(maintainerName, outputFolder, p)
 	} else {
 		jsonBytes, err := json.Marshal(points)
 		if err != nil {
 			log.Fatal(err)
 		}
-		SaveValues(maintainerName, "maintainer-reach", jsonBytes)
+		SaveValues(maintainerName, outputFolder, jsonBytes)
 	}
 }
 
