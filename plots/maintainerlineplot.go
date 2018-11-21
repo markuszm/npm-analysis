@@ -92,6 +92,7 @@ func GenerateLinePlotForAverageMaintainerReach(outputName string, counts []float
 		log.Fatal(err)
 	}
 
+	// TODO: hard coded path CHANGE THIS
 	SavePlot("/home/markus/npm-analysis/"+outputName+".png", p)
 }
 
@@ -110,6 +111,7 @@ func GenerateLinePlotForAverageMaintainerPackageCount(counts []float64) {
 		log.Fatal(err)
 	}
 
+	// TODO: hard coded path CHANGE THIS
 	SavePlot("/home/markus/npm-analysis/averageMaintainerPackageCount.png", p)
 }
 
@@ -132,6 +134,7 @@ func GenerateSortedLinePlotMaintainerPackageCount(valuesPerYear map[int][]float6
 		log.Fatal(err)
 	}
 
+	// TODO: hard coded path CHANGE THIS
 	SavePlot("/home/markus/npm-analysis/sortedMaintainerPackageCount.png", p)
 }
 
@@ -183,17 +186,17 @@ func SaveMaintainerPlot(maintainerName string, dir string, p *plot.Plot) {
 	}
 }
 
-func SaveValues(maintainerName string, dir string, data []byte) {
-	nestedDir := GetNestedDirName(maintainerName, dir)
+func SaveValues(name string, dir string, data []byte) {
+	nestedDir := GetNestedDirName(name, dir)
 	err := os.MkdirAll(nestedDir, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Could not create nested directory with %v", err)
 	}
 
-	maintainerName = strings.Replace(maintainerName, "/", "", -1)
-	maintainerName = strings.Replace(maintainerName, " ", "", -1)
+	name = strings.Replace(name, "/", "", -1)
+	name = strings.Replace(name, " ", "", -1)
 	// Save the plot to a PNG file.
-	filePath := fmt.Sprintf("%v/%v.json", nestedDir, maintainerName)
+	filePath := fmt.Sprintf("%v/%v.json", nestedDir, name)
 
 	err = ioutil.WriteFile(filePath, data, os.ModePerm)
 	if err != nil {
@@ -209,6 +212,7 @@ func SavePlot(fileName string, p *plot.Plot) {
 }
 
 func GetNestedDirName(maintainerName string, dir string) string {
+	// TODO: hard coded path CHANGE THIS
 	return fmt.Sprintf("/home/markus/npm-analysis/%v/%v", dir, string(maintainerName[0]))
 }
 

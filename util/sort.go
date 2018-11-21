@@ -1,6 +1,8 @@
 package util
 
-import "time"
+import (
+	"time"
+)
 
 type StringList []string
 
@@ -71,3 +73,14 @@ type MaintainerReachResultList []MaintainerReachResult
 func (p MaintainerReachResultList) Len() int           { return len(p) }
 func (p MaintainerReachResultList) Less(i, j int) bool { return p[i].Count < p[j].Count }
 func (p MaintainerReachResultList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+type TimePopularity struct {
+	Time      time.Time
+	Downloads float64
+}
+
+type TimePopularityList []TimePopularity
+
+func (p TimePopularityList) Len() int           { return len(p) }
+func (p TimePopularityList) Less(i, j int) bool { return p[i].Time.Before(p[j].Time) }
+func (p TimePopularityList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
