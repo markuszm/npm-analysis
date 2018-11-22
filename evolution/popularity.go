@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func CalculatePopularityByYear(pkgName string, downloadCounts DownloadCountResponse) model.Popularity {
+func CalculateAveragePopularityByYear(pkgName string, downloadCounts DownloadCountResponse) model.Popularity {
 
 	overallDownloads := 0
 	overallDays := 0
@@ -61,7 +61,7 @@ func CalculatePopularityByYear(pkgName string, downloadCounts DownloadCountRespo
 
 }
 
-func CalculatePopularityByMonth(pkgName string, downloadCounts DownloadCountResponse) model.PopularityMonthly {
+func CalculateAveragePopularityByMonth(pkgName string, downloadCounts DownloadCountResponse) model.PopularityMonthly {
 	timeDownloadsMap := make(map[time.Time]float64, 0)
 
 	// this assumes that first month of download count response is January 2015
@@ -91,6 +91,54 @@ func CalculatePopularityByMonth(pkgName string, downloadCounts DownloadCountResp
 	// add remaining month
 	date := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.UTC)
 	timeDownloadsMap[date] = util.AvgInts(currentDownloadSum, currentDays)
+
+	var timePopularityList []util.TimePopularity
+	// sort time map
+	for t, d := range timeDownloadsMap {
+		timePopularityList = append(timePopularityList, util.TimePopularity{Time: t, Downloads: d})
+	}
+	sort.Sort(util.TimePopularityList(timePopularityList))
+
+	return model.PopularityMonthly{
+		PackageName: pkgName,
+		Popularity:  timePopularityList,
+	}
+}
+
+func CalculatePopularityByMonth(pkgName string, downloadCounts DownloadCountResponse) model.PopularityMonthly {
+	timeDownloadsMap := make(map[time.Time]float64, 0)
+
+	if len(downloadCounts.DownloadCounts) == 0 {
+		return model.PopularityMonthly{}
+	}
+
+	firstDownloadDate := MustParseDate(downloadCounts.DownloadCounts[0].Day)
+	var currentMonth time.Month
+	if firstDownloadDate.Day() == 1 {
+		currentMonth = firstDownloadDate.Month()
+	} else {
+		nextMonth := firstDownloadDate.Month() + 1
+		if nextMonth > 12 {
+			nextMonth = 1
+		}
+		currentMonth = nextMonth
+	}
+	currentYear := firstDownloadDate.Year()
+	firstDay := 1
+
+	for _, d := range downloadCounts.DownloadCounts {
+		downloadDate := MustParseDate(d.Day)
+		day := downloadDate.Day()
+		month := downloadDate.Month()
+		year := downloadDate.Year()
+		if firstDay == day && currentMonth == month && currentYear == year {
+			date := time.Date(year, month, firstDay, 0, 0, 0, 0, time.UTC)
+			timeDownloadsMap[date] = float64(d.Downloads)
+			newDate := date.AddDate(0, 1, 0)
+			currentMonth = newDate.Month()
+			currentYear = newDate.Year()
+		}
+	}
 
 	var timePopularityList []util.TimePopularity
 	// sort time map

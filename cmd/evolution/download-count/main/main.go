@@ -9,6 +9,7 @@ import (
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/insert"
 	"github.com/markuszm/npm-analysis/evolution"
+	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"log"
@@ -26,12 +27,15 @@ const MYSQL_PW = "npm-analysis"
 var resultPath string
 
 var storeDatabase bool
+var isAverage bool
 
 var db *sql.DB
 
 func main() {
 	flag.BoolVar(&storeDatabase, "store", false, "whether it should store yearly popularity to mysql")
+	// TODO: at the moment result path is not used
 	flag.StringVar(&resultPath, "resultPath", "/home/markus/npm-analysis/popularity", "result path for monthly popularity")
+	flag.BoolVar(&isAverage, "average", true, "whether to calculate average or just first day of month")
 	flag.Parse()
 
 	if storeDatabase {
@@ -90,6 +94,10 @@ func worker(id int, jobs chan database.Document, workerWait *sync.WaitGroup) {
 }
 
 func processDocument(doc database.Document) {
+	if doc.Key == "" {
+		return
+	}
+
 	val := doc.Value
 	if val == "" {
 		log.Printf("WARNING: empty document for %v", doc.Key)
@@ -102,7 +110,7 @@ func processDocument(doc database.Document) {
 	}
 
 	if storeDatabase {
-		popularity := evolution.CalculatePopularityByYear(doc.Key, downloadCount)
+		popularity := evolution.CalculateAveragePopularityByYear(doc.Key, downloadCount)
 
 		err = insert.StorePopularity(popularity, db)
 		if err != nil {
@@ -110,13 +118,22 @@ func processDocument(doc database.Document) {
 		}
 	}
 
-	popularityMonthly := evolution.CalculatePopularityByMonth(doc.Key, downloadCount)
+	var popularityMonthly model.PopularityMonthly
+	if isAverage {
+		popularityMonthly = evolution.CalculateAveragePopularityByMonth(doc.Key, downloadCount)
+	} else {
+		popularityMonthly = evolution.CalculatePopularityByMonth(doc.Key, downloadCount)
+	}
 
 	bytes, err := json.Marshal(popularityMonthly.Popularity)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	plots.SaveValues(popularityMonthly.PackageName, "popularity", bytes)
+	folderName := "popularity"
+	if isAverage {
+		folderName = "popularity-average"
+	}
+	plots.SaveValues(popularityMonthly.PackageName, folderName, bytes)
 
 }
