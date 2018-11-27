@@ -103,6 +103,8 @@ func exportUsageCalculator(workerId int, packageChan chan string, resultsChan ch
 					if err != nil {
 						log.Fatal(err)
 					}
+				} else {
+					continue
 				}
 			}
 
