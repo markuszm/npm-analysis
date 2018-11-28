@@ -15,7 +15,6 @@ var apiUsageMysqlUrl string
 var apiUsageOutput string
 var apiUsageInputFile string
 
-// callgraphCmd represents the callgraph command
 var apiUsageCmd = &cobra.Command{
 	Use:   "apiUsage",
 	Short: "Generates api usage stats for functions",
