@@ -3,10 +3,12 @@ package cmd
 import (
 	"database/sql"
 	"encoding/csv"
+	"encoding/json"
 	"github.com/markuszm/npm-analysis/codeanalysis/packagecallgraph"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/spf13/cobra"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"strconv"
@@ -20,6 +22,7 @@ var (
 	packageReachFile         string
 	packageReachOutput       string
 	packageReachWorkerNumber int
+	packageReachLayered      bool
 )
 
 var reachSyncMap = sync.Map{}
@@ -73,6 +76,10 @@ var packageReachCmd = &cobra.Command{
 		csvWorkerWait.Add(1)
 		go csvWorker(csvChan, &csvWorkerWait)
 
+		if packageReachLayered {
+			packageReachWorkerNumber = 1
+		}
+
 		for w := 1; w <= packageReachWorkerNumber; w++ {
 			reachWorkerWait.Add(1)
 			go reachWorker(w, jobs, csvChan, &reachWorkerWait)
@@ -106,7 +113,8 @@ var packageReachCmd = &cobra.Command{
 }
 
 func csvWorker(csvChan chan []string, waitGroup *sync.WaitGroup) {
-	file, err := os.Create(path.Join(packageReachOutput, "packagesReach.csv"))
+	fileName := "packageReach.csv"
+	file, err := os.Create(path.Join(packageReachOutput, fileName))
 	if err != nil {
 		logger.Fatal("cannot create result file")
 	}
@@ -128,22 +136,51 @@ func csvWorker(csvChan chan []string, waitGroup *sync.WaitGroup) {
 func reachWorker(id int, jobs chan string, csvChan chan []string, waitGroup *sync.WaitGroup) {
 	combinedPackageReach := make(map[string]bool, 0)
 
-	for p := range jobs {
-		packagesReachedIndependent := make(map[string]bool, 0)
-		packagecallgraph.PackageReach(p, packagesReachedIndependent, db)
-		count := 0
-		for _, ok := range packagesReachedIndependent {
-			if ok {
-				count++
-			}
-		}
+	// only for layered calculation
+	combinedPackageReachLayered := make(map[string]packagecallgraph.ReachDetails, 0)
+	layersCountMap := make(map[int]int, 0)
+	alreadyFoundDependents := make(map[string]bool, 0)
 
-		result := []string{p, strconv.Itoa(count)}
-		csvChan <- result
+	for p := range jobs {
+		if packageReachLayered {
+			packagecallgraph.PackageReachLayer(p, combinedPackageReachLayered, db, 1)
+			for dependent, details := range combinedPackageReachLayered {
+				if !alreadyFoundDependents[dependent] {
+					layersCountMap[details.Layer] = layersCountMap[details.Layer] + 1
+					alreadyFoundDependents[dependent] = true
+				}
+			}
+		} else {
+			packagesReachedIndependent := make(map[string]bool, 0)
+			packagecallgraph.PackageReach(p, packagesReachedIndependent, db)
+			count := 0
+			for _, ok := range packagesReachedIndependent {
+				if ok {
+					count++
+				}
+			}
+
+			result := []string{p, strconv.Itoa(count)}
+			csvChan <- result
+		}
 
 		packagecallgraph.PackageReach(p, combinedPackageReach, db)
 
 		logger.Infow("Finished", "worker", id, "package", p)
+	}
+
+	if packageReachLayered {
+		fileName := "packageReachLayered.json"
+
+		bytes, err := json.Marshal(layersCountMap)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = ioutil.WriteFile(path.Join(packageReachOutput, fileName), bytes, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	for p, ok := range combinedPackageReach {
@@ -163,4 +200,5 @@ func init() {
 	packageReachCmd.Flags().StringVarP(&packageReachFile, "file", "f", "", "file name to load package names from")
 	packageReachCmd.Flags().StringVarP(&packageReachOutput, "output", "o", "/home/markus/npm-analysis", "output folder")
 	packageReachCmd.Flags().IntVarP(&packageReachWorkerNumber, "worker", "w", 20, "number of workers")
+	packageReachCmd.Flags().BoolVarP(&packageReachLayered, "layers", "l", false, "whether to calculate layered result")
 }
