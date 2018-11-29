@@ -49,7 +49,7 @@ func MainFileForPackage(db *sql.DB, packageName string) (string, error) {
 }
 
 // unrolls the rows from db to an array to avoid timeouts on large number of rows
-func GetDependencies(db *sql.DB, depType string) ([]model.Dependency, error) {
+func GetAllDependencies(db *sql.DB, depType string) ([]model.Dependency, error) {
 	var dependencies []model.Dependency
 
 	rows, err := db.Query(fmt.Sprintf("select * from %s", depType))
@@ -103,6 +103,33 @@ func GetDependents(db *sql.DB, packageName string) ([]string, error) {
 		return dependents, err
 	}
 	return dependents, nil
+}
+
+func GetDependencies(db *sql.DB, packageName string) ([]string, error) {
+	var dependencies []string
+
+	rows, err := db.Query("SELECT name FROM dependencies WHERE package = ?", packageName)
+	if err != nil {
+		return dependencies, errors.Wrap(err, "Failed to query dependencies")
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var dependency string
+
+		err = rows.Scan(&dependency)
+		if err != nil {
+			return dependencies, errors.Wrap(err, "Could not get info from row")
+		}
+
+		dependencies = append(dependencies, dependency)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return dependencies, err
+	}
+	return dependencies, nil
 }
 
 func GetPackages(db *sql.DB) ([]string, error) {

@@ -46,7 +46,7 @@ func main() {
 		go worker(w, jobs, &workerWait)
 	}
 
-	dependencies, retrieveErr := database.GetDependencies(mysql, depType)
+	dependencies, retrieveErr := database.GetAllDependencies(mysql, depType)
 
 	if retrieveErr != nil {
 		log.Fatal(retrieveErr)
