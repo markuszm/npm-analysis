@@ -407,11 +407,17 @@ export function Visitors(
                 }
             }
 
+
+            const start = callNode.start;
+            const end = getEndForCallExpression(callNode);
+            let loc = {start: callNode.sourceFile.asLineChar(start), end: callNode.sourceFile.asLineChar(end)};
+
             callExpressions.push(
                 new model.CallExpression(
                     callNode.sourceFile.name,
-                    callNode.start,
-                    getEndForCallExpression(callNode),
+                    start,
+                    end,
+                    loc,
                     functionName,
                     outerMethodName,
                     receiver,
@@ -498,11 +504,15 @@ export function Visitors(
                 classReceivers[receiver] = { start: receiverStart, className: functionName };
             }
 
+            const start = newExpr.callee.start;
+            const end = getEndForCallExpression(newExpr);
+            let loc = {start: newExpr.sourceFile.asLineChar(start), end: newExpr.sourceFile.asLineChar(end)};
             callExpressions.push(
                 new model.CallExpression(
                     newExpr.sourceFile.name,
-                    newExpr.callee.start,
-                    getEndForCallExpression(newExpr),
+                    start,
+                    end,
+                    loc,
                     "new " + functionName,
                     outerMethodName,
                     receiver,
@@ -513,3 +523,5 @@ export function Visitors(
         }
     };
 }
+
+

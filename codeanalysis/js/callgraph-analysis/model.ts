@@ -5,6 +5,7 @@ export class CallExpression {
         public file: string,
         public start: number,
         public end: number,
+        public loc: SourceLocation,
         public name: string,
         public outerMethod: string,
         public receiver: string,
@@ -23,6 +24,8 @@ export class Function {
 
 export class Call {
     constructor(
+        public path: string,
+        public loc: SourceLocation,
         public fromModule: string,
         public fromFunction: string,
         public receiver: string,
@@ -32,4 +35,14 @@ export class Call {
         public args: string[],
         public isLocal: boolean
     ) {}
+}
+
+export interface SourceLocation {
+    start: Location,
+    end: Location
+}
+
+export interface Location {
+    line: number,
+    ch: number
 }

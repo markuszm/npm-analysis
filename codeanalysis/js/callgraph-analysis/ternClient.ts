@@ -9,6 +9,7 @@ import * as acornWalk from "acorn/dist/walk";
 import { Call, CallExpression, Function } from "./model";
 import * as path from "path";
 import { Visitors } from "./traversal";
+import { Position } from "estree";
 
 
 export class TernClient {
@@ -116,7 +117,13 @@ export class TernClient {
                     requiredModules.get(callExpression.receiver),
                     requiredModules.get(callExpression.name)
                 );
+
+                // defaults to 0 when location is null or undefined
+                let loc = callExpression.loc ? callExpression.loc : {start: {line: 0, ch: 0}, end: {line: 0, ch: 0}};
+
                 const call = new Call(
+                    callExpression.file,
+                    loc,
                     trimExt(callExpression.file),
                     callExpression.outerMethod,
                     callExpression.receiver,

@@ -38,22 +38,13 @@ function getFileNameInsidePackage(fileInfo: any) {
         let [, fileName]: RegExpMatchArray = fullPath.match(regexFileName) || [];
         return !fileName || fileName === "" ? fileInfo.name : fileName;
     }
-    return fileInfo.name;
+    return fileInfo.path;
 }
 
 function transformToR2CFormat(calls: Call[]): string {
     let results = [];
     for (let call of calls) {
-        // We changed 'file' to path
-
-        // TODO(markuszm): path should be normalized realtive to repository root without leading
-        // characters, so if repository is in /analysis/input/foo and file is
-        // /analysis/input/foo/src/a.js, path should be 'src/a.js'.
-
-        // TODO(markuszm): this is also where input location should go - the result object can also
-        // have 'start' and 'end' parameters which are objects with either or both of 'line' and
-        // 'col'.
-
+        // R2C format:
         // Example:
         // results.push({
         //     path: 'src/index.ts',
@@ -69,13 +60,28 @@ function transformToR2CFormat(calls: Call[]): string {
         //
         // (all of start->line, start->col, end->line, and end->col are optional, though for our
         // triage / debugging tools to work, we'll need at least start->line.
-        results.push({ path: call.fromModule, check_id: "call", extra: call });
+
+        const path = call.path;
+        const start = call.loc.start;
+        const end = call.loc.end;
+
+        delete call.loc;
+        delete call.path;
+
+        // calculated lines start from zero but default is to start at one so we add 1 to all line numbers
+        results.push({
+            path: path,
+            start: { line: start.line + 1 , col: start.ch },
+            end: { line: end.line + 1, col: end.ch},
+            check_id: "call",
+            extra: call
+        });
     }
     let jsonObject = {
         results: results
     };
 
-    function replacer(_, value) {
+    function replacer(_: string, value: any) {
         if (typeof value === "string") {
             return value.replace("\u0000", "").replace("\\u0000", "");
         }
