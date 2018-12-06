@@ -1,0 +1,13 @@
+{
+  "analyzer_name": "de.tu-darmstadt.filter-callgraph",
+  "version": "1.0.0",
+  "spec_version": "1.0.0",
+  "dependencies": {
+    "de.tu-darmstadt.callgraph": "^1.0.0",
+    "com.returntocorp.npm-packer": "^1.0.0",
+    "com.returntocorp.js-test-finder": "^1.0.0"
+  },
+  "type": "commit",
+  "output": "json",
+  "deterministic": true
+}
