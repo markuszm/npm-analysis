@@ -15,7 +15,7 @@ import {
     Super,
     VariableDeclaration,
     VariableDeclarator
-} from "./@types/estree";
+} from "./@types/estree/index";
 import { TernClient } from "./ternClient";
 
 // register AST visitors that get called when tern parses the files

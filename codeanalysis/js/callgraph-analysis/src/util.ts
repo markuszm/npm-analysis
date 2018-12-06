@@ -1,4 +1,4 @@
-import { Expression, Pattern, SpreadElement, Super, BaseFunction, ClassBody, Identifier } from "./@types/estree";
+import { Expression, Pattern, SpreadElement, Super, BaseFunction, ClassBody, Identifier } from "./@types/estree/index";
 import {Function} from "./model";
 
 export function patternToString(pattern: Pattern): string {
