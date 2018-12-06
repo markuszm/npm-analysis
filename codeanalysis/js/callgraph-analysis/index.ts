@@ -9,11 +9,6 @@ import readdirp from "readdirp";
 import { TernClient } from "./ternClient";
 import * as path from "path";
 
-// R2C metadata
-const VERSION = "0.3.0";
-const SPEC_VERSION = "0.1.0";
-const NAME = "callgraph-analysis";
-
 /* argument parsing */
 let debug = false;
 let r2c = false;
@@ -49,29 +44,40 @@ function getFileNameInsidePackage(fileInfo: any) {
 function transformToR2CFormat(calls: Call[]): string {
     let results = [];
     for (let call of calls) {
-        results.push({ file: call.fromModule, check_id: "call", extra: call });
+        // We changed 'file' to path
+
+        // TODO(markuszm): path should be normalized realtive to repository root without leading
+        // characters, so if repository is in /analysis/input/foo and file is
+        // /analysis/input/foo/src/a.js, path should be 'src/a.js'.
+
+        // TODO(markuszm): this is also where input location should go - the result object can also
+        // have 'start' and 'end' parameters which are objects with either or both of 'line' and
+        // 'col'.
+
+        // Example:
+        // results.push({
+        //     path: 'src/index.ts',
+        //     check_id: 'call',
+        //     start: {
+        //         line: 107,
+        //         col: 50
+        //     },
+        //     end: {
+        //         line: 108
+        //     }
+        // });
+        //
+        // (all of start->line, start->col, end->line, and end->col are optional, though for our
+        // triage / debugging tools to work, we'll need at least start->line.
+        results.push({ path: call.fromModule, check_id: "call", extra: call });
     }
     let jsonObject = {
-        name: NAME,
-        spec_version: SPEC_VERSION,
-        version: VERSION,
         results: results
     };
 
-    function replacer(_: string, value: any) {
+    function replacer(_, value) {
         if (typeof value === "string") {
-            return value.replace("\u0000", "");
-        }
-        if (Array.isArray(value)) {
-            let newArray = [];
-            for (let el of value) {
-                if (typeof el === "string") {
-                    newArray.push(el.replace("\u0000", ""));
-                } else {
-                    newArray.push(el);
-                }
-            }
-            return newArray;
+            return value.replace("\u0000", "").replace("\\u0000", "");
         }
         return value;
     }

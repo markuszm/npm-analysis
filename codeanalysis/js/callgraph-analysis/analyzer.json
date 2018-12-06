@@ -1,0 +1,11 @@
+{
+  "analyzer_name": "de.tu-darmstadt.callgraph",
+  "version": "1.1.0",
+  "spec_version": "1.0.0",
+  "dependencies": {
+    "com.returntocorp.cloner": "*"
+  },
+  "type": "commit",
+  "output": "json",
+  "deterministic": true
+}
