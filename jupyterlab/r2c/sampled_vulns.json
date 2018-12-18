@@ -1,0 +1,198 @@
+[
+    {
+        "package": "lodash",
+        "patched_versions": ">=4.17.5",
+        "vulnerable_versions": "<4.17.5",
+        "api": [
+            "defaultsDeep",
+            "merge",
+            "mergeWith"
+        ],
+        "disclosure": "2018-04-24T21:27:02.796+00:00"
+    },
+    {
+        "package": "qs",
+        "patched_versions": ">= 1.x",
+        "vulnerable_versions": "<1.0.0",
+        "api": [
+            "parse"
+        ],
+        "disclosure": "2014-08-06T17:10:23+00:00"
+    },
+    {
+        "package": "minimatch",
+        "patched_versions": ">=3.0.2",
+        "vulnerable_versions": "<=3.0.1",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2016-06-20T15:52:52+00:00"
+    },
+    {
+        "package": "ms",
+        "patched_versions": ">0.7.0",
+        "vulnerable_versions": "<=0.7.0",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2015-10-24T20:39:59.852+00:00"
+    },
+    {
+        "package": "semver",
+        "patched_versions": ">=4.3.2",
+        "vulnerable_versions": ">4.3.2",
+        "api": [
+            "parse"
+        ],
+        "disclosure": "2015-04-04T02:00:00+00:00"
+    },
+    {
+        "package": "request",
+        "patched_versions": ">=2.68.0",
+        "vulnerable_versions": ">=2.2.6 <2.47.0 || >2.51.0 <=2.67.0",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2017-04-14T21:44:24.494+00:00"
+    },
+    {
+        "package": "mime",
+        "patched_versions": ">= 1.4.1 < 2.0.0 || >= 2.0.3",
+        "vulnerable_versions": "< 1.4.1 || > 2.0.0 < 2.0.3",
+        "api": [
+            "getType"
+        ],
+        "disclosure": "2017-09-27T18:25:14.672+00:00"
+    },
+    {
+        "package": "uglify-js",
+        "patched_versions": ">=2.6.0",
+        "vulnerable_versions": "<2.6.0",
+        "api": [
+            "parse"
+        ],
+        "disclosure": "2015-10-24T21:01:32.155+00:00"
+    },
+    {
+        "package": "brace-expansion",
+        "patched_versions": ">=1.1.7",
+        "vulnerable_versions": "<=1.1.6",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2017-04-25T18:17:23.074+00:00"
+    },
+    {
+        "package": "hoek",
+        "patched_versions": "> 4.2.0 < 5.0.0 || >= 5.0.3",
+        "vulnerable_versions": "<= 4.2.0 || >= 5.0.0 < 5.0.3",
+        "api": [
+            "merge",
+            "applyToDefaults",
+            "applyToDefaultsWithShallow"
+        ],
+        "disclosure": "2018-02-15T16:59:37.24+00:00"
+    },
+    {
+        "package": "js-yaml",
+        "patched_versions": ">=2.0.5",
+        "vulnerable_versions": "<2.0.5",
+        "api": [
+            "load"
+        ],
+        "replacement": [
+            "safeLoad"
+        ],
+        "disclosure": "2013-06-23T22:23:50.005+00:00"
+    },
+    {
+        "package": "fresh",
+        "patched_versions": ">=0.5.2",
+        "vulnerable_versions": "<0.5.2",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2017-09-26T16:06:50.827+00:00"
+    },
+    {
+        "package": "sshpk",
+        "patched_versions": ">=1.14.1",
+        "vulnerable_versions": "<1.14.1",
+        "api": [
+            "parseKey"
+        ],
+        "disclosure": "2018-04-25T05:25:08.333+00:00"
+    },
+    {
+        "package": "decamelize",
+        "patched_versions": ">=1.1.2",
+        "vulnerable_versions": ">=1.1.0 <=1.1.1",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2017-04-14T20:58:05.019+00:00"
+    },
+    {
+        "package": "cookie-signature",
+        "patched_versions": ">=1.0.6",
+        "vulnerable_versions": "<=1.0.5",
+        "api": [
+            "unsign"
+        ],
+        "disclosure": "2016-08-29T14:27:47+00:00"
+    },
+    {
+        "package": "randomatic",
+        "patched_versions": ">=3.0.0",
+        "vulnerable_versions": "<3.0.0",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2017-04-14T22:07:15.405+00:00"
+    },
+    {
+        "package": "forwarded",
+        "patched_versions": ">=0.1.2",
+        "vulnerable_versions": "<0.1.2",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2017-09-26T16:03:33.583+00:00"
+    },
+    {
+        "package": "deep-extend",
+        "patched_versions": ">=0.5.1",
+        "vulnerable_versions": "<=0.5.0",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2018-04-25T06:13:13.134+00:00"
+    },
+    {
+        "package": "growl",
+        "patched_versions": ">=1.10.2",
+        "vulnerable_versions": "<1.10.2",
+        "api": [
+            "default"
+        ],
+        "disclosure": "2017-07-05T21:44:18.141+00:00"
+    },
+    {
+        "package": "shell-quote",
+        "patched_versions": ">=1.6.1",
+        "vulnerable_versions": "<=1.6.0",
+        "api": [
+            "quote"
+        ],
+        "disclosure": "2016-06-21T17:40:40+00:00"
+    },
+    {
+        "package": "macaddress",
+        "patched_versions": ">=0.2.9",
+        "vulnerable_versions": "<= 0.2.8",
+        "api": [
+            "one"
+        ],
+        "disclosure": "2018-05-16T17:40:42.967+00:00"
+    }
+]
