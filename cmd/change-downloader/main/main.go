@@ -5,6 +5,7 @@ import (
 	"github.com/markuszm/npm-analysis/downloader"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 
 	"flag"
@@ -20,21 +21,69 @@ const s3BucketName = "455877074454-npm-packages"
 
 const lastSeqFile = "/tmp/lastseq"
 
+const registryUrl = "http://registry.npmjs.org"
+
 func main() {
 	since := flag.Int("since", 6087177, "since which sequence to track changes")
+	pruneFlag := flag.Bool("prune", false, "whether to prune s3 bucket")
 	flag.Parse()
 
+	if *pruneFlag {
+		prune()
+	} else {
+		download(*since)
+	}
+}
+
+func prune() {
+	s3Client := storage.NewS3Client("us-east-1")
+
+	keys := make(chan string, 100)
+
+	go s3Client.StreamBucketObjects(s3BucketName, keys)
+
+	for key := range keys {
+		fileName := path.Base(key)
+		sep := strings.LastIndex(fileName, "-")
+		extSep := strings.Index(fileName, ".tgz")
+		packageName := fileName[0:sep]
+		version := fileName[sep+1 : extSep]
+
+		downloadUrl := downloader.GenerateDownloadUrl(model.PackageVersionPair{
+			Name:    packageName,
+			Version: version,
+		}, registryUrl)
+
+		if packageExists(downloadUrl) {
+			err := s3Client.DeleteObject(s3BucketName, key)
+			if err != nil {
+				log.Printf("error deleting key: %s with err: %s", key, err.Error())
+			}
+			log.Printf("deleted key: %s", key)
+		}
+	}
+}
+
+func packageExists(url string) bool {
+	resp, requestErr := http.Head(url)
+	if requestErr != nil || resp.StatusCode == http.StatusNotFound {
+		return false
+	}
+	return true
+}
+
+func download(since int) {
 	lastSeqFileBytes, err := ioutil.ReadFile(lastSeqFile)
 	if err == nil {
 		toInt, err := strconv.Atoi(string(lastSeqFileBytes))
 		if err == nil {
-			*since = int(toInt)
+			since = int(toInt)
 		}
 	}
 
 	s3Client := storage.NewS3Client("us-east-1")
 
-	url := fmt.Sprintf("https://replicate.npmjs.com/_changes?include_docs=true&feed=continuous&since=%v&heartbeat=10000", *since)
+	url := fmt.Sprintf("https://replicate.npmjs.com/_changes?include_docs=true&feed=continuous&since=%v&heartbeat=10000", since)
 
 	log.Printf("Using replicate url: %v", url)
 
@@ -47,7 +96,7 @@ func main() {
 
 	decoder := json.NewDecoder(resp.Body)
 
-	lastSeq := *since
+	lastSeq := since
 
 	for {
 		value := Value{}
