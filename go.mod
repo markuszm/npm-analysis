@@ -21,7 +21,6 @@ require (
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/llgcode/draw2d v0.0.0-20180825133448-f52c8a71aff0 // indirect
-	github.com/mattn/go-sqlite3 v1.9.0
 	github.com/mholt/archiver v2.1.0+incompatible
 	github.com/mitchellh/go-homedir v1.0.0
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
