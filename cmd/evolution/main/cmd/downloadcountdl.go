@@ -1,74 +1,83 @@
-package main
+package cmd
 
 import (
-	"fmt"
-	"log"
-	"sync"
-
 	"encoding/json"
-	"flag"
+	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/evolution"
+	"github.com/spf13/cobra"
+	"log"
 	"strings"
+	"sync"
 )
 
-const MYSQL_USER = "root"
+const downloadCountDlMysqlUser = "root"
 
-const MYSQL_PW = "npm-analysis"
+const downloadCountDlMysqlPassword = "npm-analysis"
 
-const MONGOURL = "mongodb://npm:npm123@localhost:27017"
+const downloadCountDlMongoUrl = "mongodb://npm:npm123@localhost:27017"
 
 // NPM is rate-limiting so don't go over 8 workers here
-const workerNumber = 3
+const downloadCountDlWorkerNumber = 3
 
-func main() {
-	bulk := flag.Bool("bulk", true, "use bulk queries?")
-	flag.Parse()
+var downloadCountDlIsBulk bool
 
-	mysqlInitializer := &database.Mysql{}
-	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
-	if databaseInitErr != nil {
-		log.Fatal(databaseInitErr)
-	}
-	defer mysql.Close()
-
-	workerWait := sync.WaitGroup{}
-
-	jobs := make(chan string, 100)
-
-	if *bulk {
-		log.Printf("Using bulk queries")
-	} else {
-		log.Printf("Using single package queries")
-	}
-
-	for w := 1; w <= workerNumber; w++ {
-		workerWait.Add(1)
-		if *bulk {
-			go workerBulk(w, jobs, &workerWait)
-		} else {
-			go worker(w, jobs, &workerWait)
+var downloadCountDlCmd = &cobra.Command{
+	Use:   "downloadCountDl",
+	Short: "Retrieve download numbers",
+	Long:  `...`,
+	Run: func(cmd *cobra.Command, args []string) {
+		mysqlInitializer := &database.Mysql{}
+		mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", downloadCountDlMysqlUser, downloadCountDlMysqlPassword))
+		if databaseInitErr != nil {
+			log.Fatal(databaseInitErr)
 		}
-	}
+		defer mysql.Close()
 
-	log.Println("Loading packages from database")
+		workerWait := sync.WaitGroup{}
 
-	packages, err := database.GetPackages(mysql)
-	if err != nil {
-		log.Fatal("cannot load packages from mysql")
-	}
+		jobs := make(chan string, 100)
 
-	for _, pkg := range packages {
-		jobs <- pkg
-	}
+		if downloadCountDlIsBulk {
+			log.Printf("Using bulk queries")
+		} else {
+			log.Printf("Using single package queries")
+		}
 
-	close(jobs)
+		for w := 1; w <= downloadCountDlWorkerNumber; w++ {
+			workerWait.Add(1)
+			if downloadCountDlIsBulk {
+				go downloadCountDlWorkerBulk(w, jobs, &workerWait)
+			} else {
+				go downloadCountDlWorker(w, jobs, &workerWait)
+			}
+		}
 
-	workerWait.Wait()
+		log.Println("Loading packages from database")
+
+		packages, err := database.GetPackages(mysql)
+		if err != nil {
+			log.Fatal("cannot load packages from mysql")
+		}
+
+		for _, pkg := range packages {
+			jobs <- pkg
+		}
+
+		close(jobs)
+
+		workerWait.Wait()
+	},
 }
 
-func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "downloads")
+func init() {
+	rootCmd.AddCommand(downloadCountDlCmd)
+
+	downloadCountDlCmd.Flags().BoolVar(&downloadCountDlIsBulk, "bulk", true, "use bulk queries?")
+}
+
+func downloadCountDlWorker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
+	mongoDB := database.NewMongoDB(downloadCountDlMongoUrl, "npm", "downloads")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 	log.Printf("logged in mongo - workerId %v", workerId)
@@ -104,15 +113,15 @@ func worker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 			log.Fatalf("ERROR: inserting %v into mongo with %s", pkg, err)
 		}
 
-		log.Printf("Inserted download counts of %v worker: %v", pkg, workerId)
+		log.Printf("Inserted download counts of %v downloadCountDlWorker: %v", pkg, workerId)
 	}
 
 	workerWait.Done()
-	log.Println("send finished worker ", workerId)
+	log.Println("send finished downloadCountDlWorker ", workerId)
 }
 
-func workerBulk(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "downloads")
+func downloadCountDlWorkerBulk(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
+	mongoDB := database.NewMongoDB(downloadCountDlMongoUrl, "npm", "downloads")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 	log.Printf("logged in mongo - workerId %v", workerId)
@@ -147,21 +156,21 @@ func workerBulk(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 		bulkPackages = append(bulkPackages, pkg)
 
 		if len(bulkPackages) == 128 {
-			processBulkPackages(bulkPackages, mongoDB, workerId)
+			downloadCountDlProcessBulk(bulkPackages, mongoDB, workerId)
 
 			bulkPackages = make([]string, 0)
 		}
 	}
 
 	if len(bulkPackages) > 0 {
-		processBulkPackages(bulkPackages, mongoDB, workerId)
+		downloadCountDlProcessBulk(bulkPackages, mongoDB, workerId)
 	}
 
 	workerWait.Done()
-	log.Println("send finished worker ", workerId)
+	log.Println("send finished downloadCountDlWorker ", workerId)
 }
 
-func processBulkPackages(bulkPackages []string, mongoDB *database.MongoDB, workerId int) {
+func downloadCountDlProcessBulk(bulkPackages []string, mongoDB *database.MongoDB, workerId int) {
 	bulk, err := evolution.GetDownloadCountsBulk(bulkPackages)
 	if err != nil {
 		log.Fatalf("ERROR: %v", err)
@@ -172,14 +181,6 @@ func processBulkPackages(bulkPackages []string, mongoDB *database.MongoDB, worke
 			log.Fatalf("ERROR: inserting %v into mongo with %s", p, err)
 		}
 
-		log.Printf("Inserted download counts of %v worker: %v", p, workerId)
+		log.Printf("Inserted download counts of %v downloadCountDlWorker: %v", p, workerId)
 	}
-}
-
-func ensureIndex(mongoDB *database.MongoDB) {
-	indexResp, err := mongoDB.EnsureSingleIndex("key")
-	if err != nil {
-		log.Fatalf("Index cannot be created with ERROR: %v", err)
-	}
-	log.Printf("Index created %v", indexResp)
 }

@@ -1,15 +1,15 @@
-package main
+package cmd
 
 import (
 	"database/sql"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/insert"
 	"github.com/markuszm/npm-analysis/evolution"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/markuszm/npm-analysis/util"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"math"
@@ -20,67 +20,72 @@ import (
 	"time"
 )
 
-const MYSQL_USER = "root"
+const maintainerCountMysqlUser = "root"
 
-const MYSQL_PW = "npm-analysis"
+const maintainerCountMysqlPassword = "npm-analysis"
 
-const workerNumber = 100
+const maintainerCountWorkerNumber = 100
 
-var db *sql.DB
+var maintainerCountDB *sql.DB
 
-var insertDB bool
+var maintainerCountInsertDB bool
 
 // Stores maintainer count into database and plots average maintainer count and sorted maintainer count
+var maintainerCountCmd = &cobra.Command{
+	Use:   "maintainerCount",
+	Short: "Create maintainer count aggregation",
+	Long:  `Stores maintainer count into database and plots average maintainer count and sorted maintainer count`,
+	Run: func(cmd *cobra.Command, args []string) {
+		mysqlInitializer := &database.Mysql{}
+		mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", maintainerCountMysqlUser, maintainerCountMysqlPassword))
+		if databaseInitErr != nil {
+			log.Fatal(databaseInitErr)
+		}
+		defer mysql.Close()
 
-func main() {
-	insertDBFlag := flag.Bool("insertdb", false, "specify whether maintainer count should be inserted into db")
-	flag.Parse()
+		maintainerCountDB = mysql
 
-	insertDB = *insertDBFlag
-
-	mysqlInitializer := &database.Mysql{}
-	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
-	if databaseInitErr != nil {
-		log.Fatal(databaseInitErr)
-	}
-	defer mysql.Close()
-
-	db = mysql
-
-	changes, err := database.GetMaintainerChanges(mysql)
-	if err != nil {
-		log.Fatalf("ERROR: loading changes from mysql with %v", err)
-	}
-
-	log.Print("Finished retrieving changes from db")
-
-	countMap := evolution.CalculateMaintainerCounts(changes)
-
-	if insertDB {
-		err = database.CreateMaintainerCount(db)
+		changes, err := database.GetMaintainerChanges(mysql)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("ERROR: loading changes from mysql with %v", err)
 		}
 
-		workerWait := sync.WaitGroup{}
+		log.Print("Finished retrieving changes from db")
 
-		jobs := make(chan evolution.MaintainerCount, 100)
+		countMap := evolution.CalculateMaintainerCounts(changes)
 
-		for w := 1; w <= workerNumber; w++ {
-			workerWait.Add(1)
-			go worker(w, jobs, &workerWait)
+		if maintainerCountInsertDB {
+			err = database.CreateMaintainerCount(maintainerCountDB)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			workerWait := sync.WaitGroup{}
+
+			jobs := make(chan evolution.MaintainerCount, 100)
+
+			for w := 1; w <= maintainerCountWorkerNumber; w++ {
+				workerWait.Add(1)
+				go maintainerCountWorker(w, jobs, &workerWait)
+			}
+
+			for _, maintainerCount := range countMap {
+				jobs <- maintainerCount
+			}
+
+			close(jobs)
+			workerWait.Wait()
 		}
 
-		for _, maintainerCount := range countMap {
-			jobs <- maintainerCount
-		}
+		calculateAverageMaintainerCount(countMap)
+		plotSortedMaintainerPackageCount(countMap)
+	},
+}
 
-		close(jobs)
-		workerWait.Wait()
-	}
+func init() {
+	rootCmd.AddCommand(maintainerCountCmd)
 
-	calculateAverageMaintainerCount(countMap)
-	plotSortedMaintainerPackageCount(countMap)
+	maintainerCountCmd.Flags().BoolVar(&maintainerCountInsertDB, "insertdb", false, "specify whether maintainer count should be inserted into db")
 }
 
 func calculateAverageMaintainerCount(countMap map[string]evolution.MaintainerCount) {
@@ -211,9 +216,9 @@ func writeSortedMaintainerPackageCount(valuesPerYear map[int][]float64, filePath
 	return err
 }
 
-func worker(id int, jobs chan evolution.MaintainerCount, workerWait *sync.WaitGroup) {
+func maintainerCountWorker(id int, jobs chan evolution.MaintainerCount, workerWait *sync.WaitGroup) {
 	for m := range jobs {
-		err := insert.StoreMaintainerCount(db, m)
+		err := insert.StoreMaintainerCount(maintainerCountDB, m)
 		if err != nil {
 			log.Fatalf("ERROR: writing to database with %v", err)
 		}

@@ -1,13 +1,12 @@
-package main
+package cmd
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	reach "github.com/markuszm/npm-analysis/evolution/maintainerreach"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/markuszm/npm-analysis/util"
-	"go.uber.org/zap"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,47 +17,44 @@ import (
 	"time"
 )
 
-const MYSQL_USER = "root"
+const packageReachJSONPath = "./db-data/dependenciesTimeline.json"
 
-const MYSQL_PW = "npm-analysis"
-const JSONPATH = "./db-data/dependenciesTimeline.json"
+const packageReachWorkerNumber = 100
 
-const workerNumber = 100
+var packageReachResultMap = sync.Map{}
 
-var resultMap = sync.Map{}
+var packageReachCreatePlot bool
 
-var createPlot *bool
+var packageReachResultPath string
 
-var resultPath *string
+var packageReachPackagesInput string
 
-var packagesInput *string
-
-var pkg *string
-
-var logger *zap.SugaredLogger
+var packageReachInputPackage string
 
 // calculates Package reach of a packages and plots it
-func main() {
-	createPlot = flag.Bool("createPlot", false, "whether it should create plots for each package")
-	packagesInput = flag.String("packageInput", "", "input file containing packages")
-	pkg = flag.String("package", "", "specifiy package to get detailed results for the one")
-	resultPath = flag.String("resultPath", "/home/markus/npm-analysis/", "path for single package result")
-	flag.Parse()
+var packageReachCmd = &cobra.Command{
+	Use:   "packageReach",
+	Short: "calculates Package reach of a packages and plots it",
+	Long:  `...`,
+	Run: func(cmd *cobra.Command, args []string) {
+		initializeLogger()
 
-	calculatePackageReach(*pkg)
+		calculatePackageReach(packageReachInputPackage)
+	},
 }
 
-func initializeLogger() {
-	// Initialize logger for all commands
-	cfg := zap.NewDevelopmentConfig()
-	cfg.DisableStacktrace = true
-	l, _ := cfg.Build()
-	logger = l.Sugar()
+func init() {
+	rootCmd.AddCommand(packageReachCmd)
+
+	packageReachCmd.Flags().BoolVar(&packageReachCreatePlot, "createPlot", false, "whether it should create plots for each package")
+	packageReachCmd.Flags().StringVar(&packageReachPackagesInput, "packageInput", "", "input file containing packages")
+	packageReachCmd.Flags().StringVar(&packageReachInputPackage, "package", "", "specifiy package to get detailed results for the one")
+	packageReachCmd.Flags().StringVar(&packageReachResultPath, "resultPath", "/home/markus/npm-analysis/", "path for single package result")
 }
 
 func streamPackageNamesFromFile(packageChan chan string) {
-	if strings.HasSuffix(*packagesInput, ".json") {
-		file, err := ioutil.ReadFile(*packagesInput)
+	if strings.HasSuffix(packageReachPackagesInput, ".json") {
+		file, err := ioutil.ReadFile(packageReachPackagesInput)
 		if err != nil {
 			logger.Fatalw("could not read file", "err", err)
 		}
@@ -73,7 +69,7 @@ func streamPackageNamesFromFile(packageChan chan string) {
 			packageChan <- p
 		}
 	} else {
-		file, err := ioutil.ReadFile(*packagesInput)
+		file, err := ioutil.ReadFile(packageReachPackagesInput)
 		if err != nil {
 			logger.Fatalw("could not read file", "err", err)
 		}
@@ -90,7 +86,7 @@ func streamPackageNamesFromFile(packageChan chan string) {
 }
 
 func calculatePackageReach(pkg string) {
-	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(JSONPATH)
+	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(packageReachJSONPath)
 
 	dependentsMaps := reach.GenerateDependentsMaps(dependenciesTimeline)
 
@@ -103,9 +99,9 @@ func calculatePackageReach(pkg string) {
 
 		go streamPackageNamesFromFile(jobs)
 
-		for w := 1; w <= workerNumber; w++ {
+		for w := 1; w <= packageReachWorkerNumber; w++ {
 			workerWait.Add(1)
-			go worker(w, jobs, dependentsMaps, &workerWait)
+			go packageReachWorker(w, jobs, dependentsMaps, &workerWait)
 		}
 
 		workerWait.Wait()
@@ -114,11 +110,11 @@ func calculatePackageReach(pkg string) {
 
 		log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 
-		reach.CalculateAverageMaintainerReach("averagePackageReach", &resultMap)
+		reach.CalculateAverageMaintainerReach("averagePackageReach", &packageReachResultMap)
 
-		reach.CalculateMaintainerReachDiff("packageReachDiff", &resultMap)
+		reach.CalculateMaintainerReachDiff("packageReachDiff", &packageReachResultMap)
 
-		err := reach.CalculatePackageReachDiff(&resultMap)
+		err := reach.CalculatePackageReachDiff(&packageReachResultMap)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -170,7 +166,7 @@ func calculatePackageReach(pkg string) {
 			log.Fatal(err)
 		}
 
-		filePath := path.Join(*resultPath, fmt.Sprintf("%v-reach.json", pkg))
+		filePath := path.Join(packageReachResultPath, fmt.Sprintf("%v-reach.json", pkg))
 		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -181,7 +177,7 @@ func calculatePackageReach(pkg string) {
 
 }
 
-func worker(workerId int, jobs chan string, dependentsMaps map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
+func packageReachWorker(workerId int, jobs chan string, dependentsMaps map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
 	for j := range jobs {
 		var counts []float64
 		for year := 2010; year < 2019; year++ {
@@ -201,16 +197,16 @@ func worker(workerId int, jobs chan string, dependentsMaps map[time.Time]map[str
 			}
 		}
 
-		resultMap.Store(j, counts)
+		packageReachResultMap.Store(j, counts)
 
-		if *createPlot {
+		if packageReachCreatePlot {
 			fileName := plots.GetPlotFileName(j, "package-reach")
 			if _, err := os.Stat(fileName); err == nil {
 				continue
 			}
-			plots.GenerateLinePlotForMaintainerReach("package-reach", j, counts, *createPlot)
+			plots.GenerateLinePlotForMaintainerReach("package-reach", j, counts, packageReachCreatePlot)
 		} else {
-			plots.GenerateLinePlotForMaintainerReach("package-reach", j, counts, *createPlot)
+			plots.GenerateLinePlotForMaintainerReach("package-reach", j, counts, packageReachCreatePlot)
 		}
 
 		//log.Printf("Finished %v", j.Name)

@@ -1,15 +1,15 @@
-package main
+package cmd
 
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	reach "github.com/markuszm/npm-analysis/evolution/maintainerreach"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/markuszm/npm-analysis/util"
 	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"os"
@@ -19,45 +19,49 @@ import (
 	"time"
 )
 
-const MONGOURL = "mongodb://npm:npm123@localhost:27017"
+const maintainerReachMongoUrl = "mongodb://npm:npm123@localhost:27017"
 
-const JSONPATH = "./db-data/dependenciesTimeline.json"
+const maintainerReachJsonPath = "./db-data/dependenciesTimeline.json"
 
-const workerNumber = 100
+const maintainerReachWorkerNumber = 100
+
+var maintainerReachResultMap = sync.Map{}
+
+var maintainerReachCreatePlot bool
+var maintainerReachGenerateData bool
+
+var maintainerReachResultPath string
+var maintainerReachMaintainer string
 
 // calculates Package reach of a maintainer and plots it
-func main() {
-	createPlot = flag.Bool("createPlot", false, "whether it should create plots for each maintainer")
-	generateData = flag.Bool("generateData", false, "whether it should generate intermediate map for performance")
-	maintainer := flag.String("maintainer", "", "specifiy maintainer to get detailed results for the one")
-	resultPath = flag.String("resultPath", "/home/markus/npm-analysis/", "path for single maintainer result")
-	flag.Parse()
+var maintainerReachCmd = &cobra.Command{
+	Use:   "maintainerReach",
+	Short: "Calculates Package reach of a maintainer and plots it",
+	Long:  `...`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if maintainerReachGenerateData {
+			reach.GenerateTimeLatestVersionMap(maintainerReachMongoUrl, maintainerReachJsonPath)
+		}
 
-	if *generateData {
-		reach.GenerateTimeLatestVersionMap(MONGOURL, JSONPATH)
-	}
-
-	calculatePackageReach(*maintainer)
+		maintainerReachCalculatePackageReach(maintainerReachMaintainer)
+	},
 }
 
-type StoreMaintainedPackages struct {
-	Name             string                 `json:"name"`
-	PackagesTimeline map[time.Time][]string `json:"packages"`
+func init() {
+	rootCmd.AddCommand(maintainerReachCmd)
+
+	maintainerReachCmd.Flags().BoolVar(&maintainerReachCreatePlot, "createPlot", false, "whether it should create plots for each maintainer")
+	maintainerReachCmd.Flags().BoolVar(&maintainerReachGenerateData, "generateData", false, "whether it should generate intermediate map for performance")
+	maintainerReachCmd.Flags().StringVar(&maintainerReachMaintainer, "maintainer", "", "specifiy maintainer to get detailed results for the one")
+	maintainerReachCmd.Flags().StringVar(&maintainerReachResultPath, "resultPath", "/home/markus/npm-analysis/", "path for single maintainer result")
 }
 
-var resultMap = sync.Map{}
-
-var createPlot *bool
-var generateData *bool
-
-var resultPath *string
-
-func calculatePackageReach(maintainer string) {
-	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(JSONPATH)
+func maintainerReachCalculatePackageReach(maintainer string) {
+	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerReachJsonPath)
 
 	dependentsMaps := reach.GenerateDependentsMaps(dependenciesTimeline)
 
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "maintainerPackages")
+	mongoDB := database.NewMongoDB(maintainerReachMongoUrl, "npm", "maintainerPackages")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 
@@ -70,9 +74,9 @@ func calculatePackageReach(maintainer string) {
 
 		jobs := make(chan StoreMaintainedPackages, 100)
 
-		for w := 1; w <= workerNumber; w++ {
+		for w := 1; w <= maintainerReachWorkerNumber; w++ {
 			workerWait.Add(1)
-			go worker(w, jobs, dependentsMaps, &workerWait)
+			go maintainerReachWorker(w, jobs, dependentsMaps, &workerWait)
 		}
 
 		log.Print("Loading maintainer package data from mongoDB")
@@ -108,9 +112,9 @@ func calculatePackageReach(maintainer string) {
 
 		log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 
-		reach.CalculateAverageMaintainerReach("averageMaintainerReach", &resultMap)
+		reach.CalculateAverageMaintainerReach("averageMaintainerReach", &maintainerReachResultMap)
 
-		reach.CalculateMaintainerReachDiff("maintainerReachDiff", &resultMap)
+		reach.CalculateMaintainerReachDiff("maintainerReachDiff", &maintainerReachResultMap)
 	} else {
 		// calculate for one maintainer the reach of each package per month and overall reach
 
@@ -172,7 +176,7 @@ func calculatePackageReach(maintainer string) {
 			log.Fatal(err)
 		}
 
-		filePath := path.Join(*resultPath, fmt.Sprintf("%v-reach.json", maintainer))
+		filePath := path.Join(maintainerReachResultPath, fmt.Sprintf("%v-reach.json", maintainer))
 		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -183,7 +187,7 @@ func calculatePackageReach(maintainer string) {
 
 }
 
-func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
+func maintainerReachWorker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
 	for j := range jobs {
 		var counts []float64
 		for year := 2010; year < 2019; year++ {
@@ -206,16 +210,16 @@ func worker(workerId int, jobs chan StoreMaintainedPackages, dependentsMaps map[
 			}
 		}
 
-		resultMap.Store(j.Name, counts)
+		maintainerReachResultMap.Store(j.Name, counts)
 
-		if *createPlot {
+		if maintainerReachCreatePlot {
 			fileName := plots.GetPlotFileName(j.Name, "maintainer-reach")
 			if _, err := os.Stat(fileName); err == nil {
 				continue
 			}
-			plots.GenerateLinePlotForMaintainerReach("maintainer-reach", j.Name, counts, *createPlot)
+			plots.GenerateLinePlotForMaintainerReach("maintainer-reach", j.Name, counts, maintainerReachCreatePlot)
 		} else {
-			plots.GenerateLinePlotForMaintainerReach("maintainer-reach", j.Name, counts, *createPlot)
+			plots.GenerateLinePlotForMaintainerReach("maintainer-reach", j.Name, counts, maintainerReachCreatePlot)
 		}
 
 		//log.Printf("Finished %v", j.Name)

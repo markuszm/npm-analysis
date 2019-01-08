@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"os"
@@ -17,22 +18,32 @@ const MongoUrl = "mongodb://npm:npm123@localhost:27017"
 
 const OutputPath = "/home/markus/npm-analysis/averageDeps.json"
 
-func main() {
-	depCountMap := make(map[time.Time]int, 0)
-	packageCountMap := make(map[time.Time]int, 0)
+var averageDepsCmd = &cobra.Command{
+	Use:   "averageDeps",
+	Short: "Averages dependencies",
+	Long:  `...`,
+	Run: func(cmd *cobra.Command, args []string) {
+		depCountMap := make(map[time.Time]int, 0)
+		packageCountMap := make(map[time.Time]int, 0)
 
-	err := collectData(depCountMap, packageCountMap)
-	if err != nil {
-		log.Fatalf("error while collecting data with %v", err)
-	}
+		err := collectData(depCountMap, packageCountMap)
+		if err != nil {
+			log.Fatalf("error while collecting data with %v", err)
+		}
 
-	averagesMap := calculateAverages(depCountMap, packageCountMap)
+		averagesMap := calculateAverages(depCountMap, packageCountMap)
 
-	err = writeData(depCountMap, packageCountMap, averagesMap)
-	if err != nil {
-		log.Fatalf("error writing results with %v", err)
-	}
+		err = writeData(depCountMap, packageCountMap, averagesMap)
+		if err != nil {
+			log.Fatalf("error writing results with %v", err)
+		}
+	},
 }
+
+func init() {
+	rootCmd.AddCommand(averageDepsCmd)
+}
+
 func calculateAverages(depCountMap map[time.Time]int, packageCountMap map[time.Time]int) map[time.Time]float64 {
 	averagesMap := make(map[time.Time]float64, 0)
 	for year := 2010; year < 2019; year++ {

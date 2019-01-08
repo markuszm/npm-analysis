@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/util"
 	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"os"
@@ -15,63 +16,72 @@ import (
 	"time"
 )
 
-const MONGOURL = "mongodb://npm:npm123@localhost:27017"
+const maintainerTimelineMongoUrl = "mongodb://npm:npm123@localhost:27017"
 
-const workerNumber = 75
+const maintainerTimelineWorkerNumber = 75
 
 // Extracts maintainers and dependencies for every month and grouped by package from evolution data and stores it into mongo collection called "timeline"
-func main() {
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "packages")
+var maintainerTimelineCmd = &cobra.Command{
+	Use:   "maintainerTimeline",
+	Short: "Create maintainer timeline aggregation",
+	Long:  `Extracts maintainers and dependencies for every month and grouped by package from evolution data and stores it into mongo collection called "timeline`,
+	Run: func(cmd *cobra.Command, args []string) {
+		mongoDB := database.NewMongoDB(maintainerTimelineMongoUrl, "npm", "packages")
 
-	mongoDB.Connect()
-	defer mongoDB.Disconnect()
+		mongoDB.Connect()
+		defer mongoDB.Disconnect()
 
-	startTime := time.Now()
+		startTime := time.Now()
 
-	workerWait := sync.WaitGroup{}
+		workerWait := sync.WaitGroup{}
 
-	jobs := make(chan database.Document, 100)
+		jobs := make(chan database.Document, 100)
 
-	for w := 1; w <= workerNumber; w++ {
-		workerWait.Add(1)
-		go worker(w, jobs, &workerWait)
-	}
+		for w := 1; w <= maintainerTimelineWorkerNumber; w++ {
+			workerWait.Add(1)
+			go maintainerTimelineWorker(w, jobs, &workerWait)
+		}
 
-	cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
-	if err != nil {
-		log.Fatal(err)
-	}
-	for cursor.Next(context.Background()) {
-		doc, err := mongoDB.DecodeValue(cursor)
+		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
 		if err != nil {
 			log.Fatal(err)
 		}
-		jobs <- doc
-	}
+		for cursor.Next(context.Background()) {
+			doc, err := mongoDB.DecodeValue(cursor)
+			if err != nil {
+				log.Fatal(err)
+			}
+			jobs <- doc
+		}
 
-	close(jobs)
+		close(jobs)
 
-	workerWait.Wait()
+		workerWait.Wait()
 
-	endTime := time.Now()
+		endTime := time.Now()
 
-	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
+		log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
+	},
 }
 
-func worker(id int, jobs chan database.Document, workerWait *sync.WaitGroup) {
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "timeline")
+func init() {
+	rootCmd.AddCommand(maintainerTimelineCmd)
+}
+
+func maintainerTimelineWorker(id int, jobs chan database.Document, workerWait *sync.WaitGroup) {
+	mongoDB := database.NewMongoDB(maintainerTimelineMongoUrl, "npm", "timeline")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 	log.Printf("logged in mongo - workerId %v", id)
 
 	ensureIndex(mongoDB)
 	for j := range jobs {
-		processDocument(j, mongoDB)
+		maintainerTimelineProcessDocument(j, mongoDB)
 	}
 	workerWait.Done()
 }
 
-func processDocument(doc database.Document, mongoDB *database.MongoDB) {
+func maintainerTimelineProcessDocument(doc database.Document, mongoDB *database.MongoDB) {
 	if val, err := mongoDB.FindOneSimple("key", doc.Key); val != "" && err == nil {
 		log.Printf("Package %v already exists", doc.Key)
 
@@ -119,12 +129,4 @@ func processDocument(doc database.Document, mongoDB *database.MongoDB) {
 	if err != nil {
 		log.Fatalf("ERROR: inserting package %v into mongo with %v", doc.Key, err)
 	}
-}
-
-func ensureIndex(mongoDB *database.MongoDB) {
-	indexResp, err := mongoDB.EnsureSingleIndex("key")
-	if err != nil {
-		log.Fatalf("Index cannot be created with ERROR: %v", err)
-	}
-	log.Printf("Index created %v", indexResp)
 }

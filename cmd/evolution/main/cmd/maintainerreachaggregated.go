@@ -1,15 +1,15 @@
-package main
+package cmd
 
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	reach "github.com/markuszm/npm-analysis/evolution/maintainerreach"
 	"github.com/markuszm/npm-analysis/util"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"os"
@@ -19,46 +19,50 @@ import (
 	"time"
 )
 
-const MONGOURL = "mongodb://npm:npm123@localhost:27017"
+const maintainerReachAggMongoUrl = "mongodb://npm:npm123@localhost:27017"
 
-const JSONPATH = "./db-data/dependenciesTimeline.json"
-
-// calculates Package reach of a maintainer and plots it
-func main() {
-	packagesInput := flag.String("packageInput", "", "input file containing packages")
-	maintainerRanking = flag.String("maintainerInput", "", "input file containing ranked list of maintainers as json")
-	generateData = flag.Bool("generateData", false, "whether it should generate intermediate map for performance")
-	resultPath = flag.String("resultPath", "/home/markus/npm-analysis/maintainerReachAgg", "path for single maintainer result")
-	flag.Parse()
-
-	if *generateData {
-		reach.GenerateTimeLatestVersionMap(MONGOURL, JSONPATH)
-	}
-
-	err := loadPackagesToReachedMap(*packagesInput)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	calculatePackageReach()
-}
-
-type StoreMaintainedPackages struct {
-	Name             string                 `json:"name"`
-	PackagesTimeline map[time.Time][]string `json:"packages"`
-}
+const maintainerReachAggJsonPath = "./db-data/dependenciesTimeline.json"
 
 var packageReachedMap map[string]bool
 
 var reachTo100Percent []int
 
-var generateData *bool
+var maintainerReachAggGenerateData bool
 
-var resultPath *string
+var maintainerReachAggResultPath string
 
-var maintainerRanking *string
+var maintainerReachAggMaintainerRanking string
+
+var maintainerReachAggPackageInput string
 
 var maintainerRankingList []string
+
+var maintainerReachAggCmd = &cobra.Command{
+	Use:   "maintainerReachAgg",
+	Short: "Aggregates package reach of maintainers and create plot results",
+	Long:  `...`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if maintainerReachAggGenerateData {
+			reach.GenerateTimeLatestVersionMap(maintainerReachAggMongoUrl, maintainerReachAggJsonPath)
+		}
+
+		err := loadPackagesToReachedMap(maintainerReachAggPackageInput)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		maintainerReachAggCalculatePackageReach()
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(maintainerReachAggCmd)
+
+	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggPackageInput, "packageInput", "", "input file containing packages")
+	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggMaintainerRanking, "maintainerInput", "", "input file containing ranked list of maintainers as json")
+	maintainerReachAggCmd.Flags().BoolVar(&maintainerReachAggGenerateData, "generateData", false, "whether it should generate intermediate map for performance")
+	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggResultPath, "resultPath", "/home/markus/npm-analysis/maintainerReachAgg", "path for single maintainer result")
+}
 
 func loadPackagesToReachedMap(packagesInput string) error {
 	file, err := ioutil.ReadFile(packagesInput)
@@ -81,7 +85,7 @@ func loadPackagesToReachedMap(packagesInput string) error {
 }
 
 func loadMaintainerRanking() error {
-	file, err := ioutil.ReadFile(*maintainerRanking)
+	file, err := ioutil.ReadFile(maintainerReachAggMaintainerRanking)
 	if err != nil {
 		return errors.Wrap(err, "could not read file")
 	}
@@ -90,12 +94,12 @@ func loadMaintainerRanking() error {
 	return nil
 }
 
-func calculatePackageReach() {
-	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(JSONPATH)
+func maintainerReachAggCalculatePackageReach() {
+	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerReachAggJsonPath)
 
 	dependentsMaps := reach.GenerateDependentsMaps(dependenciesTimeline)
 
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "maintainerPackages")
+	mongoDB := database.NewMongoDB(maintainerReachAggMongoUrl, "npm", "maintainerPackages")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 
@@ -105,7 +109,7 @@ func calculatePackageReach() {
 
 	maintainerIndex := 0
 
-	if *maintainerRanking == "" {
+	if maintainerReachAggMaintainerRanking == "" {
 		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
 		if err != nil {
 			log.Fatal(err)
@@ -169,7 +173,7 @@ func calculatePackageReach() {
 			log.Fatal(err)
 		}
 
-		filePath := path.Join(*resultPath, "maintainerRanking.json")
+		filePath := path.Join(maintainerReachAggResultPath, "maintainerRanking.json")
 		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -182,7 +186,7 @@ func calculatePackageReach() {
 			log.Fatal(err)
 		}
 
-		filePath = path.Join(*resultPath, "maintainerRankingComplete.json")
+		filePath = path.Join(maintainerReachAggResultPath, "maintainerRankingComplete.json")
 		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -263,7 +267,7 @@ func calculatePackageReach() {
 			log.Fatal(err)
 		}
 
-		filePath := path.Join(*resultPath, "reachTo100Percent.json")
+		filePath := path.Join(maintainerReachAggResultPath, "reachTo100Percent.json")
 		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 		if err != nil {
 			log.Fatal(err)
@@ -286,6 +290,6 @@ func GetFilePathForMaintainer(maintainerName string) string {
 }
 
 func GetNestedDirName(maintainerName string) string {
-	return fmt.Sprintf("%v/%v", *resultPath, string(maintainerName[0]))
+	return fmt.Sprintf("%v/%v", maintainerReachAggResultPath, string(maintainerName[0]))
 
 }

@@ -1,15 +1,15 @@
-package main
+package cmd
 
 import (
 	"database/sql"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/database/insert"
 	"github.com/markuszm/npm-analysis/evolution"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/markuszm/npm-analysis/util"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"os"
@@ -19,13 +19,13 @@ import (
 	"time"
 )
 
-const MONGOURL = "mongodb://npm:npm123@localhost:27017"
+const metadataMongoUrl = "mongodb://npm:npm123@localhost:27017"
 
-const workerNumber = 100
+const metadataWorkerNumber = 100
 
-const MYSQL_USER = "root"
+const metadataMysqlUser = "root"
 
-const MYSQL_PW = "npm-analysis"
+const metadataMysqlPassword = "npm-analysis"
 
 // time cutoff because other dependency data was downloaded at different time
 // other data was downloaded at Fr 13 Apr 2018 13∶38
@@ -33,114 +33,122 @@ var timeCutoff = time.Unix(1523626680, 0)
 
 var typeMapping = sync.Map{}
 
-var DEBUG bool
+var metadataDebug bool
 
-var insertType string
+var metadataInsertType string
 
-var db *sql.DB
+var metadataDB *sql.DB
 
-func main() {
-	flag.BoolVar(&DEBUG, "debug", false, "DEBUG output")
-	flag.StringVar(&insertType, "insert", "", "type to insert")
-	flag.Parse()
+var metadataCmd = &cobra.Command{
+	Use:   "metadata",
+	Short: "Process and insert evolution metadata into database",
+	Long:  `...`,
+	Run: func(cmd *cobra.Command, args []string) {
+		mysqlInitializer := &database.Mysql{}
+		mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", metadataMysqlUser, metadataMysqlPassword))
+		if databaseInitErr != nil {
+			log.Fatal(databaseInitErr)
+		}
+		defer mysql.Close()
 
-	mysqlInitializer := &database.Mysql{}
-	mysql, databaseInitErr := mysqlInitializer.InitDB(fmt.Sprintf("%s:%s@/npm?charset=utf8mb4&collation=utf8mb4_bin", MYSQL_USER, MYSQL_PW))
-	if databaseInitErr != nil {
-		log.Fatal(databaseInitErr)
-	}
-	defer mysql.Close()
+		if metadataInsertType == "" {
+			log.Print("WARNING: No insert type selected")
+			log.Print("Options are: license, licenseChange, maintainers, dependencies, version")
+		}
 
-	if insertType == "" {
-		log.Print("WARNING: No insert type selected")
-		log.Print("Options are: license, licenseChange, maintainers, dependencies, version")
-	}
+		var createError error
+		switch metadataInsertType {
+		case "license":
+			createError = database.CreateLicenseTable(mysql)
+		case "licenseChange":
+			createError = database.CreateLicenseChangeTable(mysql)
+		case "maintainers":
+			createError = database.CreateMaintainerChangeTable(mysql)
+		case "dependencies":
+			createError = database.CreateDependencyChangeTable(mysql)
+		case "version":
+			createError = database.CreateVersionChangeTable(mysql)
+		case "versionNormalized":
+			createError = database.CreateVersionChangeNormalizedTable(mysql)
+		default:
+			log.Print("WARNING: Wrong insert type - no changes")
+		}
 
-	var createError error
-	switch insertType {
-	case "license":
-		createError = database.CreateLicenseTable(mysql)
-	case "licenseChange":
-		createError = database.CreateLicenseChangeTable(mysql)
-	case "maintainers":
-		createError = database.CreateMaintainerChangeTable(mysql)
-	case "dependencies":
-		createError = database.CreateDependencyChangeTable(mysql)
-	case "version":
-		createError = database.CreateVersionChangeTable(mysql)
-	case "versionNormalized":
-		createError = database.CreateVersionChangeNormalizedTable(mysql)
-	default:
-		log.Print("WARNING: Wrong insert type - no changes")
-	}
+		if createError != nil {
+			log.Fatal(createError)
+		}
 
-	if createError != nil {
-		log.Fatal(createError)
-	}
+		metadataDB = mysql
 
-	db = mysql
+		mongoDB := database.NewMongoDB(metadataMongoUrl, "npm", "packages")
 
-	mongoDB := database.NewMongoDB(MONGOURL, "npm", "packages")
+		mongoDB.Connect()
+		defer mongoDB.Disconnect()
 
-	mongoDB.Connect()
-	defer mongoDB.Disconnect()
+		startTime := time.Now()
 
-	startTime := time.Now()
+		allDocs, err := mongoDB.FindAll()
+		if err != nil {
+			log.Fatalf("ERROR: %v", err)
+		}
 
-	allDocs, err := mongoDB.FindAll()
-	if err != nil {
-		log.Fatalf("ERROR: %v", err)
-	}
+		endTime := time.Now()
 
-	endTime := time.Now()
+		log.Printf("Took %v seconds to get all Documents from MongoDB", endTime.Sub(startTime).Seconds())
 
-	log.Printf("Took %v seconds to get all Documents from MongoDB", endTime.Sub(startTime).Seconds())
+		sumVersions := 0
 
-	sumVersions := 0
+		workerWait := sync.WaitGroup{}
 
-	workerWait := sync.WaitGroup{}
+		jobs := make(chan database.Document, 100)
 
-	jobs := make(chan database.Document, 100)
+		results := make(chan int, metadataWorkerNumber)
 
-	results := make(chan int, workerNumber)
+		for w := 1; w <= metadataWorkerNumber; w++ {
+			workerWait.Add(1)
+			go metadataWorker(w, jobs, results, &workerWait)
+		}
+		startTime = time.Now()
 
-	for w := 1; w <= workerNumber; w++ {
-		workerWait.Add(1)
-		go worker(w, jobs, results, &workerWait)
-	}
-	startTime = time.Now()
+		for _, doc := range allDocs {
+			jobs <- doc
+		}
 
-	for _, doc := range allDocs {
-		jobs <- doc
-	}
+		close(jobs)
 
-	close(jobs)
+		workerWait.Wait()
+		endTime = time.Now()
+		log.Printf("Took %v seconds to parse all documents", endTime.Sub(startTime).Seconds())
 
-	workerWait.Wait()
-	endTime = time.Now()
-	log.Printf("Took %v seconds to parse all documents", endTime.Sub(startTime).Seconds())
+		if metadataDebug {
+			printTypeMapping()
+		}
 
-	if DEBUG {
-		printTypeMapping()
-	}
-
-	for w := 1; w <= workerNumber; w++ {
-		result := <-results
-		sumVersions += result
-	}
-	log.Printf("%v Versions", sumVersions)
+		for w := 1; w <= metadataWorkerNumber; w++ {
+			result := <-results
+			sumVersions += result
+		}
+		log.Printf("%v Versions", sumVersions)
+	},
 }
 
-func worker(id int, jobs chan database.Document, resultChan chan int, workerWait *sync.WaitGroup) {
+func init() {
+	rootCmd.AddCommand(metadataCmd)
+
+	metadataCmd.Flags().BoolVar(&metadataDebug, "debug", false, "DEBUG output")
+	metadataCmd.Flags().StringVar(&metadataInsertType, "insert", "", "type to insert")
+}
+
+func metadataWorker(id int, jobs chan database.Document, resultChan chan int, workerWait *sync.WaitGroup) {
 	versions := 0
 	for j := range jobs {
-		versions += processDocument(j)
+		versions += metadataProcessDocument(j)
 	}
 	resultChan <- versions
 	workerWait.Done()
 }
 
-func processDocument(doc database.Document) int {
+func metadataProcessDocument(doc database.Document) int {
 	val, err := util.Decompress(doc.Value)
 	if err != nil {
 		log.Fatalf("ERROR: Decompressing: %v", err)
@@ -159,7 +167,7 @@ func processDocument(doc database.Document) int {
 		log.Fatalf("ERROR: Unmarshalling: %v", err)
 	}
 
-	if DEBUG {
+	if metadataDebug {
 		createTypeMapping(metadata)
 	}
 
@@ -170,7 +178,7 @@ func processDocument(doc database.Document) int {
 	}()
 
 	var insertError error
-	switch insertType {
+	switch metadataInsertType {
 	case "license":
 		insertError = insertLicenses(metadata)
 	case "licenseChange":
@@ -207,7 +215,7 @@ func insertLicenses(metadata model.Metadata) error {
 
 		licenses = append(licenses, insert.LicenseVersion{PkgName: data.Name, License: license, Version: version, Time: releaseTime})
 	}
-	err := insert.StoreLicenseWithVersion(db, licenses)
+	err := insert.StoreLicenseWithVersion(metadataDB, licenses)
 	return err
 }
 
@@ -216,7 +224,7 @@ func insertLicenseChanges(metadata model.Metadata) error {
 	if err != nil {
 		log.Fatalf("ERROR: Processing licences in package: %v with error: %v", metadata.Name, err)
 	}
-	err = insert.StoreLicenceChanges(db, licenseChanges)
+	err = insert.StoreLicenceChanges(metadataDB, licenseChanges)
 	if err != nil {
 		log.Fatalf("ERROR: inserting licence changes of package %v with error: %v", metadata.Name, err)
 	}
@@ -228,7 +236,7 @@ func insertMaintainersChanges(metadata model.Metadata) error {
 	if err != nil {
 		log.Fatalf("ERROR: Processing maintainers in package: %v with error: %v", metadata.Name, err)
 	}
-	err = insert.StoreMaintainerChange(db, maintainerChanges)
+	err = insert.StoreMaintainerChange(metadataDB, maintainerChanges)
 	if err != nil {
 		log.Fatalf("ERROR: inserting maintainer changes of package %v with error: %v", metadata.Name, err)
 	}
@@ -240,7 +248,7 @@ func insertDependencyChanges(metadata model.Metadata) error {
 	if err != nil {
 		log.Fatalf("ERROR: Processing dependencies in package: %v with error: %v", metadata.Name, err)
 	}
-	err = insert.StoreDependencyChanges(db, dependencyChanges)
+	err = insert.StoreDependencyChanges(metadataDB, dependencyChanges)
 	if err != nil {
 		log.Fatalf("ERROR: inserting dependency changes of package %v with error: %v", metadata.Name, err)
 	}
@@ -252,7 +260,7 @@ func insertVersionChanges(metadata model.Metadata) error {
 	if err != nil {
 		log.Fatalf("ERROR: Processing versions in package: %v with error: %v", metadata.Name, err)
 	}
-	err = insert.StoreVersionChanges(db, versionChanges)
+	err = insert.StoreVersionChanges(metadataDB, versionChanges)
 	if err != nil {
 		log.Fatalf("ERROR: inserting version changes of package %v with error: %v", metadata.Name, err)
 	}
@@ -264,7 +272,7 @@ func insertVersionChangesNormalized(metadata model.Metadata) error {
 	if err != nil {
 		log.Fatalf("ERROR: Processing versions in package: %v with error: %v", metadata.Name, err)
 	}
-	err = insert.StoreVersionChangesNormalized(db, versionChanges)
+	err = insert.StoreVersionChangesNormalized(metadataDB, versionChanges)
 	if err != nil {
 		log.Fatalf("ERROR: inserting version changes of package %v with error: %v", metadata.Name, err)
 	}
