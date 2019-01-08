@@ -52,3 +52,30 @@ func (s *S3Client) GetObject(bucketName, key string) (io.ReadCloser, error) {
 	output, err := s.client.GetObject(&getObjectInput)
 	return output.Body, err
 }
+
+func (s *S3Client) DeleteObject(bucketName, key string) error {
+	deleteObjectInput := s3.DeleteObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+	}
+
+	_, err := s.client.DeleteObject(&deleteObjectInput)
+	return err
+}
+
+func (s *S3Client) StreamBucketObjects(bucketName string, keys chan string) error {
+	input := s3.ListObjectsV2Input{
+		Bucket: aws.String(bucketName),
+	}
+
+	err := s.client.ListObjectsV2Pages(&input, func(output *s3.ListObjectsV2Output, lastPage bool) bool {
+		for _, obj := range output.Contents {
+			keys <- aws.StringValue(obj.Key)
+		}
+		return true
+	})
+
+	close(keys)
+
+	return err
+}
