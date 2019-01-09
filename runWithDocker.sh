@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 EXEC=$1
 ARGS=$2
 
