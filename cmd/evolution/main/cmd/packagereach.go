@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -27,9 +26,9 @@ var packageReachCreatePlot bool
 
 var packageReachResultPath string
 
-var packageReachPackagesInput string
+var packageReachPackageFileInput string
 
-var packageReachInputPackage string
+var packageReachPackageInput string
 
 // calculates Package reach of a packages and plots it
 var packageReachCmd = &cobra.Command{
@@ -39,7 +38,7 @@ var packageReachCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		initializeLogger()
 
-		calculatePackageReach(packageReachInputPackage)
+		calculatePackageReach(packageReachPackageInput)
 	},
 }
 
@@ -47,42 +46,9 @@ func init() {
 	rootCmd.AddCommand(packageReachCmd)
 
 	packageReachCmd.Flags().BoolVar(&packageReachCreatePlot, "createPlot", false, "whether it should create plots for each package")
-	packageReachCmd.Flags().StringVar(&packageReachPackagesInput, "packageInput", "", "input file containing packages")
-	packageReachCmd.Flags().StringVar(&packageReachInputPackage, "package", "", "specifiy package to get detailed results for the one")
+	packageReachCmd.Flags().StringVar(&packageReachPackageFileInput, "packageInput", "", "input file containing packages")
+	packageReachCmd.Flags().StringVar(&packageReachPackageInput, "package", "", "specifiy package to get detailed results for the one")
 	packageReachCmd.Flags().StringVar(&packageReachResultPath, "resultPath", "/home/markus/npm-analysis/", "path for single package result")
-}
-
-func streamPackageNamesFromFile(packageChan chan string) {
-	if strings.HasSuffix(packageReachPackagesInput, ".json") {
-		file, err := ioutil.ReadFile(packageReachPackagesInput)
-		if err != nil {
-			logger.Fatalw("could not read file", "err", err)
-		}
-
-		var packages []string
-		json.Unmarshal(file, &packages)
-
-		for _, p := range packages {
-			if p == "" {
-				continue
-			}
-			packageChan <- p
-		}
-	} else {
-		file, err := ioutil.ReadFile(packageReachPackagesInput)
-		if err != nil {
-			logger.Fatalw("could not read file", "err", err)
-		}
-		lines := strings.Split(string(file), "\n")
-		for _, l := range lines {
-			if l == "" {
-				continue
-			}
-			packageChan <- l
-		}
-	}
-
-	close(packageChan)
 }
 
 func calculatePackageReach(pkg string) {
@@ -97,7 +63,7 @@ func calculatePackageReach(pkg string) {
 
 		jobs := make(chan string, 100)
 
-		go streamPackageNamesFromFile(jobs)
+		go streamPackageNamesFromFile(jobs, packageReachPackageFileInput)
 
 		for w := 1; w <= packageReachWorkerNumber; w++ {
 			workerWait.Add(1)
@@ -114,7 +80,7 @@ func calculatePackageReach(pkg string) {
 
 		reach.CalculateMaintainerReachDiff("packageReachDiff", &packageReachResultMap)
 
-		err := reach.CalculatePackageReachDiff(&packageReachResultMap)
+		err := reach.CalculatePackageReachDiff(&packageReachResultMap, "packageReachDiffs")
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -101,7 +101,7 @@ type PackageReachDiff struct {
 	Time time.Time
 }
 
-func CalculatePackageReachDiff(resultMap *sync.Map) error {
+func CalculatePackageReachDiff(resultMap *sync.Map, fileName string) error {
 	packageReachDiffMap := make(map[string][]PackageReachDiff, 0)
 
 	resultMap.Range(func(key, value interface{}) bool {
@@ -144,7 +144,7 @@ func CalculatePackageReachDiff(resultMap *sync.Map) error {
 		return err
 	}
 
-	outputPath := "/home/markus/npm-analysis/packageReachDiffs.json"
+	outputPath := fmt.Sprintf("/home/markus/npm-analysis/%s.json", fileName)
 	err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
 	return err
 }
