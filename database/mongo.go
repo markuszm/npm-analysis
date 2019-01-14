@@ -2,8 +2,12 @@ package database
 
 import (
 	"context"
+	"github.com/markuszm/npm-analysis/evolution"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/mongo"
+	"github.com/mongodb/mongo-go-driver/mongo/options"
+	"github.com/mongodb/mongo-go-driver/x/bsonx"
+	"time"
 )
 
 type MongoDB struct {
@@ -34,33 +38,33 @@ func (m *MongoDB) Disconnect() {
 func (m *MongoDB) EnsureSingleIndex(key string) (string, error) {
 	return m.ActiveCollection.Indexes().CreateOne(context.Background(),
 		mongo.IndexModel{
-			Keys: bson.NewDocument(
-				bson.EC.Int32(key, 1))})
+			Keys: bson.D{
+				{key, 1}}})
 }
 
 func (m *MongoDB) FindOneSimple(key, value string) (string, error) {
-	result := m.ActiveCollection.FindOne(context.Background(), bson.NewDocument(
-		bson.EC.String(key, value),
-	))
+	result := m.ActiveCollection.FindOne(context.Background(), bson.D{
+		{key, value},
+	})
 
-	val := bson.NewDocument()
+	val := Document{}
 
-	err := result.Decode(val)
+	err := result.Decode(&val)
 	if err != nil {
 		return "", err
 	}
-	element := val.Lookup("value")
-	if element == nil {
+	element := val.Value
+	if element == "" {
 		return "", err
 	}
-	return element.StringValue(), nil
+	return element, nil
 }
 
 func (m *MongoDB) FindAllSimple(key, value string) ([]string, error) {
 	var result []string
-	cursor, err := m.ActiveCollection.Find(context.Background(), bson.NewDocument(
-		bson.EC.String(key, value),
-	))
+	cursor, err := m.ActiveCollection.Find(context.Background(), bson.D{
+		{key, value},
+	})
 	if err != nil {
 		return result, nil
 	}
@@ -76,9 +80,55 @@ func (m *MongoDB) FindAllSimple(key, value string) ([]string, error) {
 	return result, nil
 }
 
+func (m *MongoDB) FindPackageDataInTimeline(pkg string, time time.Time) (evolution.PackageData, error) {
+	result := m.ActiveCollection.FindOne(context.Background(), bson.D{
+		{"key", pkg},
+		{"timeline.time", time.String()},
+	}, options.FindOne().SetProjection(bson.D{{"_id", 0}, {"timeline.$", 1}}))
+
+	var val bsonx.Doc
+
+	err := result.Decode(&val)
+	if err != nil {
+		return evolution.PackageData{}, err
+	}
+
+	timeline := val.Lookup("timeline")
+	if timeline.IsZero() {
+		return evolution.PackageData{}, nil
+	}
+	pkgDataBson := timeline.Array()[0].Document().Lookup("packageData")
+
+	maintainersBson := pkgDataBson.Document().Lookup("maintainers")
+	dependenciesBson := pkgDataBson.Document().Lookup("dependencies")
+
+	maintainers := make([]string, 0)
+	dependencies := make([]string, 0)
+
+	if !maintainersBson.IsZero() {
+		for _, m := range maintainersBson.Array() {
+			maintainers = append(maintainers, m.String())
+		}
+	}
+
+	if !dependenciesBson.IsZero() {
+		for _, d := range dependenciesBson.Array() {
+			dependencies = append(dependencies, d.String())
+		}
+	}
+
+	packageData := evolution.PackageData{
+		Version:      pkgDataBson.Document().Lookup("version").String(),
+		Maintainers:  maintainers,
+		Dependencies: dependencies,
+	}
+
+	return packageData, nil
+}
+
 func (m *MongoDB) FindAll() ([]Document, error) {
 	var result []Document
-	cursor, err := m.ActiveCollection.Find(context.Background(), bson.NewDocument())
+	cursor, err := m.ActiveCollection.Find(context.Background(), bson.D{})
 	if err != nil {
 		return result, err
 	}
@@ -93,37 +143,41 @@ func (m *MongoDB) FindAll() ([]Document, error) {
 }
 
 func (m *MongoDB) DecodeValue(cur mongo.Cursor) (Document, error) {
-	val := bson.NewDocument()
+	val := Document{}
 
-	err := cur.Decode(val)
+	err := cur.Decode(&val)
 	if err != nil {
 		return Document{}, err
 	}
-	element := val.Lookup("value")
-	if element == nil {
-		return Document{}, err
-	}
-	value := element.StringValue()
-
-	element = val.Lookup("key")
-	if element == nil {
-		return Document{}, err
-	}
-	key := element.StringValue()
-	return Document{Key: key, Value: value}, nil
+	return val, nil
 }
 
 func (m *MongoDB) InsertOneSimple(key, value string) error {
-	_, err := m.ActiveCollection.InsertOne(context.Background(), bson.NewDocument(
-		bson.EC.String("key", key),
-		bson.EC.String("value", value),
-	))
+	_, err := m.ActiveCollection.InsertOne(context.Background(), bson.D{
+		{"key", key},
+		{"value", value},
+	})
+	return err
+}
+
+func (m *MongoDB) InsertPackageTimeline(pkg string, pkgTimeline map[time.Time]evolution.PackageData) error {
+	var elements []bson.M
+	for t, d := range pkgTimeline {
+		elements = append(elements, bson.M{"time": t.String(), "packageData": d})
+	}
+
+	pkgDocument := bson.D{
+		{Key: "key", Value: pkg},
+		{Key: "timeline", Value: elements},
+	}
+
+	_, err := m.ActiveCollection.InsertOne(context.Background(), pkgDocument)
 	return err
 }
 
 func (m *MongoDB) RemoveWithKey(key string) error {
-	_, err := m.ActiveCollection.DeleteOne(context.Background(), bson.NewDocument(
-		bson.EC.String("key", key)))
+	_, err := m.ActiveCollection.DeleteOne(context.Background(), bson.D{
+		{"key", key}})
 	return err
 }
 

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"github.com/markuszm/npm-analysis/database"
 	"github.com/markuszm/npm-analysis/evolution"
 	reach "github.com/markuszm/npm-analysis/evolution/maintainerreach"
@@ -49,7 +48,7 @@ func init() {
 func maintainerCostCalculate() {
 	//dependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerReachJsonPath)
 
-	mongoDB := database.NewMongoDB(maintainerReachMongoUrl, "npm", "timeline")
+	mongoDB := database.NewMongoDB(maintainerReachMongoUrl, "npm", "timelineNew")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 
@@ -117,34 +116,18 @@ func maintainerCostWorker(workerId int, jobs chan string, mongoDB *database.Mong
 			plots.GenerateLinePlotForMaintainerReach(outputFolder, pkg, counts, maintainerCostCreatePlot)
 		}
 
-		log.Printf("Finished %v", pkg)
+		log.Printf("Worker %v Finished %v", workerId, pkg)
 	}
 	workerWait.Done()
 }
 
-var cache = sync.Map{} // make(map[string]evolution.Timeline)
-
 func getPackageDataForDate(mongoDB *database.MongoDB, pkg string, date time.Time) evolution.PackageData {
-	//timeline, ok := cache.Load(pkg)
-	//if ok {
-	//	return timeline.(evolution.Timeline)[date]
-	//}
-
-	doc, err := mongoDB.FindOneSimple("key", pkg)
+	packageData, err := mongoDB.FindPackageDataInTimeline(pkg, date)
 	if err != nil {
 		log.Printf("did not find package even though it should exist with error: %v for package %v", err.Error(), pkg)
 		return evolution.PackageData{}
 	}
-	var packageDataTimeline evolution.Timeline
-	err = json.Unmarshal([]byte(doc), &packageDataTimeline)
-	if err != nil {
-		log.Fatalf("error unmarshalling with error: %s", err.Error())
-	}
-
-	//if !ok {
-	//	cache.Store(pkg, packageDataTimeline)
-	//}
-	return packageDataTimeline[date]
+	return packageData
 }
 
 func calculateMaintainerCost(pkg string, maintainers map[string]bool, mongoDB *database.MongoDB, date time.Time) {

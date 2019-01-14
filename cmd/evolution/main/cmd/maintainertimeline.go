@@ -16,9 +16,9 @@ import (
 	"time"
 )
 
-const maintainerTimelineMongoUrl = "mongodb://npm:npm123@localhost:27017"
+var maintainerTimelineMongoUrl string
 
-const maintainerTimelineWorkerNumber = 75
+var maintainerTimelineWorkers int
 
 // Extracts maintainers and dependencies for every month and grouped by package from evolution data and stores it into mongo collection called "timeline"
 var maintainerTimelineCmd = &cobra.Command{
@@ -37,12 +37,12 @@ var maintainerTimelineCmd = &cobra.Command{
 
 		jobs := make(chan database.Document, 100)
 
-		for w := 1; w <= maintainerTimelineWorkerNumber; w++ {
+		for w := 1; w <= maintainerTimelineWorkers; w++ {
 			workerWait.Add(1)
-			go maintainerTimelineWorker(w, jobs, &workerWait)
+			go maintainerTimelineWorker(w, jobs, "timelineNew", &workerWait)
 		}
 
-		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
+		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.D{})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -66,10 +66,13 @@ var maintainerTimelineCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(maintainerTimelineCmd)
+
+	maintainerTimelineCmd.Flags().StringVar(&maintainerTimelineMongoUrl, "mongoUrl", "mongodb://npm:npm123@localhost:27017", "url to mongo db")
+	maintainerTimelineCmd.Flags().IntVar(&maintainerTimelineWorkers, "workers", 75, "number of workers")
 }
 
-func maintainerTimelineWorker(id int, jobs chan database.Document, workerWait *sync.WaitGroup) {
-	mongoDB := database.NewMongoDB(maintainerTimelineMongoUrl, "npm", "timeline")
+func maintainerTimelineWorker(id int, jobs chan database.Document, collectionName string, workerWait *sync.WaitGroup) {
+	mongoDB := database.NewMongoDB(maintainerTimelineMongoUrl, "npm", collectionName)
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 	log.Printf("logged in mongo - workerId %v", id)
@@ -120,13 +123,8 @@ func maintainerTimelineProcessDocument(doc database.Document, mongoDB *database.
 
 	packageData := evolution.GetPackageMetadataForEachMonth(metadata)
 
-	bytes, err := json.Marshal(packageData)
+	err = mongoDB.InsertPackageTimeline(doc.Key, packageData)
 	if err != nil {
-		log.Fatalf("ERROR: marshalling package data for %v with %v", doc.Key, err)
-	}
-
-	err = mongoDB.InsertOneSimple(doc.Key, string(bytes))
-	if err != nil {
-		log.Fatalf("ERROR: inserting package %v into mongo with %v", doc.Key, err)
+		log.Fatalf("ERROR: could not insert package timeline with error: %v", err)
 	}
 }

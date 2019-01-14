@@ -66,7 +66,7 @@ var downloadCountCmd = &cobra.Command{
 			go downloadCountWorker(w, jobs, &workerWait)
 		}
 
-		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
+		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.D{})
 		if err != nil {
 			log.Fatal(err)
 		}

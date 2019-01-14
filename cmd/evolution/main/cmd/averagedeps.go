@@ -84,7 +84,7 @@ func collectData(depCountMap, packageCountMap map[time.Time]int) error {
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
 	startTime := time.Now()
-	cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
+	cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.D{})
 	if err != nil {
 		log.Fatal(err)
 	}

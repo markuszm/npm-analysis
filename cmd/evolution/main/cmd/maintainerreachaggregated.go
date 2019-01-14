@@ -110,7 +110,7 @@ func maintainerReachAggCalculatePackageReach() {
 	maintainerIndex := 0
 
 	if maintainerReachAggMaintainerRanking == "" {
-		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
+		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.D{})
 		if err != nil {
 			log.Fatal(err)
 		}

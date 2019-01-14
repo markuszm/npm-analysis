@@ -81,7 +81,7 @@ func maintainerReachCalculatePackageReach(maintainer string) {
 
 		log.Print("Loading maintainer package data from mongoDB")
 
-		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.NewDocument())
+		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.D{})
 		if err != nil {
 			log.Fatal(err)
 		}
