@@ -17,7 +17,7 @@ import (
 
 const MongoUrl = "mongodb://npm:npm123@localhost:27017"
 
-const OutputPath = "/home/markus/npm-analysis/averageDeps.json"
+const OutputPath = "/home/markus/npm-analysis/averageDepsNew.json"
 
 const dependenciesTimelinePath = "./db-data/dependenciesTimeline.json"
 

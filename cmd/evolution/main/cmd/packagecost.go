@@ -20,6 +20,8 @@ var packageCostCreatePlot bool
 
 var packageCostPackageFileInput string
 
+var packageCostOutputFolder string
+
 // calculates Package reach of a packages and plots it
 var packageCostCmd = &cobra.Command{
 	Use:   "packageCost",
@@ -38,6 +40,7 @@ func init() {
 	packageCostCmd.Flags().BoolVar(&packageCostCreatePlot, "createPlot", false, "whether it should create plots for each package")
 	packageCostCmd.Flags().IntVar(&packageCostWorkerNumber, "workers", 100, "number of workers")
 	packageCostCmd.Flags().StringVar(&packageCostPackageFileInput, "packageInput", "", "input file containing packages")
+	packageCostCmd.Flags().StringVar(&packageCostOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
 }
 
 func calculatePackageCost() {
@@ -62,11 +65,11 @@ func calculatePackageCost() {
 
 	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 
-	reach.CalculateAverageMaintainerReach("averagePackageCost", &packageCostResultMap)
+	reach.CalculateAverageResults("averagePackageCost", packageCostOutputFolder, &packageCostResultMap)
 
-	reach.CalculateMaintainerReachDiff("packageCostDiff", &packageCostResultMap)
+	reach.CalculateMaintainerReachDiff("packageCostDiff", packageCostOutputFolder, &packageCostResultMap)
 
-	err := reach.CalculatePackageReachDiff(&packageCostResultMap, "packageCostDiffs")
+	err := reach.CalculatePackageReachDiffs(&packageCostResultMap, "packageCostDiffs", packageCostOutputFolder)
 	if err != nil {
 		log.Fatal(err)
 	}

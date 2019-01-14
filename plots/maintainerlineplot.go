@@ -77,7 +77,7 @@ func GenerateLinePlotForMaintainerReach(outputFolder string, maintainerName stri
 	}
 }
 
-func GenerateLinePlotForAverageMaintainerReach(outputName string, counts []float64) {
+func GenerateLinePlotForAverageResults(outputName string, counts []float64) {
 	p, err := plot.New()
 	if err != nil {
 		log.Fatal(err)

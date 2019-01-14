@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func CalculateMaintainerReachDiff(outputName string, resultMap *sync.Map) {
+func CalculateMaintainerReachDiff(outputName string, outputFolder string, resultMap *sync.Map) {
 	maintainerReachDiffMap := make(map[time.Time][]util.MaintainerReachDiff, 0)
 
 	resultMap.Range(func(key, value interface{}) bool {
@@ -92,17 +92,17 @@ func CalculateMaintainerReachDiff(outputName string, resultMap *sync.Map) {
 		}
 	}
 
-	outputPath := "/home/markus/npm-analysis/" + outputName + ".txt"
+	outputPath := path.Join(outputFolder, fmt.Sprintf("%s.txt", outputName))
 	ioutil.WriteFile(outputPath, []byte(builder.String()), os.ModePerm)
 }
 
-type PackageReachDiff struct {
+type Diff struct {
 	Diff float64
 	Time time.Time
 }
 
-func CalculatePackageReachDiff(resultMap *sync.Map, fileName string) error {
-	packageReachDiffMap := make(map[string][]PackageReachDiff, 0)
+func CalculatePackageReachDiffs(resultMap *sync.Map, fileName string, outputFolder string) error {
+	diffMap := make(map[string][]Diff, 0)
 
 	resultMap.Range(func(key, value interface{}) bool {
 		counts := value.([]float64)
@@ -110,7 +110,7 @@ func CalculatePackageReachDiff(resultMap *sync.Map, fileName string) error {
 		isActive := false
 		previousCount := math.MaxFloat64
 		pkg := key.(string)
-		var packageReachDiffs []PackageReachDiff
+		var diffs []Diff
 		for year := 2010; year < 2019; year++ {
 			startMonth := 1
 			endMonth := 12
@@ -128,31 +128,31 @@ func CalculatePackageReachDiff(resultMap *sync.Map, fileName string) error {
 					if previousCount == math.MaxFloat64 {
 						diff = count
 					}
-					packageReachDiffs = append(packageReachDiffs, PackageReachDiff{Diff: diff, Time: date})
+					diffs = append(diffs, Diff{Diff: diff, Time: date})
 					isActive = true
 					previousCount = count
 				}
 				x++
 			}
 		}
-		packageReachDiffMap[pkg] = packageReachDiffs
+		diffMap[pkg] = diffs
 		return true
 	})
 
-	bytes, err := json.Marshal(packageReachDiffMap)
+	bytes, err := json.Marshal(diffMap)
 	if err != nil {
 		return err
 	}
 
-	outputPath := fmt.Sprintf("/home/markus/npm-analysis/%s.json", fileName)
+	outputPath := path.Join(outputFolder, fmt.Sprintf("%s.json", fileName))
 	err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
 	return err
 }
 
-func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
-	maintainerReachCount := make(map[time.Time]float64, 0)
-	maintainerCount := make(map[time.Time]float64, 0)
-	averageMaintainerReachPerMonth := make(map[time.Time]float64, 0)
+func CalculateAverageResults(fileName string, outputFolder string, resultMap *sync.Map) {
+	valuesCounts := make(map[time.Time]float64, 0)
+	keyCounts := make(map[time.Time]float64, 0)
+	averagePerMonth := make(map[time.Time]float64, 0)
 
 	resultMap.Range(func(key, value interface{}) bool {
 		counts := value.([]float64)
@@ -170,8 +170,8 @@ func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
 			for month := startMonth; month <= endMonth; month++ {
 				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 				if counts[x] > 0 || isActive {
-					maintainerCount[date] = maintainerCount[date] + 1
-					maintainerReachCount[date] = maintainerReachCount[date] + counts[x]
+					keyCounts[date] = keyCounts[date] + 1
+					valuesCounts[date] = valuesCounts[date] + counts[x]
 					isActive = true
 				}
 				x++
@@ -191,14 +191,14 @@ func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
 		}
 		for month := startMonth; month <= endMonth; month++ {
 			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-			average := maintainerReachCount[date] / maintainerCount[date]
-			averageMaintainerReachPerMonth[date] = average
+			average := valuesCounts[date] / keyCounts[date]
+			averagePerMonth[date] = average
 		}
 	}
 
 	var resultList []util.TimeValue
 
-	for k, v := range averageMaintainerReachPerMonth {
+	for k, v := range averagePerMonth {
 		if !math.IsNaN(v) {
 			resultList = append(resultList, util.TimeValue{Key: k, Value: v})
 		} else {
@@ -219,11 +219,11 @@ func CalculateAverageMaintainerReach(outputName string, resultMap *sync.Map) {
 		log.Fatal(err)
 	}
 
-	filePath := path.Join("/home/markus/npm-analysis/", outputName+".json")
-	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	outputPath := path.Join(outputFolder, fmt.Sprintf("%s.json", fileName))
+	err = ioutil.WriteFile(outputPath, jsonBytes, os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	plots.GenerateLinePlotForAverageMaintainerReach(outputName, avgValues)
+	plots.GenerateLinePlotForAverageResults(fileName, avgValues)
 }

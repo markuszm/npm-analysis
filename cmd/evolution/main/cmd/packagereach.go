@@ -84,9 +84,9 @@ func packageReachAll(dependentsMaps map[time.Time]map[string][]string) {
 	workerWait.Wait()
 	endTime := time.Now()
 	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
-	reach.CalculateAverageMaintainerReach("averagePackageReach", &packageReachResultMap)
-	reach.CalculateMaintainerReachDiff("packageReachDiff", &packageReachResultMap)
-	err := reach.CalculatePackageReachDiff(&packageReachResultMap, "packageReachDiffs")
+	reach.CalculateAverageResults("averagePackageReach", packageReachResultPath, &packageReachResultMap)
+	reach.CalculateMaintainerReachDiff("packageReachDiff", packageReachResultPath, &packageReachResultMap)
+	err := reach.CalculatePackageReachDiffs(&packageReachResultMap, "packageReachDiffs", packageReachResultPath)
 	if err != nil {
 		log.Fatal(err)
 	}

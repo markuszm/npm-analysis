@@ -21,6 +21,17 @@ func (p PairList) Len() int           { return len(p) }
 func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
 func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+type FloatPair struct {
+	Key   string
+	Value float64
+}
+
+type FloatPairList []FloatPair
+
+func (p FloatPairList) Len() int           { return len(p) }
+func (p FloatPairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
+func (p FloatPairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
 type TimeValue struct {
 	Key   time.Time
 	Value float64

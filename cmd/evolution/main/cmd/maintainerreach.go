@@ -54,6 +54,7 @@ func init() {
 	maintainerReachCmd.Flags().BoolVar(&maintainerReachGenerateData, "generateData", false, "whether it should generate intermediate map for performance")
 	maintainerReachCmd.Flags().StringVar(&maintainerReachMaintainer, "maintainer", "", "specifiy maintainer to get detailed results for the one")
 	maintainerReachCmd.Flags().StringVar(&maintainerReachResultPath, "resultPath", "/home/markus/npm-analysis/", "path for single maintainer result")
+
 }
 
 func maintainerReachCalculatePackageReach(maintainer string) {
@@ -112,9 +113,9 @@ func maintainerReachCalculatePackageReach(maintainer string) {
 
 		log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 
-		reach.CalculateAverageMaintainerReach("averageMaintainerReach", &maintainerReachResultMap)
+		reach.CalculateAverageResults("averageMaintainerReach", maintainerReachResultPath, &maintainerReachResultMap)
 
-		reach.CalculateMaintainerReachDiff("maintainerReachDiff", &maintainerReachResultMap)
+		reach.CalculateMaintainerReachDiff("maintainerReachDiff", maintainerReachResultPath, &maintainerReachResultMap)
 	} else {
 		// calculate for one maintainer the reach of each package per month and overall reach
 

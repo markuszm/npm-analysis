@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
 	reach "github.com/markuszm/npm-analysis/evolution/maintainerreach"
 	"github.com/markuszm/npm-analysis/plots"
+	"github.com/markuszm/npm-analysis/util"
 	"github.com/spf13/cobra"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
+	"sort"
 	"sync"
 	"time"
 )
@@ -26,6 +32,10 @@ var maintainerCostResultMap = sync.Map{}
 
 var maintainerCostGenerateData bool
 
+var maintainerCostIsEvolution bool
+
+var maintainerCostOutputFolder string
+
 var maintainerCostCmd = &cobra.Command{
 	Use:   "maintainerCost",
 	Short: "Calculates Package Cost of a maintainer and plots it",
@@ -43,9 +53,11 @@ func init() {
 	rootCmd.AddCommand(maintainerCostCmd)
 
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostCreatePlot, "createPlot", false, "whether to create plots")
+	maintainerCostCmd.Flags().BoolVar(&maintainerCostIsEvolution, "evolution", false, "whether to calculate evolution of maintainer cost")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostGenerateData, "generateData", false, "whether to generate cached data")
 	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 100, "number of workers")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostPackageFileInput, "packageInput", "", "input file containing packages")
+	maintainerCostCmd.Flags().StringVar(&maintainerCostOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
 }
 
 func maintainerCostCalculate() {
@@ -71,47 +83,86 @@ func maintainerCostCalculate() {
 
 	log.Printf("Took %v minutes to process all packages", endTime.Sub(startTime).Minutes())
 
-	reach.CalculateAverageMaintainerReach("averageMaintainerCost", &maintainerCostResultMap)
+	if maintainerCostIsEvolution {
+		reach.CalculateAverageResults("averageMaintainerCost", maintainerCostOutputFolder, &maintainerCostResultMap)
 
-	reach.CalculateMaintainerReachDiff("maintainerCostDiff", &maintainerCostResultMap)
+		reach.CalculateMaintainerReachDiff("maintainerCostDiff", maintainerCostOutputFolder, &maintainerCostResultMap)
+	} else {
+		var countPairs []util.FloatPair
+
+		maintainerCostResultMap.Range(func(key, value interface{}) bool {
+			pkg := key.(string)
+			count := value.(float64)
+
+			countPairs = append(countPairs, util.FloatPair{
+				Key:   pkg,
+				Value: count,
+			})
+			return true
+		})
+
+		sort.Sort(sort.Reverse(util.FloatPairList(countPairs)))
+
+		bytes, err := json.Marshal(countPairs)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		outputPath := path.Join(maintainerCostOutputFolder, fmt.Sprintf("%s.json", "maintainerCostLatest"))
+		err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+	}
+
 }
 
 func maintainerCostWorker(workerId int, jobs chan string, dependenciesTimeline map[time.Time]map[string]map[string]bool, maintainersTimeline map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
-	for j := range jobs {
-		var counts []float64
-		pkg := j
+	for pkg := range jobs {
 
-		for year := 2010; year < 2019; year++ {
-			startMonth := 1
-			endMonth := 12
-			if year == 2010 {
-				startMonth = 11
+		if maintainerCostIsEvolution {
+			var counts []float64
+
+			for year := 2010; year < 2019; year++ {
+				startMonth := 1
+				endMonth := 12
+				if year == 2010 {
+					startMonth = 11
+				}
+				if year == 2018 {
+					endMonth = 4
+				}
+				for month := startMonth; month <= endMonth; month++ {
+					date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+
+					maintainers := make(map[string]bool)
+
+					calculateMaintainerCost(pkg, maintainers, date, dependenciesTimeline, maintainersTimeline)
+
+					counts = append(counts, float64(len(maintainers)))
+				}
 			}
-			if year == 2018 {
-				endMonth = 4
+
+			maintainerCostResultMap.Store(pkg, counts)
+
+			outputFolder := "maintainer-cost"
+			if maintainerCostCreatePlot {
+				fileName := plots.GetPlotFileName(pkg, outputFolder)
+				if _, err := os.Stat(fileName); err == nil {
+					continue
+				}
+				plots.GenerateLinePlotForMaintainerReach(outputFolder, pkg, counts, maintainerCostCreatePlot)
+			} else {
+				plots.GenerateLinePlotForMaintainerReach(outputFolder, pkg, counts, maintainerCostCreatePlot)
 			}
-			for month := startMonth; month <= endMonth; month++ {
-				date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 
-				maintainers := make(map[string]bool)
-
-				calculateMaintainerCost(pkg, maintainers, date, dependenciesTimeline, maintainersTimeline)
-
-				counts = append(counts, float64(len(maintainers)))
-			}
-		}
-
-		maintainerCostResultMap.Store(pkg, counts)
-
-		outputFolder := "maintainer-cost"
-		if maintainerCostCreatePlot {
-			fileName := plots.GetPlotFileName(pkg, outputFolder)
-			if _, err := os.Stat(fileName); err == nil {
-				continue
-			}
-			plots.GenerateLinePlotForMaintainerReach(outputFolder, pkg, counts, maintainerCostCreatePlot)
 		} else {
-			plots.GenerateLinePlotForMaintainerReach(outputFolder, pkg, counts, maintainerCostCreatePlot)
+			date := time.Date(2018, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
+
+			maintainers := make(map[string]bool)
+
+			calculateMaintainerCost(pkg, maintainers, date, dependenciesTimeline, maintainersTimeline)
+
+			count := float64(len(maintainers))
+
+			maintainerCostResultMap.Store(pkg, count)
 		}
 
 		log.Printf("Worker %v Finished %v", workerId, pkg)
