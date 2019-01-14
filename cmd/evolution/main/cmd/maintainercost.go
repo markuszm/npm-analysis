@@ -36,6 +36,9 @@ var maintainerCostIsEvolution bool
 
 var maintainerCostOutputFolder string
 
+var maintainerCostDependenciesTimeline map[time.Time]map[string]map[string]bool
+var maintainerCostMaintainerTimeline map[time.Time]map[string][]string
+
 var maintainerCostCmd = &cobra.Command{
 	Use:   "maintainerCost",
 	Short: "Calculates Package Cost of a maintainer and plots it",
@@ -55,14 +58,14 @@ func init() {
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostCreatePlot, "createPlot", false, "whether to create plots")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostIsEvolution, "evolution", false, "whether to calculate evolution of maintainer cost")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostGenerateData, "generateData", false, "whether to generate cached data")
-	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 100, "number of workers")
+	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 8, "number of workers")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostPackageFileInput, "packageInput", "", "input file containing packages")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
 }
 
 func maintainerCostCalculate() {
-	maintainersTimeline := reach.LoadJSONMaintainersTimeline(maintainerCostMaintainersTimelineJsonPath)
-	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerCostDependenciesTimelineJsonPath)
+	maintainerCostMaintainerTimeline = reach.LoadJSONMaintainersTimeline(maintainerCostMaintainersTimelineJsonPath)
+	maintainerCostDependenciesTimeline = reach.LoadJSONDependenciesTimeline(maintainerCostDependenciesTimelineJsonPath)
 
 	startTime := time.Now()
 
@@ -74,7 +77,7 @@ func maintainerCostCalculate() {
 
 	for w := 1; w <= maintainerCostWorkerNumber; w++ {
 		workerWait.Add(1)
-		go maintainerCostWorker(w, jobs, dependenciesTimeline, maintainersTimeline, &workerWait)
+		go maintainerCostWorker(w, jobs, &workerWait)
 	}
 
 	workerWait.Wait()
@@ -114,7 +117,7 @@ func maintainerCostCalculate() {
 
 }
 
-func maintainerCostWorker(workerId int, jobs chan string, dependenciesTimeline map[time.Time]map[string]map[string]bool, maintainersTimeline map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
+func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 	for pkg := range jobs {
 
 		if maintainerCostIsEvolution {
@@ -133,8 +136,9 @@ func maintainerCostWorker(workerId int, jobs chan string, dependenciesTimeline m
 					date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 
 					maintainers := make(map[string]bool)
+					visited := make(map[string]bool)
 
-					calculateMaintainerCost(pkg, maintainers, date, dependenciesTimeline, maintainersTimeline)
+					calculateMaintainerCost(pkg, maintainers, visited, maintainerCostMaintainerTimeline[date], maintainerCostDependenciesTimeline[date])
 
 					counts = append(counts, float64(len(maintainers)))
 				}
@@ -157,8 +161,13 @@ func maintainerCostWorker(workerId int, jobs chan string, dependenciesTimeline m
 			date := time.Date(2018, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
 
 			maintainers := make(map[string]bool)
+			visited := make(map[string]bool)
 
-			calculateMaintainerCost(pkg, maintainers, date, dependenciesTimeline, maintainersTimeline)
+			log.Print(maintainerCostMaintainerTimeline[date]["relateurl"])
+			log.Print(maintainerCostMaintainerTimeline[date]["lodash.keys"])
+			log.Print(maintainerCostMaintainerTimeline[date]["encodeurl"])
+
+			calculateMaintainerCost(pkg, maintainers, visited, maintainerCostMaintainerTimeline[date], maintainerCostDependenciesTimeline[date])
 
 			count := float64(len(maintainers))
 
@@ -170,14 +179,15 @@ func maintainerCostWorker(workerId int, jobs chan string, dependenciesTimeline m
 	workerWait.Done()
 }
 
-func calculateMaintainerCost(pkg string, maintainers map[string]bool, date time.Time, dependenciesTimeline map[time.Time]map[string]map[string]bool, maintainersTimeline map[time.Time]map[string][]string) {
-	for _, m := range maintainersTimeline[date][pkg] {
+func calculateMaintainerCost(pkg string, maintainers map[string]bool, visited map[string]bool, maintainersMap map[string][]string, dependenciesMap map[string]map[string]bool) {
+	for _, m := range maintainersMap[pkg] {
 		maintainers[m] = true
 	}
 
-	for dep, ok := range dependenciesTimeline[date][pkg] {
-		if ok {
-			calculateMaintainerCost(dep, maintainers, date, dependenciesTimeline, maintainersTimeline)
+	for dep, ok := range dependenciesMap[pkg] {
+		if ok && !visited[dep] {
+			visited[dep] = true
+			calculateMaintainerCost(dep, maintainers, visited, maintainersMap, dependenciesMap)
 		}
 	}
 }

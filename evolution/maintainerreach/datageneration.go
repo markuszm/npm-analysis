@@ -167,14 +167,12 @@ func GenerateTimeMaintainersMap(mongoUrl, outputPath string) {
 			if maintainersTimeline[t] == nil {
 				maintainersTimeline[t] = make(map[string][]string, 0)
 			}
-			if len(pkg.Dependencies) > 0 {
-				maintainers := make([]string, 0)
-				for _, m := range pkg.Maintainers {
-					maintainers = append(maintainers, m)
-				}
-
-				maintainersTimeline[t][doc.Key] = maintainers
+			maintainers := make([]string, 0)
+			for _, m := range pkg.Maintainers {
+				maintainers = append(maintainers, m)
 			}
+
+			maintainersTimeline[t][doc.Key] = maintainers
 		}
 
 		if i%10000 == 0 {
