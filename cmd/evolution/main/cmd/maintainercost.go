@@ -163,10 +163,6 @@ func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitG
 			maintainers := make(map[string]bool)
 			visited := make(map[string]bool)
 
-			log.Print(maintainerCostMaintainerTimeline[date]["relateurl"])
-			log.Print(maintainerCostMaintainerTimeline[date]["lodash.keys"])
-			log.Print(maintainerCostMaintainerTimeline[date]["encodeurl"])
-
 			calculateMaintainerCost(pkg, maintainers, visited, maintainerCostMaintainerTimeline[date], maintainerCostDependenciesTimeline[date])
 
 			count := float64(len(maintainers))
