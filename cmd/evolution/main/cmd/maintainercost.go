@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"github.com/markuszm/npm-analysis/database"
-	"github.com/markuszm/npm-analysis/evolution"
 	reach "github.com/markuszm/npm-analysis/evolution/maintainerreach"
 	"github.com/markuszm/npm-analysis/plots"
 	"github.com/spf13/cobra"
@@ -14,7 +12,9 @@ import (
 
 const maintainerCostMongoUrl = "mongodb://npm:npm123@localhost:27017"
 
-const maintainerCostJsonPath = "./db-data/dependenciesTimeline.json"
+const maintainerCostMaintainersTimelineJsonPath = "./db-data/maintainersTimeline.json"
+
+const maintainerCostDependenciesTimelineJsonPath = "./db-data/dependenciesTimeline.json"
 
 var maintainerCostWorkerNumber int
 
@@ -24,13 +24,15 @@ var maintainerCostPackageFileInput string
 
 var maintainerCostResultMap = sync.Map{}
 
+var maintainerCostGenerateData bool
+
 var maintainerCostCmd = &cobra.Command{
 	Use:   "maintainerCost",
 	Short: "Calculates Package Cost of a maintainer and plots it",
 	Long:  `...`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if maintainerReachGenerateData {
-			reach.GenerateTimeLatestVersionMap(maintainerCostMongoUrl, maintainerCostJsonPath)
+		if maintainerCostGenerateData {
+			reach.GenerateTimeMaintainersMap(maintainerCostMongoUrl, maintainerCostMaintainersTimelineJsonPath)
 		}
 
 		maintainerCostCalculate()
@@ -41,18 +43,14 @@ func init() {
 	rootCmd.AddCommand(maintainerCostCmd)
 
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostCreatePlot, "createPlot", false, "whether to create plots")
+	maintainerCostCmd.Flags().BoolVar(&maintainerCostGenerateData, "generateData", false, "whether to generate cached data")
 	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 100, "number of workers")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostPackageFileInput, "packageInput", "", "input file containing packages")
 }
 
 func maintainerCostCalculate() {
-	//dependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerReachJsonPath)
-
-	mongoDB := database.NewMongoDB(maintainerReachMongoUrl, "npm", "timelineNew")
-	mongoDB.Connect()
-	defer mongoDB.Disconnect()
-
-	log.Print("Connected to mongodb")
+	maintainersTimeline := reach.LoadJSONMaintainersTimeline(maintainerCostMaintainersTimelineJsonPath)
+	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerCostDependenciesTimelineJsonPath)
 
 	startTime := time.Now()
 
@@ -64,21 +62,21 @@ func maintainerCostCalculate() {
 
 	for w := 1; w <= maintainerCostWorkerNumber; w++ {
 		workerWait.Add(1)
-		go maintainerCostWorker(w, jobs, mongoDB, &workerWait)
+		go maintainerCostWorker(w, jobs, dependenciesTimeline, maintainersTimeline, &workerWait)
 	}
 
 	workerWait.Wait()
 
 	endTime := time.Now()
 
-	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
+	log.Printf("Took %v minutes to process all packages", endTime.Sub(startTime).Minutes())
 
 	reach.CalculateAverageMaintainerReach("averageMaintainerCost", &maintainerCostResultMap)
 
 	reach.CalculateMaintainerReachDiff("maintainerCostDiff", &maintainerCostResultMap)
 }
 
-func maintainerCostWorker(workerId int, jobs chan string, mongoDB *database.MongoDB, workerWait *sync.WaitGroup) {
+func maintainerCostWorker(workerId int, jobs chan string, dependenciesTimeline map[time.Time]map[string]map[string]bool, maintainersTimeline map[time.Time]map[string][]string, workerWait *sync.WaitGroup) {
 	for j := range jobs {
 		var counts []float64
 		pkg := j
@@ -97,7 +95,7 @@ func maintainerCostWorker(workerId int, jobs chan string, mongoDB *database.Mong
 
 				maintainers := make(map[string]bool)
 
-				calculateMaintainerCost(pkg, maintainers, mongoDB, date)
+				calculateMaintainerCost(pkg, maintainers, date, dependenciesTimeline, maintainersTimeline)
 
 				counts = append(counts, float64(len(maintainers)))
 			}
@@ -121,23 +119,14 @@ func maintainerCostWorker(workerId int, jobs chan string, mongoDB *database.Mong
 	workerWait.Done()
 }
 
-func getPackageDataForDate(mongoDB *database.MongoDB, pkg string, date time.Time) evolution.PackageData {
-	packageData, err := mongoDB.FindPackageDataInTimeline(pkg, date)
-	if err != nil {
-		log.Printf("did not find package even though it should exist with error: %v for package %v", err.Error(), pkg)
-		return evolution.PackageData{}
-	}
-	return packageData
-}
-
-func calculateMaintainerCost(pkg string, maintainers map[string]bool, mongoDB *database.MongoDB, date time.Time) {
-	packageData := getPackageDataForDate(mongoDB, pkg, date)
-
-	for _, m := range packageData.Maintainers {
+func calculateMaintainerCost(pkg string, maintainers map[string]bool, date time.Time, dependenciesTimeline map[time.Time]map[string]map[string]bool, maintainersTimeline map[time.Time]map[string][]string) {
+	for _, m := range maintainersTimeline[date][pkg] {
 		maintainers[m] = true
 	}
 
-	for _, dep := range packageData.Dependencies {
-		calculateMaintainerCost(dep, maintainers, mongoDB, date)
+	for dep, ok := range dependenciesTimeline[date][pkg] {
+		if ok {
+			calculateMaintainerCost(dep, maintainers, date, dependenciesTimeline, maintainersTimeline)
+		}
 	}
 }

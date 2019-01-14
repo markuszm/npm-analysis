@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/markuszm/npm-analysis/database"
+	reach "github.com/markuszm/npm-analysis/evolution/maintainerreach"
 	"github.com/markuszm/npm-analysis/model"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/spf13/cobra"
@@ -18,22 +19,25 @@ const MongoUrl = "mongodb://npm:npm123@localhost:27017"
 
 const OutputPath = "/home/markus/npm-analysis/averageDeps.json"
 
+const dependenciesTimelinePath = "./db-data/dependenciesTimeline.json"
+
 var averageDepsCmd = &cobra.Command{
 	Use:   "averageDeps",
 	Short: "Averages dependencies",
 	Long:  `...`,
 	Run: func(cmd *cobra.Command, args []string) {
-		depCountMap := make(map[time.Time]int, 0)
+		outCountMap := make(map[time.Time]int, 0)
+		inCountMap := make(map[time.Time]int, 0)
 		packageCountMap := make(map[time.Time]int, 0)
 
-		err := collectData(depCountMap, packageCountMap)
+		err := collectData(outCountMap, inCountMap, packageCountMap)
 		if err != nil {
 			log.Fatalf("error while collecting data with %v", err)
 		}
 
-		averagesMap := calculateAverages(depCountMap, packageCountMap)
+		averagesInMap, averagesOutMap := calculateAverages(outCountMap, inCountMap, packageCountMap)
 
-		err = writeData(depCountMap, packageCountMap, averagesMap)
+		err = writeData(outCountMap, packageCountMap, averagesInMap, averagesOutMap)
 		if err != nil {
 			log.Fatalf("error writing results with %v", err)
 		}
@@ -44,8 +48,9 @@ func init() {
 	rootCmd.AddCommand(averageDepsCmd)
 }
 
-func calculateAverages(depCountMap map[time.Time]int, packageCountMap map[time.Time]int) map[time.Time]float64 {
-	averagesMap := make(map[time.Time]float64, 0)
+func calculateAverages(outCountMap, inCountMap, packageCountMap map[time.Time]int) (map[time.Time]float64, map[time.Time]float64) {
+	averagesInMap := make(map[time.Time]float64, 0)
+	averagesOutMap := make(map[time.Time]float64, 0)
 	for year := 2010; year < 2019; year++ {
 		startMonth := 1
 		endMonth := 12
@@ -57,21 +62,26 @@ func calculateAverages(depCountMap map[time.Time]int, packageCountMap map[time.T
 		}
 		for month := startMonth; month <= endMonth; month++ {
 			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-			depOverallCount := depCountMap[date]
+			inOverallCount := inCountMap[date]
+			outOverallCount := outCountMap[date]
 			packageOverallCount := packageCountMap[date]
 
-			average := float64(depOverallCount) / float64(packageOverallCount)
-			averagesMap[date] = average
+			averageIn := float64(inOverallCount) / float64(packageOverallCount)
+			averagesInMap[date] = averageIn
+
+			averageOut := float64(outOverallCount) / float64(packageOverallCount)
+			averagesOutMap[date] = averageOut
 		}
 	}
-	return averagesMap
+	return averagesInMap, averagesOutMap
 }
 
-func writeData(depCountMap map[time.Time]int, packageCountMap map[time.Time]int, averagesMap map[time.Time]float64) error {
+func writeData(depCountMap map[time.Time]int, packageCountMap map[time.Time]int, averagesInMap, averagesOutMap map[time.Time]float64) error {
 	bytes, err := json.Marshal(map[string]interface{}{
 		"depCounts":    depCountMap,
 		"packageCount": packageCountMap,
-		"averages":     averagesMap,
+		"averagesIn":   averagesInMap,
+		"averagesOut":  averagesOutMap,
 	})
 	if err != nil {
 		return err
@@ -79,7 +89,7 @@ func writeData(depCountMap map[time.Time]int, packageCountMap map[time.Time]int,
 	return ioutil.WriteFile(OutputPath, bytes, os.ModePerm)
 }
 
-func collectData(depCountMap, packageCountMap map[time.Time]int) error {
+func collectData(outCountMap, inCountMap, packageCountMap map[time.Time]int) error {
 	mongoDB := database.NewMongoDB(MongoUrl, "npm", "timeline")
 	mongoDB.Connect()
 	defer mongoDB.Disconnect()
@@ -91,6 +101,10 @@ func collectData(depCountMap, packageCountMap map[time.Time]int) error {
 	i := 0
 
 	packageTimemap := make(map[time.Time][]string)
+
+	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(dependenciesTimelinePath)
+
+	dependentsMaps := reach.GenerateDependentsMaps(dependenciesTimeline)
 
 	for cursor.Next(context.Background()) {
 		doc, err := mongoDB.DecodeValue(cursor)
@@ -117,8 +131,11 @@ func collectData(depCountMap, packageCountMap map[time.Time]int) error {
 			packageCountMap[t]++
 
 			if data.Dependencies != nil {
-				depCountMap[t] += len(data.Dependencies)
+				outCountMap[t] += len(data.Dependencies)
 			}
+
+			dependents := dependentsMaps[t][doc.Key]
+			inCountMap[t] += len(dependents)
 		}
 
 		if i%10000 == 0 {

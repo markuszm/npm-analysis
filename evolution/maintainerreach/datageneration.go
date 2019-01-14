@@ -18,13 +18,28 @@ func LoadJSONDependenciesTimeline(path string) map[time.Time]map[string]map[stri
 	if err != nil {
 		log.Fatal(err)
 	}
-	var dependenciesTimeline map[time.Time]map[string]map[string]bool
-	err = json.Unmarshal(bytes, &dependenciesTimeline)
+	var timeline map[time.Time]map[string]map[string]bool
+	err = json.Unmarshal(bytes, &timeline)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Print("Finished loading json")
-	return dependenciesTimeline
+	return timeline
+}
+
+func LoadJSONMaintainersTimeline(path string) map[time.Time]map[string][]string {
+	log.Print("Loading json")
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var timeline map[time.Time]map[string][]string
+	err = json.Unmarshal(bytes, &timeline)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print("Finished loading json")
+	return timeline
 }
 
 func GenerateDependentsMaps(dependenciesTimeline map[time.Time]map[string]map[string]bool) map[time.Time]map[string][]string {
@@ -113,6 +128,64 @@ func GenerateTimeLatestVersionMap(mongoUrl, outputPath string) {
 	endTime := time.Now()
 	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
 	bytes, err := json.Marshal(dependenciesTimeline)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print("Finished transforming to JSON")
+	ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+}
+
+func GenerateTimeMaintainersMap(mongoUrl, outputPath string) {
+	maintainersTimeline := make(map[time.Time]map[string][]string, 0)
+
+	mongoDB := database.NewMongoDB(mongoUrl, "npm", "timeline")
+
+	mongoDB.Connect()
+	defer mongoDB.Disconnect()
+
+	startTime := time.Now()
+
+	cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.D{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	i := 0
+	for cursor.Next(context.Background()) {
+		doc, err := mongoDB.DecodeValue(cursor)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var timeMap map[time.Time]model.SlimPackageData
+
+		err = json.Unmarshal([]byte(doc.Value), &timeMap)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for t, pkg := range timeMap {
+			if maintainersTimeline[t] == nil {
+				maintainersTimeline[t] = make(map[string][]string, 0)
+			}
+			if len(pkg.Dependencies) > 0 {
+				maintainers := make([]string, 0)
+				for _, m := range pkg.Maintainers {
+					maintainers = append(maintainers, m)
+				}
+
+				maintainersTimeline[t][doc.Key] = maintainers
+			}
+		}
+
+		if i%10000 == 0 {
+			log.Printf("Finished %v packages", i)
+		}
+		i++
+	}
+	cursor.Close(context.Background())
+	endTime := time.Now()
+	log.Printf("Took %v minutes to process all Documents from MongoDB", endTime.Sub(startTime).Minutes())
+	bytes, err := json.Marshal(maintainersTimeline)
 	if err != nil {
 		log.Fatal(err)
 	}

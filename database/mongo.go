@@ -152,6 +152,22 @@ func (m *MongoDB) DecodeValue(cur mongo.Cursor) (Document, error) {
 	return val, nil
 }
 
+func (m *MongoDB) FindPackageReach(pkg string, time time.Time) ([]string, error) {
+	result := m.ActiveCollection.FindOne(context.Background(), bson.D{
+		{"Package", pkg},
+		{"Time", time.String()},
+	})
+
+	document := PackageReachDocument{}
+
+	err := result.Decode(&document)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return document.ReachedPackages, nil
+}
+
 func (m *MongoDB) InsertOneSimple(key, value string) error {
 	_, err := m.ActiveCollection.InsertOne(context.Background(), bson.D{
 		{"key", key},
@@ -175,6 +191,17 @@ func (m *MongoDB) InsertPackageTimeline(pkg string, pkgTimeline map[time.Time]ev
 	return err
 }
 
+func (m *MongoDB) InsertPackageReach(pkg string, time time.Time, reachedPkgs []string) error {
+	document := PackageReachDocument{
+		Package:         pkg,
+		Time:            time.String(),
+		ReachedPackages: reachedPkgs,
+	}
+
+	_, err := m.ActiveCollection.InsertOne(context.Background(), document)
+	return err
+}
+
 func (m *MongoDB) RemoveWithKey(key string) error {
 	_, err := m.ActiveCollection.DeleteOne(context.Background(), bson.D{
 		{"key", key}})
@@ -183,4 +210,10 @@ func (m *MongoDB) RemoveWithKey(key string) error {
 
 type Document struct {
 	Key, Value string
+}
+
+type PackageReachDocument struct {
+	Package         string
+	Time            string
+	ReachedPackages []string
 }
