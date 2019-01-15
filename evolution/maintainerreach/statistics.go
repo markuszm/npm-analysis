@@ -225,5 +225,5 @@ func CalculateAverageResults(fileName string, outputFolder string, resultMap *sy
 		log.Fatal(err)
 	}
 
-	plots.GenerateLinePlotForAverageResults(fileName, avgValues)
+	plots.GenerateLinePlotForAverageResults(outputFolder, fileName, avgValues)
 }

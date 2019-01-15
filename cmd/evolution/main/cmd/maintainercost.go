@@ -146,7 +146,7 @@ func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitG
 
 			maintainerCostResultMap.Store(pkg, counts)
 
-			outputFolder := "maintainer-cost"
+			outputFolder := path.Join(maintainerCostOutputFolder, "maintainer-cost")
 			if maintainerCostCreatePlot {
 				fileName := plots.GetPlotFileName(pkg, outputFolder)
 				if _, err := os.Stat(fileName); err == nil {

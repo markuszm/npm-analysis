@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -77,7 +78,7 @@ func GenerateLinePlotForMaintainerReach(outputFolder string, maintainerName stri
 	}
 }
 
-func GenerateLinePlotForAverageResults(outputName string, counts []float64) {
+func GenerateLinePlotForAverageResults(outputFolder, outputName string, counts []float64) {
 	p, err := plot.New()
 	if err != nil {
 		log.Fatal(err)
@@ -92,11 +93,10 @@ func GenerateLinePlotForAverageResults(outputName string, counts []float64) {
 		log.Fatal(err)
 	}
 
-	// TODO: hard coded path CHANGE THIS
-	SavePlot("/home/markus/npm-analysis/"+outputName+".png", p)
+	SavePlot(path.Join(outputFolder, outputName+".png"), p)
 }
 
-func GenerateLinePlotForAverageMaintainerPackageCount(counts []float64) {
+func GenerateLinePlotForAverageMaintainerPackageCount(outputFolder string, counts []float64) {
 	p, err := plot.New()
 	if err != nil {
 		log.Fatal(err)
@@ -111,11 +111,10 @@ func GenerateLinePlotForAverageMaintainerPackageCount(counts []float64) {
 		log.Fatal(err)
 	}
 
-	// TODO: hard coded path CHANGE THIS
-	SavePlot("/home/markus/npm-analysis/averageMaintainerPackageCount.png", p)
+	SavePlot(path.Join(outputFolder, "averageMaintainerPackageCount.png"), p)
 }
 
-func GenerateSortedLinePlotMaintainerPackageCount(valuesPerYear map[int][]float64) {
+func GenerateSortedLinePlotMaintainerPackageCount(outputFolder string, valuesPerYear map[int][]float64) {
 	p, err := plot.New()
 	if err != nil {
 		log.Fatal(err)
@@ -134,8 +133,7 @@ func GenerateSortedLinePlotMaintainerPackageCount(valuesPerYear map[int][]float6
 		log.Fatal(err)
 	}
 
-	// TODO: hard coded path CHANGE THIS
-	SavePlot("/home/markus/npm-analysis/sortedMaintainerPackageCount.png", p)
+	SavePlot(path.Join(outputFolder, "sortedMaintainerPackageCount.png"), p)
 }
 
 type YearTicks struct {
@@ -212,14 +210,13 @@ func SavePlot(fileName string, p *plot.Plot) {
 }
 
 func GetNestedDirName(maintainerName string, dir string) string {
-	// TODO: hard coded path CHANGE THIS
-	return fmt.Sprintf("/home/markus/npm-analysis/%v/%v", dir, string(maintainerName[0]))
+	return fmt.Sprintf("%v/%v", dir, string(maintainerName[0]))
 }
 
 func GetPlotFileName(maintainerName string, dir string) string {
 	maintainerName = strings.Replace(maintainerName, "/", "", -1)
 	maintainerName = strings.Replace(maintainerName, " ", "", -1)
-	return fmt.Sprintf("%v/maintainerPackageEvolution-%v.png", GetNestedDirName(maintainerName, dir), maintainerName)
+	return fmt.Sprintf("%v/%v.png", GetNestedDirName(maintainerName, dir), maintainerName)
 }
 
 func GeneratePointsFromMaintainerCounts(counts evolution.MaintainerCount) plotter.XYs {

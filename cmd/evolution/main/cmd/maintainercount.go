@@ -30,6 +30,8 @@ var maintainerCountDB *sql.DB
 
 var maintainerCountInsertDB bool
 
+var maintainerCountOutputFolder string
+
 // Stores maintainer count into database and plots average maintainer count and sorted maintainer count
 var maintainerCountCmd = &cobra.Command{
 	Use:   "maintainerCount",
@@ -86,6 +88,8 @@ func init() {
 	rootCmd.AddCommand(maintainerCountCmd)
 
 	maintainerCountCmd.Flags().BoolVar(&maintainerCountInsertDB, "insertdb", false, "specify whether maintainer count should be inserted into db")
+	maintainerCountCmd.Flags().StringVar(&maintainerCountOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
+
 }
 
 func calculateAverageMaintainerCount(countMap map[string]evolution.MaintainerCount) {
@@ -157,13 +161,13 @@ func calculateAverageMaintainerCount(countMap map[string]evolution.MaintainerCou
 		log.Fatal(err)
 	}
 
-	filePath := path.Join("/home/markus/npm-analysis/", "averageMaintainerPackageCount.json")
+	filePath := path.Join(maintainerCountOutputFolder, "averageMaintainerPackageCount.json")
 	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	plots.GenerateLinePlotForAverageMaintainerPackageCount(avgValues)
+	plots.GenerateLinePlotForAverageMaintainerPackageCount(maintainerCountOutputFolder, avgValues)
 }
 
 func plotSortedMaintainerPackageCount(countMap map[string]evolution.MaintainerCount) {
@@ -198,12 +202,12 @@ func plotSortedMaintainerPackageCount(countMap map[string]evolution.MaintainerCo
 		valuesPerYear[y] = sortedList
 	}
 
-	err := writeSortedMaintainerPackageCount(valuesPerYear, "/home/markus/npm-analysis/sortedMaintainerPackageCount.json")
+	err := writeSortedMaintainerPackageCount(valuesPerYear, path.Join(maintainerCountOutputFolder, "sortedMaintainerPackageCount.json"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	plots.GenerateSortedLinePlotMaintainerPackageCount(valuesPerYear)
+	plots.GenerateSortedLinePlotMaintainerPackageCount(maintainerCountOutputFolder, valuesPerYear)
 }
 
 func writeSortedMaintainerPackageCount(valuesPerYear map[int][]float64, filePath string) error {
