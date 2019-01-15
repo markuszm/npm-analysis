@@ -152,20 +152,20 @@ func (m *MongoDB) DecodeValue(cur mongo.Cursor) (Document, error) {
 	return val, nil
 }
 
-func (m *MongoDB) FindPackageReach(pkg string, time time.Time) ([]string, error) {
+func (m *MongoDB) FindPackageReach(pkg string, time time.Time) (PackageReachDocument, error) {
 	result := m.ActiveCollection.FindOne(context.Background(), bson.D{
-		{"Package", pkg},
-		{"Time", time.String()},
+		{"package", pkg},
+		{"time", time.String()},
 	})
 
 	document := PackageReachDocument{}
 
 	err := result.Decode(&document)
 	if err != nil {
-		return []string{}, err
+		return document, err
 	}
 
-	return document.ReachedPackages, nil
+	return document, nil
 }
 
 func (m *MongoDB) InsertOneSimple(key, value string) error {

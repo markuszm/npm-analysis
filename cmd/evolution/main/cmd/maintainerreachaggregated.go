@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/markuszm/npm-analysis/database"
-	reach "github.com/markuszm/npm-analysis/evolution/maintainerreach"
 	"github.com/markuszm/npm-analysis/util"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/pkg/errors"
@@ -19,38 +18,27 @@ import (
 	"time"
 )
 
-const maintainerReachAggMongoUrl = "mongodb://npm:npm123@localhost:27017"
+// Commandline arguments
+var maintainerReachAggMongoUrl string
+var maintainerReachAggOptimal bool
+var maintainerReachAggResultPath string
+var maintainerReachAggMaintainerRanking string
+var maintainerReachAggMaintainerReachResults string
+var maintainerReachMonth int
+var maintainerReachYear int
 
-const maintainerReachAggJsonPath = "./db-data/dependenciesTimeline.json"
+var maintainerRankingList []string
+var maintainerReachAggResults map[string][]string
 
 var packageReachedMap map[string]bool
 
 var reachTo100Percent []int
-
-var maintainerReachAggGenerateData bool
-
-var maintainerReachAggResultPath string
-
-var maintainerReachAggMaintainerRanking string
-
-var maintainerReachAggPackageInput string
-
-var maintainerRankingList []string
 
 var maintainerReachAggCmd = &cobra.Command{
 	Use:   "maintainerReachAgg",
 	Short: "Aggregates package reach of maintainers and create plot results",
 	Long:  `...`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if maintainerReachAggGenerateData {
-			reach.GenerateTimeLatestVersionMap(maintainerReachAggMongoUrl, maintainerReachAggJsonPath)
-		}
-
-		err := loadPackagesToReachedMap(maintainerReachAggPackageInput)
-		if err != nil {
-			log.Fatal(err)
-		}
-
 		maintainerReachAggCalculatePackageReach()
 	},
 }
@@ -58,30 +46,13 @@ var maintainerReachAggCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(maintainerReachAggCmd)
 
-	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggPackageInput, "packageInput", "", "input file containing packages")
-	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggMaintainerRanking, "maintainerInput", "", "input file containing ranked list of maintainers as json")
-	maintainerReachAggCmd.Flags().BoolVar(&maintainerReachAggGenerateData, "generateData", false, "whether it should generate intermediate map for performance")
+	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggMaintainerRanking, "ranking", "", "input file containing ranked list of maintainers as json")
+	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggMaintainerReachResults, "reachResults", "", "input file containing complete reach results")
+	maintainerReachAggCmd.Flags().BoolVar(&maintainerReachAggOptimal, "optimal", false, "whether it should find optimal distribution")
 	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggResultPath, "resultPath", "/home/markus/npm-analysis/maintainerReachAgg", "path for single maintainer result")
-}
-
-func loadPackagesToReachedMap(packagesInput string) error {
-	file, err := ioutil.ReadFile(packagesInput)
-	if err != nil {
-		return errors.Wrap(err, "could not read file")
-	}
-
-	var packages []string
-	json.Unmarshal(file, &packages)
-
-	packageReachedMap = make(map[string]bool, 0)
-	for _, p := range packages {
-		if p == "" {
-			continue
-		}
-		packageReachedMap[p] = false
-	}
-
-	return nil
+	maintainerReachAggCmd.Flags().IntVar(&maintainerReachMonth, "month", 4, "month for date to calculate")
+	maintainerReachAggCmd.Flags().IntVar(&maintainerReachYear, "year", 2018, "year for date to calculate")
+	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggMongoUrl, "mongodb", "mongodb://npm:npm123@localhost:27017", "mongo url")
 }
 
 func loadMaintainerRanking() error {
@@ -89,192 +60,310 @@ func loadMaintainerRanking() error {
 	if err != nil {
 		return errors.Wrap(err, "could not read file")
 	}
-	json.Unmarshal(file, &maintainerRankingList)
+	err = json.Unmarshal(file, &maintainerRankingList)
 
-	return nil
+	return err
+}
+
+func loadMaintainerReachResults() error {
+	file, err := ioutil.ReadFile(maintainerReachAggMaintainerReachResults)
+	if err != nil {
+		return errors.Wrap(err, "could not read file")
+	}
+	err = json.Unmarshal(file, &maintainerReachAggResults)
+
+	return err
 }
 
 func maintainerReachAggCalculatePackageReach() {
-	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerReachAggJsonPath)
+	if maintainerReachAggOptimal {
+		rankMaintainersOptimal()
+		return
+	}
 
-	dependentsMaps := reach.GenerateDependentsMaps(dependenciesTimeline)
+	mongoDBPackages := database.NewMongoDB(maintainerReachAggMongoUrl, "npm", "maintainerPackages")
+	err := mongoDBPackages.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer mongoDBPackages.Disconnect()
 
-	mongoDB := database.NewMongoDB(maintainerReachAggMongoUrl, "npm", "maintainerPackages")
-	mongoDB.Connect()
-	defer mongoDB.Disconnect()
+	mongoDBReach := database.NewMongoDB(maintainerReachAggMongoUrl, "npm", "packageReach")
+	err = mongoDBReach.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer mongoDBReach.Disconnect()
 
 	log.Print("Connected to mongodb")
 
 	log.Print("Loading maintainer package data from mongoDB")
 
-	maintainerIndex := 0
+	date := time.Date(maintainerReachYear, time.Month(maintainerReachMonth), 1, 0, 0, 0, 0, time.UTC)
 
 	if maintainerReachAggMaintainerRanking == "" {
-		cursor, err := mongoDB.ActiveCollection.Find(context.Background(), bson.D{})
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		var results []util.MaintainerReachResult
-
-		for cursor.Next(context.Background()) {
-			doc, err := mongoDB.DecodeValue(cursor)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			var data StoreMaintainedPackages
-			err = json.Unmarshal([]byte(doc.Value), &data)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			if data.Name == "" {
-				continue
-			}
-
-			lastYear := 2018
-			lastMonth := 4
-			date := time.Date(lastYear, time.Month(lastMonth), 1, 0, 0, 0, 0, time.UTC)
-
-			maintainedPackages := data.PackagesTimeline[date]
-
-			allPackages := make(map[string]bool, 0)
-			for _, pkg := range maintainedPackages {
-				reach.PackageReach(pkg, dependentsMaps[date], allPackages)
-			}
-			var packageReachList []string
-
-			for pkg, ok := range allPackages {
-				if ok {
-					packageReachList = append(packageReachList, pkg)
-				}
-			}
-
-			maintainerReachResult := util.MaintainerReachResult{
-				Count:      len(packageReachList),
-				Name:       data.Name,
-				Packages:   maintainedPackages,
-				Dependents: packageReachList,
-			}
-
-			results = append(results, maintainerReachResult)
-		}
-
-		sort.Sort(sort.Reverse(util.MaintainerReachResultList(results)))
-
-		var maintainers []string
-		for _, r := range results {
-			maintainers = append(maintainers, r.Name)
-		}
-
-		jsonBytes, err := json.MarshalIndent(maintainers, "", "\t")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		filePath := path.Join(maintainerReachAggResultPath, "maintainerRanking.json")
-		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("Wrote results to file %v", filePath)
-
-		jsonBytes, err = json.MarshalIndent(results, "", "\t")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		filePath = path.Join(maintainerReachAggResultPath, "maintainerRankingComplete.json")
-		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("Wrote results to file %v", filePath)
+		rankMaintainers(mongoDBPackages, mongoDBReach, date)
 	} else {
-		err := loadMaintainerRanking()
+		// old way of sorting by top reach
+		calculateReachIntersection(mongoDBPackages, mongoDBReach, date)
+	}
+}
+
+func calculateReachIntersection(mongoDBPackages, mongoDBReach *database.MongoDB, date time.Time) {
+	err := loadMaintainerRanking()
+	if err != nil {
+		log.Fatal(err)
+	}
+	maintainerIndex := 0
+
+	packageReachedMap = make(map[string]bool)
+
+	for _, maintainer := range maintainerRankingList {
+		doc, err := mongoDBPackages.FindOneSimple("key", maintainer)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		for _, maintainer := range maintainerRankingList {
-			doc, err := mongoDB.FindOneSimple("key", maintainer)
+		var data StoreMaintainedPackages
+		err = json.Unmarshal([]byte(doc), &data)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if data.Name == "" {
+			continue
+		}
+
+		maintainedPackages := data.PackagesTimeline[date]
+
+		allPackages := make(map[string]bool, 0)
+		for _, pkg := range maintainedPackages {
+			reachDocument, err := mongoDBReach.FindPackageReach(pkg, date)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("cant find reach for pkg: %v with err: %v", pkg, err)
 			}
-
-			var data StoreMaintainedPackages
-			err = json.Unmarshal([]byte(doc), &data)
-			if err != nil {
-				log.Fatal(err)
+			reachedPackages := reachDocument.ReachedPackages
+			for _, p := range reachedPackages {
+				allPackages[p] = true
 			}
+		}
+		newlyAdded := 0
 
-			if data.Name == "" {
-				continue
-			}
+		var packageReachList []string
 
-			lastYear := 2018
-			lastMonth := 4
-			date := time.Date(lastYear, time.Month(lastMonth), 1, 0, 0, 0, 0, time.UTC)
-
-			maintainedPackages := data.PackagesTimeline[date]
-
-			allPackages := make(map[string]bool, 0)
-			for _, pkg := range maintainedPackages {
-				reach.PackageReach(pkg, dependentsMaps[date], allPackages)
-			}
-			newlyAdded := 0
-
-			var packageReachList []string
-
-			for pkg, ok := range allPackages {
-				if ok {
-					if !packageReachedMap[pkg] {
-						newlyAdded++
-					}
-					packageReachedMap[pkg] = true
-					packageReachList = append(packageReachList, pkg)
+		for pkg, ok := range allPackages {
+			if ok {
+				if !packageReachedMap[pkg] {
+					newlyAdded++
 				}
+				packageReachedMap[pkg] = true
+				packageReachList = append(packageReachList, pkg)
 			}
-
-			if maintainerIndex == 0 {
-				reachTo100Percent = append(reachTo100Percent, newlyAdded)
-			} else {
-				oldCount := reachTo100Percent[maintainerIndex-1]
-				reachTo100Percent = append(reachTo100Percent, newlyAdded+oldCount)
-			}
-
-			jsonBytes, err := json.MarshalIndent(packageReachList, "", "\t")
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			filePath := GetFilePathForMaintainer(data.Name)
-			err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
-			if err != nil {
-				log.Print(err)
-			}
-
-			log.Printf("Wrote results to file %v", filePath)
-
-			maintainerIndex++
 		}
 
-		jsonBytes, err := json.Marshal(reachTo100Percent)
+		if maintainerIndex == 0 {
+			reachTo100Percent = append(reachTo100Percent, newlyAdded)
+		} else {
+			oldCount := reachTo100Percent[maintainerIndex-1]
+			reachTo100Percent = append(reachTo100Percent, newlyAdded+oldCount)
+		}
+
+		jsonBytes, err := json.MarshalIndent(packageReachList, "", "\t")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		filePath := path.Join(maintainerReachAggResultPath, "reachTo100Percent.json")
+		filePath := GetFilePathForMaintainer(data.Name)
 		err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
 		if err != nil {
+			log.Print(err)
+		}
+
+		log.Printf("Wrote results to file %v", filePath)
+
+		maintainerIndex++
+	}
+	jsonBytes, err := json.Marshal(reachTo100Percent)
+	if err != nil {
+		log.Fatal(err)
+	}
+	filePath := path.Join(maintainerReachAggResultPath, "reachTo100Percent.json")
+	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func rankMaintainers(mongoDBPackages, mongoDBReach *database.MongoDB, date time.Time) {
+	cursor, err := mongoDBPackages.ActiveCollection.Find(context.Background(), bson.D{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	var results []util.MaintainerReachResult
+
+	reachResultMap := make(map[string][]string)
+
+	idx := 1
+
+	for cursor.Next(context.Background()) {
+		doc, err := mongoDBPackages.DecodeValue(cursor)
+		if err != nil {
 			log.Fatal(err)
 		}
 
+		var data StoreMaintainedPackages
+		err = json.Unmarshal([]byte(doc.Value), &data)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		maintainer := data.Name
+		if maintainer == "" {
+			continue
+		}
+
+		maintainedPackages := data.PackagesTimeline[date]
+
+		allPackages := make(map[string]bool, 0)
+		for _, pkg := range maintainedPackages {
+			reachDocument, err := mongoDBReach.FindPackageReach(pkg, date)
+			if err != nil {
+				log.Printf("ERROR: cant find reach for maintainer %v pkg: %v with err: %v", maintainer, pkg, err)
+			}
+			reachedPackages := reachDocument.ReachedPackages
+			for _, p := range reachedPackages {
+				allPackages[p] = true
+			}
+		}
+
+		var packageReachList []string
+
+		for pkg, ok := range allPackages {
+			if ok {
+				packageReachList = append(packageReachList, pkg)
+			}
+		}
+
+		maintainerReachResult := util.MaintainerReachResult{
+			Count: len(packageReachList),
+			Name:  maintainer,
+		}
+
+		results = append(results, maintainerReachResult)
+
+		reachResultMap[maintainer] = packageReachList
+
+		log.Print(idx)
+		idx++
 	}
 
+	sort.Sort(sort.Reverse(util.MaintainerReachResultList(results)))
+	var maintainers []string
+	for _, r := range results {
+		maintainers = append(maintainers, r.Name)
+	}
+	jsonBytes, err := json.MarshalIndent(maintainers, "", "\t")
+	if err != nil {
+		log.Fatal(err)
+	}
+	filePath := path.Join(maintainerReachAggResultPath, "maintainerRanking.json")
+	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Wrote results to file %v", filePath)
+
+	jsonBytes, err = json.MarshalIndent(reachResultMap, "", "\t")
+	if err != nil {
+		log.Fatal(err)
+	}
+	filePath = path.Join(maintainerReachAggResultPath, "maintainerRankingComplete.json")
+	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Wrote results to file %v", filePath)
+}
+
+func rankMaintainersOptimal() {
+	err := loadMaintainerRanking()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = loadMaintainerReachResults()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	startMaintainer := maintainerRankingList[0]
+
+	var optimalRanking []string
+	var intersectionCounts []int
+	intersectionSet := make(map[string]bool)
+
+	var previousIntersectionReach = 0
+
+	previousIntersectionReach, intersectionCounts, optimalRanking = addMaintainerToOptimalRanking(startMaintainer, previousIntersectionReach, intersectionCounts, intersectionSet, optimalRanking)
+
+	var reachDiffs []util.Pair
+
+	for {
+		// TODO: concurrent if performance is bad
+		for m, r := range maintainerReachAggResults {
+			diff := 0
+			for _, d := range r {
+				if !intersectionSet[d] {
+					diff++
+				}
+			}
+			reachDiffs = append(reachDiffs, util.Pair{Key: m, Value: diff})
+		}
+
+		sort.Sort(sort.Reverse(util.PairList(reachDiffs)))
+
+		nextOptimalMaintainer := reachDiffs[0]
+		if nextOptimalMaintainer.Value == 0 {
+			break
+		}
+
+		log.Printf("adding next optimal maintainer %v with diff %v", nextOptimalMaintainer.Key, nextOptimalMaintainer.Value)
+
+		previousIntersectionReach, intersectionCounts, optimalRanking = addMaintainerToOptimalRanking(nextOptimalMaintainer.Key, previousIntersectionReach, intersectionCounts, intersectionSet, optimalRanking)
+	}
+
+	results := map[string]interface{}{
+		"OptimalRanking":     optimalRanking,
+		"IntersectionCounts": intersectionCounts,
+		"MaximumReach":       len(intersectionCounts),
+	}
+
+	jsonBytes, err := json.MarshalIndent(results, "", "\t")
+	if err != nil {
+		log.Fatal(err)
+	}
+	filePath := path.Join(maintainerReachAggResultPath, "optimalRanking.json")
+	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Wrote results to file %v", filePath)
+}
+
+func addMaintainerToOptimalRanking(maintainer string, previousIntersectionReach int, intersectionCounts []int, intersectionSet map[string]bool, optimalRanking []string) (int, []int, []string) {
+	maintainerReach := maintainerReachAggResults[maintainer]
+	newlyAdded := 0
+	for _, d := range maintainerReach {
+		if !intersectionSet[d] {
+			intersectionSet[d] = true
+			newlyAdded++
+		}
+	}
+	newIntersectionReach := previousIntersectionReach + newlyAdded
+	intersectionCounts = append(intersectionCounts, newIntersectionReach)
+	optimalRanking = append(optimalRanking, maintainer)
+
+	return newIntersectionReach, intersectionCounts, optimalRanking
 }
 
 func GetFilePathForMaintainer(maintainerName string) string {
