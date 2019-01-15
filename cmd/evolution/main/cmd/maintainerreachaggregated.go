@@ -26,6 +26,7 @@ var maintainerReachAggMaintainerRanking string
 var maintainerReachAggMaintainerReachResults string
 var maintainerReachMonth int
 var maintainerReachYear int
+var maintainerReachLimit int
 
 var maintainerRankingList []string
 var maintainerReachAggResults map[string][]string
@@ -52,6 +53,7 @@ func init() {
 	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggResultPath, "resultPath", "/home/markus/npm-analysis/maintainerReachAgg", "path for single maintainer result")
 	maintainerReachAggCmd.Flags().IntVar(&maintainerReachMonth, "month", 4, "month for date to calculate")
 	maintainerReachAggCmd.Flags().IntVar(&maintainerReachYear, "year", 2018, "year for date to calculate")
+	maintainerReachAggCmd.Flags().IntVar(&maintainerReachLimit, "limit", 20, "optimal ranking limit")
 	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggMongoUrl, "mongodb", "mongodb://npm:npm123@localhost:27017", "mongo url")
 }
 
@@ -302,15 +304,20 @@ func rankMaintainersOptimal() {
 	var intersectionCounts []int
 	intersectionSet := make(map[string]bool)
 
+	alreadyVisitedMaintainers := make(map[string]bool)
+
 	var previousIntersectionReach = 0
 
 	previousIntersectionReach, intersectionCounts, optimalRanking = addMaintainerToOptimalRanking(startMaintainer, previousIntersectionReach, intersectionCounts, intersectionSet, optimalRanking)
 
-	var reachDiffs []util.Pair
-
 	for {
+		var reachDiffs []util.Pair
 		// TODO: concurrent if performance is bad
 		for m, r := range maintainerReachAggResults {
+			if alreadyVisitedMaintainers[m] {
+				continue
+			}
+
 			diff := 0
 			for _, d := range r {
 				if !intersectionSet[d] {
@@ -323,19 +330,20 @@ func rankMaintainersOptimal() {
 		sort.Sort(sort.Reverse(util.PairList(reachDiffs)))
 
 		nextOptimalMaintainer := reachDiffs[0]
-		if nextOptimalMaintainer.Value == 0 {
+		if nextOptimalMaintainer.Value == 0 || len(optimalRanking) >= maintainerReachLimit {
 			break
 		}
 
 		log.Printf("adding next optimal maintainer %v with diff %v", nextOptimalMaintainer.Key, nextOptimalMaintainer.Value)
 
 		previousIntersectionReach, intersectionCounts, optimalRanking = addMaintainerToOptimalRanking(nextOptimalMaintainer.Key, previousIntersectionReach, intersectionCounts, intersectionSet, optimalRanking)
+		alreadyVisitedMaintainers[nextOptimalMaintainer.Key] = true
 	}
 
 	results := map[string]interface{}{
 		"OptimalRanking":     optimalRanking,
 		"IntersectionCounts": intersectionCounts,
-		"MaximumReach":       len(intersectionCounts),
+		"MaximumReach":       intersectionCounts[len(optimalRanking)-1],
 	}
 
 	jsonBytes, err := json.MarshalIndent(results, "", "\t")
