@@ -54,3 +54,29 @@ func streamPackageNamesFromFile(packageChan chan string, filePath string) {
 
 	close(packageChan)
 }
+
+func getPackageNamesFromFile(filePath string) []string {
+	var packages []string
+	if strings.HasSuffix(filePath, ".json") {
+		file, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			logger.Fatalw("could not read file", "err", err)
+		}
+
+		err = json.Unmarshal(file, &packages)
+		logger.Fatalw("could not unmarshal file", "err", err)
+	} else {
+		file, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			logger.Fatalw("could not read file", "err", err)
+		}
+		lines := strings.Split(string(file), "\n")
+		for _, l := range lines {
+			if l == "" {
+				continue
+			}
+			packages = append(packages, l)
+		}
+	}
+	return packages
+}

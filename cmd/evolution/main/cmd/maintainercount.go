@@ -79,7 +79,7 @@ var maintainerCountCmd = &cobra.Command{
 			workerWait.Wait()
 		}
 
-		calculateAverageMaintainerCount(countMap)
+		calculateAverageMaintainerCountEvolution(countMap)
 		plotSortedMaintainerPackageCount(countMap)
 	},
 }
@@ -92,7 +92,7 @@ func init() {
 
 }
 
-func calculateAverageMaintainerCount(countMap map[string]evolution.MaintainerCount) {
+func calculateAverageMaintainerCountEvolution(countMap map[string]evolution.MaintainerCount) {
 	maintainerPackageCount := make(map[time.Time]float64, 0)
 	maintainerCount := make(map[time.Time]float64, 0)
 	averageMaintainerPackageCountPerMonth := make(map[time.Time]float64, 0)

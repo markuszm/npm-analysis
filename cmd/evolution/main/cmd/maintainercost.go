@@ -27,17 +27,22 @@ var maintainerCostWorkerNumber int
 var maintainerCostCreatePlot bool
 
 var maintainerCostPackageFileInput string
-
 var maintainerCostResultMap = sync.Map{}
 
 var maintainerCostGenerateData bool
 
 var maintainerCostIsEvolution bool
 
+var maintainerCostIsTrustedMaintainers bool
+var maintainerCostMaintainerReachRankingInput string
+
 var maintainerCostOutputFolder string
 
 var maintainerCostDependenciesTimeline map[time.Time]map[string]map[string]bool
 var maintainerCostMaintainerTimeline map[time.Time]map[string][]string
+
+var latestDependencies map[string]map[string]bool
+var latestMaintainers map[string][]string
 
 var maintainerCostCmd = &cobra.Command{
 	Use:   "maintainerCost",
@@ -57,6 +62,8 @@ func init() {
 
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostCreatePlot, "createPlot", false, "whether to create plots")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostIsEvolution, "evolution", false, "whether to calculate evolution of maintainer cost")
+	maintainerCostCmd.Flags().BoolVar(&maintainerCostIsTrustedMaintainers, "trusted", false, "whether to calculate trusted aggregation")
+	maintainerCostCmd.Flags().StringVar(&maintainerCostMaintainerReachRankingInput, "reachOrder", "", "input file containing maintainer reach order")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostGenerateData, "generateData", false, "whether to generate cached data")
 	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 8, "number of workers")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostPackageFileInput, "packageInput", "", "input file containing packages")
@@ -64,8 +71,61 @@ func init() {
 }
 
 func maintainerCostCalculate() {
-	maintainerCostMaintainerTimeline = reach.LoadJSONMaintainersTimeline(maintainerCostMaintainersTimelineJsonPath)
-	maintainerCostDependenciesTimeline = reach.LoadJSONDependenciesTimeline(maintainerCostDependenciesTimelineJsonPath)
+	if !maintainerCostIsEvolution {
+		date := time.Date(2018, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
+		maintainerCostMaintainerTimeline := reach.LoadJSONMaintainersTimeline(maintainerCostMaintainersTimelineJsonPath)
+		latestMaintainers = maintainerCostMaintainerTimeline[date]
+
+		maintainerCostDependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerCostDependenciesTimelineJsonPath)
+		latestDependencies = maintainerCostDependenciesTimeline[date]
+	} else {
+		maintainerCostMaintainerTimeline = reach.LoadJSONMaintainersTimeline(maintainerCostMaintainersTimelineJsonPath)
+		maintainerCostDependenciesTimeline = reach.LoadJSONDependenciesTimeline(maintainerCostDependenciesTimelineJsonPath)
+	}
+
+	if maintainerCostIsTrustedMaintainers {
+		trustedMaintainersSet := make(map[string]bool, 0)
+
+		var maintainerReachRanking []string
+
+		var averages []float64
+
+		bytes, err := ioutil.ReadFile(maintainerCostMaintainerReachRankingInput)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = json.Unmarshal(bytes, &maintainerReachRanking)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		packages := getPackageNamesFromFile(maintainerCostPackageFileInput)
+
+		cost := calculateAverageMaintainerCost(packages, trustedMaintainersSet)
+
+		averages = append(averages, cost)
+
+		for _, m := range maintainerReachRanking {
+			trustedMaintainersSet[m] = true
+
+			cost := calculateAverageMaintainerCost(packages, trustedMaintainersSet)
+
+			averages = append(averages, cost)
+
+			log.Printf("added %v as trusted maintainer", m)
+		}
+
+		bytes, err = json.Marshal(averages)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		outputPath := path.Join(maintainerCostOutputFolder, fmt.Sprintf("%s.json", "trustedMaintainersCost"))
+		err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+
+		return
+	}
 
 	startTime := time.Now()
 
@@ -158,12 +218,10 @@ func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitG
 			}
 
 		} else {
-			date := time.Date(2018, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
-
 			maintainers := make(map[string]bool)
 			visited := make(map[string]bool)
 
-			calculateMaintainerCost(pkg, maintainers, visited, maintainerCostMaintainerTimeline[date], maintainerCostDependenciesTimeline[date])
+			calculateMaintainerCost(pkg, maintainers, visited, latestMaintainers, latestDependencies)
 
 			count := float64(len(maintainers))
 
@@ -173,6 +231,28 @@ func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitG
 		log.Printf("Worker %v Finished %v", workerId, pkg)
 	}
 	workerWait.Done()
+}
+
+func calculateAverageMaintainerCost(packages []string, trustedMaintainers map[string]bool) float64 {
+	totalCost := 0
+
+	for _, pkg := range packages {
+		maintainers := make(map[string]bool)
+		visited := make(map[string]bool)
+
+		// only first party protection
+		calculateMaintainerCost(pkg, maintainers, visited, latestMaintainers, latestDependencies)
+
+		for m, ok := range maintainers {
+			if ok {
+				if !trustedMaintainers[m] {
+					totalCost += 1
+				}
+			}
+		}
+	}
+
+	return float64(totalCost) / float64(len(packages))
 }
 
 func calculateMaintainerCost(pkg string, maintainers map[string]bool, visited map[string]bool, maintainersMap map[string][]string, dependenciesMap map[string]map[string]bool) {
