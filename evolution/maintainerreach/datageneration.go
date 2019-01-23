@@ -27,6 +27,21 @@ func LoadJSONDependenciesTimeline(path string) map[time.Time]map[string]map[stri
 	return timeline
 }
 
+func LoadJSONLatestDependencies(path string) map[string]map[string]bool {
+	log.Print("Loading json")
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var latestDependencies map[string]map[string]bool
+	err = json.Unmarshal(bytes, &latestDependencies)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print("Finished loading json")
+	return latestDependencies
+}
+
 func LoadJSONMaintainersTimeline(path string) map[time.Time]map[string][]string {
 	log.Print("Loading json")
 	bytes, err := ioutil.ReadFile(path)
@@ -40,6 +55,51 @@ func LoadJSONMaintainersTimeline(path string) map[time.Time]map[string][]string 
 	}
 	log.Print("Finished loading json")
 	return timeline
+}
+
+func LoadJSONLatestMaintainers(path string) map[string][]string {
+	log.Print("Loading json")
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var latestMaintainers map[string][]string
+	err = json.Unmarshal(bytes, &latestMaintainers)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print("Finished loading json")
+	return latestMaintainers
+}
+
+func GenerateJSONLatestMaintainers(timelinePath, outputPath string, date time.Time) {
+	maintainerCostMaintainerTimeline := LoadJSONMaintainersTimeline(timelinePath)
+	latestMaintainers := maintainerCostMaintainerTimeline[date]
+	bytes, err := json.Marshal(latestMaintainers)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print("Finished transforming to JSON")
+	err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func GenerateJSONLatestDependencies(timelinePath, outputPath string, date time.Time) {
+	maintainerCostDependenciesTimeline := LoadJSONDependenciesTimeline(timelinePath)
+	latestDependencies := maintainerCostDependenciesTimeline[date]
+
+	bytes, err := json.Marshal(latestDependencies)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print("Finished transforming to JSON")
+	err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func GenerateDependentsMaps(dependenciesTimeline map[time.Time]map[string]map[string]bool) map[time.Time]map[string][]string {

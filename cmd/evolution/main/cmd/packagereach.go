@@ -24,6 +24,7 @@ const packageReachWorkerNumber = 100
 var packageReachResultMap = sync.Map{}
 
 var packageReachCreatePlot bool
+var packageReachCreatePerPackageData bool
 
 var packageReachResultPath string
 
@@ -52,6 +53,7 @@ func init() {
 
 	packageReachCmd.Flags().StringVar(&packageReachMongoDB, "mongodb", "mongodb://npm:npm123@localhost:27017", "mongodb url")
 	packageReachCmd.Flags().BoolVar(&packageReachCreatePlot, "createPlot", false, "whether it should create plots for each package")
+	packageReachCmd.Flags().BoolVar(&packageReachCreatePerPackageData, "createPerPackage", false, "whether it should create data files per package")
 	packageReachCmd.Flags().BoolVar(&packageReachIsMongoInsert, "mongoInsert", false, "whether it should insert package reach into mongo")
 	packageReachCmd.Flags().StringVar(&packageReachPackageFileInput, "packageInput", "", "input file containing packages")
 	packageReachCmd.Flags().StringVar(&packageReachPackageInput, "package", "", "specifiy package to get detailed results for the one")
@@ -66,7 +68,7 @@ func calculatePackageReach(pkg string) {
 	if pkg == "" {
 		packageReachAll(dependentsMaps)
 	} else {
-		// calculate for one maintainer the reach of each package per month and overall reach
+		// calculate for one package the reach of each package per month and overall reach
 		packageReachOne(pkg, dependentsMaps)
 	}
 
@@ -171,9 +173,11 @@ func packageReachWorker(workerId int, jobs chan string, dependentsMaps map[time.
 					}
 				}
 
-				err := mongoDB.InsertPackageReach(pkg, date, reachedPackages)
-				if err != nil {
-					log.Fatalf("ERROR: cannot insert package reach into mongo with error: %v", err)
+				if packageReachIsMongoInsert {
+					err := mongoDB.InsertPackageReach(pkg, date, reachedPackages)
+					if err != nil {
+						log.Fatalf("ERROR: cannot insert package reach into mongo with error: %v", err)
+					}
 				}
 
 				counts = append(counts, float64(len(packages)))
@@ -189,7 +193,9 @@ func packageReachWorker(workerId int, jobs chan string, dependentsMaps map[time.
 			}
 			plots.GenerateLinePlotForMaintainerReach("package-reach", pkg, counts, packageReachCreatePlot)
 		} else {
-			plots.GenerateLinePlotForMaintainerReach("package-reach", pkg, counts, packageReachCreatePlot)
+			if packageReachCreatePerPackageData {
+				plots.GenerateLinePlotForMaintainerReach("package-reach", pkg, counts, packageReachCreatePlot)
+			}
 		}
 
 		//log.Printf("Finished %v", pkg.Name)

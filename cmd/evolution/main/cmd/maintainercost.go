@@ -19,12 +19,15 @@ import (
 const maintainerCostMongoUrl = "mongodb://npm:npm123@localhost:27017"
 
 const maintainerCostMaintainersTimelineJsonPath = "./db-data/maintainersTimeline.json"
+const maintainerCostLatestMaintainersJsonPath = "./db-data/latestMaintainersTimeline.json"
 
 const maintainerCostDependenciesTimelineJsonPath = "./db-data/dependenciesTimeline.json"
+const maintainerCostLatestDependenciesJsonPath = "./db-data/latestDependenciesTimeline.json"
 
 var maintainerCostWorkerNumber int
 
 var maintainerCostCreatePlot bool
+var maintainerCostCreatePerMaintainerData bool
 
 var maintainerCostPackageFileInput string
 var maintainerCostResultMap = sync.Map{}
@@ -44,16 +47,25 @@ var maintainerCostMaintainerTimeline map[time.Time]map[string][]string
 var latestDependencies map[string]map[string]bool
 var latestMaintainers map[string][]string
 
+var trustedMaintainersResultMap sync.Map
+
 var maintainerCostCmd = &cobra.Command{
 	Use:   "maintainerCost",
 	Short: "Calculates Package Cost of a maintainer and plots it",
 	Long:  `...`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if maintainerCostGenerateData {
-			reach.GenerateTimeMaintainersMap(maintainerCostMongoUrl, maintainerCostMaintainersTimelineJsonPath)
+			if !maintainerCostIsEvolution {
+				date := time.Date(2018, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
+				reach.GenerateJSONLatestMaintainers(maintainerCostMaintainersTimelineJsonPath, maintainerCostLatestMaintainersJsonPath, date)
+				reach.GenerateJSONLatestDependencies(maintainerCostDependenciesTimelineJsonPath, maintainerCostLatestDependenciesJsonPath, date)
+			} else {
+				reach.GenerateTimeMaintainersMap(maintainerCostMongoUrl, maintainerCostMaintainersTimelineJsonPath)
+			}
+		} else {
+			maintainerCostCalculate()
 		}
 
-		maintainerCostCalculate()
 	},
 }
 
@@ -61,23 +73,20 @@ func init() {
 	rootCmd.AddCommand(maintainerCostCmd)
 
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostCreatePlot, "createPlot", false, "whether to create plots")
+	maintainerCostCmd.Flags().BoolVar(&maintainerCostCreatePerMaintainerData, "createPerMaintainer", false, "whether it should create data files per maintainer")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostIsEvolution, "evolution", false, "whether to calculate evolution of maintainer cost")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostIsTrustedMaintainers, "trusted", false, "whether to calculate trusted aggregation")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostMaintainerReachRankingInput, "reachOrder", "", "input file containing maintainer reach order")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostGenerateData, "generateData", false, "whether to generate cached data")
-	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 8, "number of workers")
+	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 50, "number of workers")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostPackageFileInput, "packageInput", "", "input file containing packages")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
 }
 
 func maintainerCostCalculate() {
 	if !maintainerCostIsEvolution {
-		date := time.Date(2018, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
-		maintainerCostMaintainerTimeline := reach.LoadJSONMaintainersTimeline(maintainerCostMaintainersTimelineJsonPath)
-		latestMaintainers = maintainerCostMaintainerTimeline[date]
-
-		maintainerCostDependenciesTimeline := reach.LoadJSONDependenciesTimeline(maintainerCostDependenciesTimelineJsonPath)
-		latestDependencies = maintainerCostDependenciesTimeline[date]
+		latestMaintainers = reach.LoadJSONLatestMaintainers(maintainerCostLatestMaintainersJsonPath)
+		latestDependencies = reach.LoadJSONLatestDependencies(maintainerCostLatestDependenciesJsonPath)
 	} else {
 		maintainerCostMaintainerTimeline = reach.LoadJSONMaintainersTimeline(maintainerCostMaintainersTimelineJsonPath)
 		maintainerCostDependenciesTimeline = reach.LoadJSONDependenciesTimeline(maintainerCostDependenciesTimelineJsonPath)
@@ -102,18 +111,22 @@ func maintainerCostCalculate() {
 
 		packages := getPackageNamesFromFile(maintainerCostPackageFileInput)
 
-		cost := calculateAverageMaintainerCost(packages, trustedMaintainersSet)
+		allResults := calculateAllMaintainerCosts(packages)
+
+		cost := calculateAverageForTrustedMaintainers(allResults, len(packages), trustedMaintainersSet)
 
 		averages = append(averages, cost)
+
+		log.Printf("calculated avg without trusted maintainers: %v", cost)
 
 		for _, m := range maintainerReachRanking {
 			trustedMaintainersSet[m] = true
 
-			cost := calculateAverageMaintainerCost(packages, trustedMaintainersSet)
+			cost := calculateAverageForTrustedMaintainers(allResults, len(packages), trustedMaintainersSet)
 
 			averages = append(averages, cost)
 
-			log.Printf("added %v as trusted maintainer", m)
+			log.Printf("added %v as trusted maintainer - avg is now %v", m, cost)
 		}
 
 		bytes, err = json.Marshal(averages)
@@ -177,6 +190,33 @@ func maintainerCostCalculate() {
 
 }
 
+func copyMap(src map[string]bool) map[string]bool {
+	target := make(map[string]bool, len(src))
+
+	// Copy from the original map to the target map
+	for key, value := range src {
+		target[key] = value
+	}
+
+	return target
+}
+
+func calculateAverageForTrustedMaintainers(results []map[string]bool, packageCount int, trustedMaintainers map[string]bool) float64 {
+	totalCost := 0
+
+	for _, r := range results {
+		for m, ok := range r {
+			if ok {
+				if !trustedMaintainers[m] {
+					totalCost += 1
+				}
+			}
+		}
+	}
+
+	return float64(totalCost) / float64(packageCount)
+}
+
 func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {
 	for pkg := range jobs {
 
@@ -214,7 +254,9 @@ func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitG
 				}
 				plots.GenerateLinePlotForMaintainerReach(outputFolder, pkg, counts, maintainerCostCreatePlot)
 			} else {
-				plots.GenerateLinePlotForMaintainerReach(outputFolder, pkg, counts, maintainerCostCreatePlot)
+				if maintainerCostCreatePerMaintainerData {
+					plots.GenerateLinePlotForMaintainerReach(outputFolder, pkg, counts, maintainerCostCreatePlot)
+				}
 			}
 
 		} else {
@@ -233,26 +275,59 @@ func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitG
 	workerWait.Done()
 }
 
-func calculateAverageMaintainerCost(packages []string, trustedMaintainers map[string]bool) float64 {
-	totalCost := 0
+func calculateAllMaintainerCosts(packages []string) []map[string]bool {
+	workerWait := sync.WaitGroup{}
+	resultWait := sync.WaitGroup{}
+
+	jobs := make(chan string, 100)
+	results := make(chan map[string]bool, 100)
+
+	// only first party protection
+	for w := 1; w <= maintainerCostWorkerNumber; w++ {
+		workerWait.Add(1)
+		go maintainerCostWorkerWithResults(w, jobs, results, &workerWait)
+	}
+
+	var allResults []map[string]bool
+	go func() {
+		resultWait.Add(1)
+		allResults = resultWorker(results, &resultWait)
+	}()
 
 	for _, pkg := range packages {
+		jobs <- pkg
+	}
+
+	close(jobs)
+	workerWait.Wait()
+	close(results)
+	resultWait.Wait()
+
+	return allResults
+}
+
+func maintainerCostWorkerWithResults(id int, jobs chan string, results chan map[string]bool, workerWait *sync.WaitGroup) {
+	for pkg := range jobs {
 		maintainers := make(map[string]bool)
 		visited := make(map[string]bool)
 
 		// only first party protection
 		calculateMaintainerCost(pkg, maintainers, visited, latestMaintainers, latestDependencies)
 
-		for m, ok := range maintainers {
-			if ok {
-				if !trustedMaintainers[m] {
-					totalCost += 1
-				}
-			}
-		}
+		results <- maintainers
+	}
+	workerWait.Done()
+}
+
+func resultWorker(results chan map[string]bool, workerWait *sync.WaitGroup) []map[string]bool {
+	var allResults []map[string]bool
+
+	for r := range results {
+		allResults = append(allResults, r)
 	}
 
-	return float64(totalCost) / float64(len(packages))
+	workerWait.Done()
+	return allResults
 }
 
 func calculateMaintainerCost(pkg string, maintainers map[string]bool, visited map[string]bool, maintainersMap map[string][]string, dependenciesMap map[string]map[string]bool) {
