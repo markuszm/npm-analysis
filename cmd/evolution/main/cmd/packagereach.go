@@ -35,6 +35,7 @@ var packageReachPackageInput string
 var packageReachMongoDB string
 
 var packageReachIsMongoInsert bool
+var packageReachIsRanking bool
 
 // calculates Package reach of a packages and plots it
 var packageReachCmd = &cobra.Command{
@@ -55,12 +56,28 @@ func init() {
 	packageReachCmd.Flags().BoolVar(&packageReachCreatePlot, "createPlot", false, "whether it should create plots for each package")
 	packageReachCmd.Flags().BoolVar(&packageReachCreatePerPackageData, "createPerPackage", false, "whether it should create data files per package")
 	packageReachCmd.Flags().BoolVar(&packageReachIsMongoInsert, "mongoInsert", false, "whether it should insert package reach into mongo")
+	packageReachCmd.Flags().BoolVar(&packageReachIsRanking, "ranking", false, "ranks packages by reach")
 	packageReachCmd.Flags().StringVar(&packageReachPackageFileInput, "packageInput", "", "input file containing packages")
 	packageReachCmd.Flags().StringVar(&packageReachPackageInput, "package", "", "specifiy package to get detailed results for the one")
 	packageReachCmd.Flags().StringVar(&packageReachResultPath, "resultPath", "/home/markus/npm-analysis/", "path for single package result")
 }
 
 func calculatePackageReach(pkg string) {
+	if packageReachIsRanking {
+		mongoDBReach := database.NewMongoDB(packageReachMongoDB, "npm", "packageReach")
+		err := mongoDBReach.Connect()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer mongoDBReach.Disconnect()
+
+		date := time.Date(2018, time.Month(4), 1, 0, 0, 0, 0, time.UTC)
+
+		rankPackages(mongoDBReach, date)
+
+		return
+	}
+
 	dependenciesTimeline := reach.LoadJSONDependenciesTimeline(packageReachJSONPath)
 
 	dependentsMaps := reach.GenerateDependentsMaps(dependenciesTimeline)
@@ -72,6 +89,44 @@ func calculatePackageReach(pkg string) {
 		packageReachOne(pkg, dependentsMaps)
 	}
 
+}
+
+func rankPackages(mongoDBReach *database.MongoDB, date time.Time) {
+	packages := getPackageNamesFromFile(packageReachPackageFileInput)
+
+	var results []util.PackageReachResult
+
+	for _, pkg := range packages {
+		reachDocument, err := mongoDBReach.FindPackageReach(pkg, date)
+		if err != nil {
+			log.Printf("ERROR: cant find reach for pkg: %v with err: %v", pkg, err)
+		}
+		reachedPackages := reachDocument.ReachedPackages
+
+		results = append(results, util.PackageReachResult{
+			Count:      len(reachedPackages),
+			Package:    pkg,
+			Dependents: nil,
+		})
+
+		log.Printf("Processed %v", pkg)
+	}
+
+	sort.Sort(sort.Reverse(util.PackageReachResultList(results)))
+	var ranking []string
+	for _, r := range results {
+		ranking = append(ranking, r.Package)
+	}
+	jsonBytes, err := json.MarshalIndent(ranking, "", "\t")
+	if err != nil {
+		log.Fatal(err)
+	}
+	filePath := path.Join(packageReachResultPath, "packagesRanking.json")
+	err = ioutil.WriteFile(filePath, jsonBytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Wrote results to file %v", filePath)
 }
 
 func packageReachAll(dependentsMaps map[time.Time]map[string][]string) {
