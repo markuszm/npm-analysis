@@ -47,7 +47,7 @@ var maintainerCostMaintainerTimeline map[time.Time]map[string][]string
 var latestDependencies map[string]map[string]bool
 var latestMaintainers map[string][]string
 
-var trustedMaintainersResultMap sync.Map
+var trustedMaintainersResultMap = sync.Map{}
 
 var maintainerCostCmd = &cobra.Command{
 	Use:   "maintainerCost",
@@ -119,14 +119,35 @@ func maintainerCostCalculate() {
 
 		log.Printf("calculated avg without trusted maintainers: %v", cost)
 
+		workerWait := sync.WaitGroup{}
+
+		jobs := make(chan TrustedMaintainerJobItem, 100)
+
+		for w := 1; w <= maintainerCostWorkerNumber; w++ {
+			workerWait.Add(1)
+			go trustedMaintainersWorker(jobs, allResults, len(packages), &workerWait)
+		}
+
 		for _, m := range maintainerReachRanking {
 			trustedMaintainersSet[m] = true
 
-			cost := calculateAverageForTrustedMaintainers(allResults, len(packages), trustedMaintainersSet)
+			copiedMap := copyMap(trustedMaintainersSet)
 
-			averages = append(averages, cost)
+			jobs <- TrustedMaintainerJobItem{
+				AddedMaintainerName:  m,
+				TrustedMaintainerSet: copiedMap,
+			}
+		}
 
-			log.Printf("added %v as trusted maintainer - avg is now %v", m, cost)
+		workerWait.Wait()
+		close(jobs)
+
+		for _, m := range maintainerReachRanking {
+			cost, ok := trustedMaintainersResultMap.Load(m)
+			if !ok {
+				log.Printf("no cost result found after adding %v", m)
+			}
+			averages = append(averages, cost.(float64))
 		}
 
 		bytes, err = json.Marshal(averages)
@@ -188,6 +209,22 @@ func maintainerCostCalculate() {
 		err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
 	}
 
+}
+
+type TrustedMaintainerJobItem struct {
+	AddedMaintainerName  string
+	TrustedMaintainerSet map[string]bool
+}
+
+func trustedMaintainersWorker(jobs chan TrustedMaintainerJobItem, results []map[string]bool, packageCount int, workerWait *sync.WaitGroup) {
+	for j := range jobs {
+		cost := calculateAverageForTrustedMaintainers(results, packageCount, j.TrustedMaintainerSet)
+
+		trustedMaintainersResultMap.Store(j.AddedMaintainerName, cost)
+
+		log.Printf("added %v as trusted maintainer - avg is now %v", j.AddedMaintainerName, cost)
+	}
+	workerWait.Done()
 }
 
 func copyMap(src map[string]bool) map[string]bool {
