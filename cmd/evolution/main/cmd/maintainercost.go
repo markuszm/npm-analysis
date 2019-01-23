@@ -139,8 +139,8 @@ func maintainerCostCalculate() {
 			}
 		}
 
-		workerWait.Wait()
 		close(jobs)
+		workerWait.Wait()
 
 		for _, m := range maintainerReachRanking {
 			cost, ok := trustedMaintainersResultMap.Load(m)

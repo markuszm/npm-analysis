@@ -111,8 +111,8 @@ func calculateTrustedAggregation() {
 		}
 	}
 
-	workerWait.Wait()
 	close(jobs)
+	workerWait.Wait()
 
 	for _, m := range packageReachRanking {
 		cost, ok := trustedPackagesResultMap.Load(m)
