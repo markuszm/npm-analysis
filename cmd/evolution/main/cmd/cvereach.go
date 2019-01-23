@@ -141,7 +141,7 @@ func processVulns() {
 		result = append(result, details)
 		packages = append(packages, details.PackageName)
 	}
-	packageReachEvolution, err := retrievePackageReach(result, mongoDB)
+	packageReachEvolution, activeCveEvolution, err := retrievePackageReach(result, mongoDB)
 
 	bytes, err := json.Marshal(result)
 	if err != nil {
@@ -175,10 +175,22 @@ func processVulns() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+
+	bytes, err = json.Marshal(activeCveEvolution)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	resultFilePath = path.Join(cveReachResultPath, "activeCveEvolution.json")
+	err = ioutil.WriteFile(resultFilePath, bytes, os.ModePerm)
+	if err != nil {
+		logger.Fatal(err)
+	}
 }
 
-func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.MongoDB) ([]util.TimeValue, error) {
-	var dataPoints []util.TimeValue
+func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.MongoDB) ([]util.TimeValue, []util.TimeValue, error) {
+	var cveReachPoints []util.TimeValue
+	var activeCvePoints []util.TimeValue
 	for year := 2010; year <= 2018; year++ {
 		startMonth := 1
 		endMonth := 12
@@ -191,6 +203,7 @@ func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.Mon
 		for month := startMonth; month <= endMonth; month++ {
 			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 			reachIntersection := make(map[string]bool, 0)
+			activeCves := 0
 
 			for _, p := range patchedDetails {
 				if p.VulnerableDate.Before(date) && p.PatchedDate.After(date) {
@@ -204,18 +217,24 @@ func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.Mon
 							reachIntersection[r] = true
 						}
 					}
+
+					activeCves++
 				}
 
 			}
 
-			dataPoints = append(dataPoints, util.TimeValue{
+			cveReachPoints = append(cveReachPoints, util.TimeValue{
 				Key:   date,
 				Value: float64(len(reachIntersection)),
 			})
 
+			activeCvePoints = append(activeCvePoints, util.TimeValue{
+				Key:   date,
+				Value: float64(activeCves),
+			})
 		}
 	}
-	return dataPoints, nil
+	return cveReachPoints, activeCvePoints, nil
 }
 
 type Vulnerability struct {
