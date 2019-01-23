@@ -227,17 +227,6 @@ func trustedMaintainersWorker(jobs chan TrustedMaintainerJobItem, results []map[
 	workerWait.Done()
 }
 
-func copyMap(src map[string]bool) map[string]bool {
-	target := make(map[string]bool, len(src))
-
-	// Copy from the original map to the target map
-	for key, value := range src {
-		target[key] = value
-	}
-
-	return target
-}
-
 func calculateAverageForTrustedMaintainers(results []map[string]bool, packageCount int, trustedMaintainers map[string]bool) float64 {
 	totalCost := 0
 

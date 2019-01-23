@@ -80,3 +80,14 @@ func getPackageNamesFromFile(filePath string) []string {
 	}
 	return packages
 }
+
+func copyMap(src map[string]bool) map[string]bool {
+	target := make(map[string]bool, len(src))
+
+	// Copy from the original map to the target map
+	for key, value := range src {
+		target[key] = value
+	}
+
+	return target
+}
