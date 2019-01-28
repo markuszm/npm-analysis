@@ -134,6 +134,7 @@ func processVulns() {
 
 		details := PatchedDetails{
 			PackageName:    vuln.ModuleName,
+			Id:             vuln.Id,
 			VulnerableDate: vulnerableDate,
 			PatchedDate:    patchedDate,
 		}
@@ -141,7 +142,7 @@ func processVulns() {
 		result = append(result, details)
 		packages = append(packages, details.PackageName)
 	}
-	packageReachEvolution, activeCveEvolution, err := retrievePackageReach(result, mongoDB)
+	packageReachEvolution, activeCveEvolution, activePackagesLists, err := retrievePackageReach(result, mongoDB)
 
 	bytes, err := json.Marshal(result)
 	if err != nil {
@@ -186,11 +187,23 @@ func processVulns() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+
+	bytes, err = json.Marshal(activePackagesLists)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	resultFilePath = path.Join(cveReachResultPath, "activePackagesLists.json")
+	err = ioutil.WriteFile(resultFilePath, bytes, os.ModePerm)
+	if err != nil {
+		logger.Fatal(err)
+	}
 }
 
-func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.MongoDB) ([]util.TimeValue, []util.TimeValue, error) {
+func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.MongoDB) ([]util.TimeValue, []util.TimeValue, map[time.Time][]PatchedDetails, error) {
 	var cveReachPoints []util.TimeValue
 	var activeCvePoints []util.TimeValue
+	activeCvePackagesTimeMap := make(map[time.Time][]PatchedDetails, 0)
 	for year := 2010; year <= 2018; year++ {
 		startMonth := 1
 		endMonth := 12
@@ -203,6 +216,7 @@ func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.Mon
 		for month := startMonth; month <= endMonth; month++ {
 			date := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 			reachIntersection := make(map[string]bool, 0)
+			var activeCvePackages []PatchedDetails
 			activeCves := 0
 
 			for _, p := range patchedDetails {
@@ -219,6 +233,7 @@ func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.Mon
 					}
 
 					activeCves++
+					activeCvePackages = append(activeCvePackages, p)
 				}
 
 			}
@@ -232,12 +247,15 @@ func retrievePackageReach(patchedDetails []PatchedDetails, mongoDB *database.Mon
 				Key:   date,
 				Value: float64(activeCves),
 			})
+
+			activeCvePackagesTimeMap[date] = activeCvePackages
 		}
 	}
-	return cveReachPoints, activeCvePoints, nil
+	return cveReachPoints, activeCvePoints, activeCvePackagesTimeMap, nil
 }
 
 type Vulnerability struct {
+	Id                 int       `json:"id"`
 	ModuleName         string    `json:"module_name"`
 	PublishDate        time.Time `json:"publish_date"`
 	PatchedVersions    string    `json:"patched_versions"`
@@ -246,6 +264,7 @@ type Vulnerability struct {
 
 type PatchedDetails struct {
 	PackageName    string
+	Id             int
 	VulnerableDate time.Time
 	PatchedDate    time.Time
 }
