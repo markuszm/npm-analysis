@@ -36,6 +36,8 @@ var maintainerCostGenerateData bool
 
 var maintainerCostIsEvolution bool
 
+var maintainerCostLimit int
+
 var maintainerCostIsTrustedMaintainers bool
 var maintainerCostMaintainerReachRankingInput string
 
@@ -47,7 +49,8 @@ var maintainerCostMaintainerTimeline map[time.Time]map[string][]string
 var latestDependencies map[string]map[string]bool
 var latestMaintainers map[string][]string
 
-var trustedMaintainersResultMap = sync.Map{}
+var trustedMaintainersCostResultMap = sync.Map{}
+var trustedMaintainersSecuredResultMap = sync.Map{}
 
 var maintainerCostCmd = &cobra.Command{
 	Use:   "maintainerCost",
@@ -78,6 +81,7 @@ func init() {
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostIsTrustedMaintainers, "trusted", false, "whether to calculate trusted aggregation")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostMaintainerReachRankingInput, "reachOrder", "", "input file containing maintainer reach order")
 	maintainerCostCmd.Flags().BoolVar(&maintainerCostGenerateData, "generateData", false, "whether to generate cached data")
+	maintainerCostCmd.Flags().IntVar(&maintainerCostLimit, "limit", 500, "limit how long trusted maintainers aggregation should calculate")
 	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 50, "number of workers")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostPackageFileInput, "packageInput", "", "input file containing packages")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
@@ -97,7 +101,8 @@ func maintainerCostCalculate() {
 
 		var maintainerReachRanking []string
 
-		var averages []float64
+		var costAverages []float64
+		var fullySecuredPercentages []float64
 
 		bytes, err := ioutil.ReadFile(maintainerCostMaintainerReachRankingInput)
 		if err != nil {
@@ -114,8 +119,10 @@ func maintainerCostCalculate() {
 		allResults := calculateAllMaintainerCosts(packages)
 
 		cost := calculateAverageForTrustedMaintainers(allResults, len(packages), trustedMaintainersSet)
+		costAverages = append(costAverages, cost)
 
-		averages = append(averages, cost)
+		fullySecured := calculateFullySecurePackagesByMaintainers(allResults, len(packages), trustedMaintainersSet)
+		fullySecuredPercentages = append(fullySecuredPercentages, fullySecured)
 
 		log.Printf("calculated avg without trusted maintainers: %v", cost)
 
@@ -128,7 +135,7 @@ func maintainerCostCalculate() {
 			go trustedMaintainersWorker(jobs, allResults, len(packages), &workerWait)
 		}
 
-		for _, m := range maintainerReachRanking {
+		for i, m := range maintainerReachRanking {
 			trustedMaintainersSet[m] = true
 
 			copiedMap := copyMap(trustedMaintainersSet)
@@ -137,26 +144,54 @@ func maintainerCostCalculate() {
 				AddedMaintainerName:  m,
 				TrustedMaintainerSet: copiedMap,
 			}
+
+			if i > maintainerCostLimit {
+				break
+			}
 		}
 
 		close(jobs)
 		workerWait.Wait()
 
-		for _, m := range maintainerReachRanking {
-			cost, ok := trustedMaintainersResultMap.Load(m)
+		for i, m := range maintainerReachRanking {
+			cost, ok := trustedMaintainersCostResultMap.Load(m)
 			if !ok {
 				log.Printf("no cost result found after adding %v", m)
 			}
-			averages = append(averages, cost.(float64))
+			costAverages = append(costAverages, cost.(float64))
+
+			fullySecured, ok := trustedMaintainersSecuredResultMap.Load(m)
+			if !ok {
+				log.Printf("no fully secured maintainers result found after adding %v", m)
+			}
+			fullySecuredPercentages = append(fullySecuredPercentages, fullySecured.(float64))
+
+			if i > packageCostLimit {
+				break
+			}
 		}
 
-		bytes, err = json.Marshal(averages)
+		bytes, err = json.Marshal(costAverages)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		outputPath := path.Join(maintainerCostOutputFolder, fmt.Sprintf("%s.json", "trustedMaintainersCost"))
 		err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		bytes, err = json.Marshal(fullySecuredPercentages)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		outputPath = path.Join(maintainerCostOutputFolder, fmt.Sprintf("%s.json", "trustedMaintainersSecured"))
+		err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		return
 	}
@@ -219,8 +254,10 @@ type TrustedMaintainerJobItem struct {
 func trustedMaintainersWorker(jobs chan TrustedMaintainerJobItem, results []map[string]bool, packageCount int, workerWait *sync.WaitGroup) {
 	for j := range jobs {
 		cost := calculateAverageForTrustedMaintainers(results, packageCount, j.TrustedMaintainerSet)
+		fullySecured := calculateFullySecurePackagesByMaintainers(results, packageCount, j.TrustedMaintainerSet)
 
-		trustedMaintainersResultMap.Store(j.AddedMaintainerName, cost)
+		trustedMaintainersCostResultMap.Store(j.AddedMaintainerName, cost)
+		trustedMaintainersSecuredResultMap.Store(j.AddedMaintainerName, fullySecured)
 
 		log.Printf("added %v as trusted maintainer - avg is now %v", j.AddedMaintainerName, cost)
 	}
@@ -241,6 +278,26 @@ func calculateAverageForTrustedMaintainers(results []map[string]bool, packageCou
 	}
 
 	return float64(totalCost) / float64(packageCount)
+}
+
+func calculateFullySecurePackagesByMaintainers(results []map[string]bool, packageCount int, trustedMaintainers map[string]bool) float64 {
+	securedPackages := 0
+
+	for _, r := range results {
+		isSecure := true
+		for m, ok := range r {
+			if ok {
+				if !trustedMaintainers[m] {
+					isSecure = false
+				}
+			}
+		}
+		if isSecure {
+			securedPackages++
+		}
+	}
+
+	return float64(securedPackages) / float64(packageCount)
 }
 
 func maintainerCostWorker(workerId int, jobs chan string, workerWait *sync.WaitGroup) {

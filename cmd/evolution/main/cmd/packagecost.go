@@ -21,6 +21,8 @@ var packageCostWorkerNumber int
 
 var packageCostIsTrustedPackages bool
 
+var packageCostLimit int
+
 var packageCostResultMap = sync.Map{}
 
 var packageCostCreatePlot bool
@@ -31,7 +33,8 @@ var packageCostOutputFolder string
 
 var packageCostReachRankingInput string
 
-var trustedPackagesResultMap = sync.Map{}
+var trustedPackagesCostResultMap = sync.Map{}
+var trustedPackagesSecuredResultMap = sync.Map{}
 
 var packageCostLatestDependencies map[string]map[string]bool
 
@@ -57,6 +60,7 @@ func init() {
 
 	packageCostCmd.Flags().BoolVar(&packageCostCreatePlot, "createPlot", false, "whether it should create plots for each package")
 	packageCostCmd.Flags().IntVar(&packageCostWorkerNumber, "workers", 100, "number of workers")
+	packageCostCmd.Flags().IntVar(&packageCostLimit, "limit", 500, "limit how long trusted packages aggregation should calculate")
 	packageCostCmd.Flags().StringVar(&packageCostPackageFileInput, "packageInput", "", "input file containing packages")
 	packageCostCmd.Flags().StringVar(&packageCostReachRankingInput, "rankingInput", "", "input file containing ranking of packages by reach")
 	packageCostCmd.Flags().StringVar(&packageCostOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
@@ -69,7 +73,8 @@ func calculateTrustedAggregation() {
 
 	var packageReachRanking []string
 
-	var averages []float64
+	var costAverages []float64
+	var fullySecuredPercentages []float64
 
 	bytes, err := ioutil.ReadFile(packageCostReachRankingInput)
 	if err != nil {
@@ -86,8 +91,10 @@ func calculateTrustedAggregation() {
 	allResults := calculateAllPackageCosts(packages)
 
 	cost := calculateAverageForTrustedPackages(allResults, len(packages), trustedPackages)
+	costAverages = append(costAverages, cost)
 
-	averages = append(averages, cost)
+	fullySecured := calculateFullySecurePackagesByPackages(allResults, len(packages), trustedPackages)
+	fullySecuredPercentages = append(fullySecuredPercentages, fullySecured)
 
 	log.Printf("calculated avg without trusted packages: %v", cost)
 
@@ -100,7 +107,7 @@ func calculateTrustedAggregation() {
 		go trustedPackagesWorker(jobs, allResults, len(packages), &workerWait)
 	}
 
-	for _, m := range packageReachRanking {
+	for i, m := range packageReachRanking {
 		trustedPackages[m] = true
 
 		copiedMap := copyMap(trustedPackages)
@@ -109,26 +116,54 @@ func calculateTrustedAggregation() {
 			AddedPackageName: m,
 			TrustedPackages:  copiedMap,
 		}
+
+		if i > packageCostLimit {
+			break
+		}
 	}
 
 	close(jobs)
 	workerWait.Wait()
 
-	for _, m := range packageReachRanking {
-		cost, ok := trustedPackagesResultMap.Load(m)
+	for i, m := range packageReachRanking {
+		cost, ok := trustedPackagesCostResultMap.Load(m)
 		if !ok {
 			log.Printf("no cost result found after adding %v", m)
 		}
-		averages = append(averages, cost.(float64))
+		costAverages = append(costAverages, cost.(float64))
+
+		fullySecured, ok := trustedPackagesSecuredResultMap.Load(m)
+		if !ok {
+			log.Printf("no fully secured packages result found after adding %v", m)
+		}
+		fullySecuredPercentages = append(fullySecuredPercentages, fullySecured.(float64))
+
+		if i > packageCostLimit {
+			break
+		}
 	}
 
-	bytes, err = json.Marshal(averages)
+	bytes, err = json.Marshal(costAverages)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	outputPath := path.Join(packageCostOutputFolder, fmt.Sprintf("%s.json", "trustedPackagesCost"))
 	err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bytes, err = json.Marshal(fullySecuredPercentages)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	outputPath = path.Join(packageCostOutputFolder, fmt.Sprintf("%s.json", "trustedPackagesSecured"))
+	err = ioutil.WriteFile(outputPath, bytes, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return
 }
@@ -238,6 +273,8 @@ func packageCostWorkerWithResults(id int, jobs chan string, results chan map[str
 	for pkg := range jobs {
 		packages := make(map[string]bool)
 
+		packages[pkg] = true
+
 		// only first party protection
 		reach.PackageCost(pkg, packageCostLatestDependencies, packages)
 
@@ -273,6 +310,26 @@ func calculateAverageForTrustedPackages(results []map[string]bool, packageCount 
 	return float64(totalCost) / float64(packageCount)
 }
 
+func calculateFullySecurePackagesByPackages(results []map[string]bool, packageCount int, trustedPackages map[string]bool) float64 {
+	securedPackages := 0
+
+	for _, r := range results {
+		isSecure := true
+		for m, ok := range r {
+			if ok {
+				if !trustedPackages[m] {
+					isSecure = false
+				}
+			}
+		}
+		if isSecure {
+			securedPackages++
+		}
+	}
+
+	return float64(securedPackages) / float64(packageCount)
+}
+
 type TrustedPackageJobItem struct {
 	AddedPackageName string
 	TrustedPackages  map[string]bool
@@ -282,7 +339,11 @@ func trustedPackagesWorker(jobs chan TrustedPackageJobItem, results []map[string
 	for j := range jobs {
 		cost := calculateAverageForTrustedPackages(results, packageCount, j.TrustedPackages)
 
-		trustedPackagesResultMap.Store(j.AddedPackageName, cost)
+		trustedPackagesCostResultMap.Store(j.AddedPackageName, cost)
+
+		fullySecured := calculateFullySecurePackagesByPackages(results, packageCount, j.TrustedPackages)
+
+		trustedPackagesSecuredResultMap.Store(j.AddedPackageName, fullySecured)
 
 		log.Printf("added %v as trusted package - avg is now %v", j.AddedPackageName, cost)
 	}
