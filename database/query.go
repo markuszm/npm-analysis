@@ -105,6 +105,33 @@ func GetDependents(db *sql.DB, packageName string) ([]string, error) {
 	return dependents, nil
 }
 
+func GetDevDependents(db *sql.DB, packageName string) ([]string, error) {
+	var dependents []string
+
+	rows, err := db.Query("SELECT package FROM devDependencies WHERE name = ?", packageName)
+	if err != nil {
+		return dependents, errors.Wrap(err, "Failed to query dependents")
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var dependent string
+
+		err = rows.Scan(&dependent)
+		if err != nil {
+			return dependents, errors.Wrap(err, "Could not get info from row")
+		}
+
+		dependents = append(dependents, dependent)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return dependents, err
+	}
+	return dependents, nil
+}
+
 func GetDependencies(db *sql.DB, packageName string) ([]string, error) {
 	var dependencies []string
 

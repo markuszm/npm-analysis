@@ -23,6 +23,8 @@ var (
 	packageReachOutput       string
 	packageReachWorkerNumber int
 	packageReachLayered      bool
+	packageReachDev          bool
+	packageReachCombined     bool
 )
 
 var reachSyncMap = sync.Map{}
@@ -100,15 +102,18 @@ var packageReachCmd = &cobra.Command{
 
 		csvWorkerWait.Wait()
 
-		combinedCount := 0
-		reachSyncMap.Range(func(key, value interface{}) bool {
-			if value.(bool) {
-				combinedCount++
-			}
-			return true
-		})
+		if packageReachCombined {
+			combinedCount := 0
+			reachSyncMap.Range(func(key, value interface{}) bool {
+				if value.(bool) {
+					combinedCount++
+				}
+				return true
+			})
 
-		logger.Infof("Combined package reach is %v", combinedCount)
+			logger.Infof("Combined package reach is %v", combinedCount)
+		}
+
 	},
 }
 
@@ -152,7 +157,13 @@ func reachWorker(id int, jobs chan string, csvChan chan []string, waitGroup *syn
 			}
 		} else {
 			packagesReachedIndependent := make(map[string]bool, 0)
-			packagecallgraph.PackageReach(p, packagesReachedIndependent, db)
+
+			if packageReachDev {
+				packagecallgraph.PackageReachDev(p, packagesReachedIndependent, db)
+			} else {
+				packagecallgraph.PackageReach(p, packagesReachedIndependent, db)
+			}
+
 			count := 0
 			for _, ok := range packagesReachedIndependent {
 				if ok {
@@ -164,7 +175,9 @@ func reachWorker(id int, jobs chan string, csvChan chan []string, waitGroup *syn
 			csvChan <- result
 		}
 
-		packagecallgraph.PackageReach(p, combinedPackageReach, db)
+		if packageReachCombined {
+			packagecallgraph.PackageReach(p, combinedPackageReach, db)
+		}
 
 		logger.Infow("Finished", "worker", id, "package", p)
 	}
@@ -183,9 +196,11 @@ func reachWorker(id int, jobs chan string, csvChan chan []string, waitGroup *syn
 		}
 	}
 
-	for p, ok := range combinedPackageReach {
-		if ok {
-			reachSyncMap.Store(p, ok)
+	if packageReachCombined {
+		for p, ok := range combinedPackageReach {
+			if ok {
+				reachSyncMap.Store(p, ok)
+			}
 		}
 	}
 
@@ -201,4 +216,6 @@ func init() {
 	packageReachCmd.Flags().StringVarP(&packageReachOutput, "output", "o", "/home/markus/npm-analysis", "output folder")
 	packageReachCmd.Flags().IntVarP(&packageReachWorkerNumber, "worker", "w", 20, "number of workers")
 	packageReachCmd.Flags().BoolVarP(&packageReachLayered, "layers", "l", false, "whether to calculate layered result")
+	packageReachCmd.Flags().BoolVarP(&packageReachDev, "dev", "d", false, "whether to include dev dependents")
+	packageReachCmd.Flags().BoolVarP(&packageReachCombined, "combined", "c", false, "whether to calculate combined package reach")
 }
