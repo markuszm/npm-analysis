@@ -52,16 +52,20 @@ func calculateCorrelation() {
 
 	for p, deps := range cveCorrelationLatestDependencies {
 		result := CveCorrelationResult{
-			PackageName:  p,
-			PackageCost:  len(deps),
-			IsVulnerable: false,
+			PackageName:       p,
+			PackageCost:       len(deps),
+			IsVulnerable:      false,
+			VulnerabilityCost: 0,
 		}
+		vulnCost := 0
 		for d, ok := range deps {
 			if ok && cvePackageSet[d] {
 				result.IsVulnerable = true
+				vulnCost++
 			}
 		}
 
+		result.VulnerabilityCost = vulnCost
 		results = append(results, result)
 		logger.Debugf("Finished %s", p)
 	}
@@ -79,9 +83,10 @@ func calculateCorrelation() {
 }
 
 type CveCorrelationResult struct {
-	PackageName  string
-	IsVulnerable bool
-	PackageCost  int
+	PackageName       string
+	IsVulnerable      bool
+	VulnerabilityCost int
+	PackageCost       int
 }
 
 func init() {
