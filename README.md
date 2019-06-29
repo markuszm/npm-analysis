@@ -43,7 +43,7 @@ The `exec name` must be the path to the `main.go` inside one of the following fo
 
 There are 4 tools available:
 
-- change-downloader: infinite running program that downloads all new packages of npm to S3
+- change-downloader: infinitely running program that downloads all new packages of npm to AWS S3
 - code-analysis: used to generate all code analyses results - see description and parameters for each command via `--help` 
 - evolution: used to generate all evolution metadata analyses results and import/aggregate raw metadata into databases - see description and parameters for each command via `--help`
 - dependencies: used to download all packages and parse snapshot metadata and process dependency graph - see description and parameters for each command via `--help`

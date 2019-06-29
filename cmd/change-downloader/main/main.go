@@ -17,18 +17,37 @@ import (
 	"sync"
 )
 
-const s3BucketName = "455877074454-npm-packages"
-
 const lastSeqFile = "/tmp/lastseq"
 
 const registryUrl = "http://registry.npmjs.org"
 
 var workerNumber = 20
 
+var s3BucketName string
+var awsRegion string
+
+/**
+npm Registry Package downloader to keep deleted packages
+
+This tool downloads all new packages uploaded to the npm package registry to AWS S3.
+Authentication to AWS S3 works either via an instance role attached to an EC2 machine where you are running this tool
+or via an AWS CLI profile if you run this locally.
+
+It uploads all new packages and versions to S3 and stores them in an hierarchical folder structure which means e.g. express in version 1.0.0 is stored under e/x/express-1.0.0.tgz
+
+If this tool crashes due to an issue with the npm API, it stores the last sequence number and reads this temporary file out at the next run.
+
+Set the parameters bucket and region to your S3 bucket and the region it lies in.
+The parameter since uses the sequence number from which to start tracking changes. See https://replicate.npmjs.com/_changes?limit=5&descending=true for the latest 5 sequences.
+There is an additional mode to prune the s3 bucket which deletes all packages that are still existing in the package registry. The use case is to only keep packages that were deleted.
+*/
+
 func main() {
-	since := flag.Int("since", 6087177, "since which sequence to track changes")
+	since := flag.Int("since", 6087177, "since which sequence to track changes to npm")
 	pruneFlag := flag.Bool("prune", false, "whether to prune s3 bucket")
 	workerFlag := flag.Int("worker", 20, "number of workers")
+	s3BucketName = *flag.String("bucket", "", "s3 bucket to upload packages to")
+	awsRegion = *flag.String("region", "us-east-1", "AWS region in which the s3 bucket is located")
 	flag.Parse()
 
 	workerNumber = *workerFlag
@@ -41,7 +60,7 @@ func main() {
 }
 
 func prune() {
-	s3Client := storage.NewS3Client("us-east-1")
+	s3Client := storage.NewS3Client(awsRegion)
 
 	keys := make(chan string, 100)
 
@@ -52,14 +71,14 @@ func prune() {
 
 	for w := 1; w <= workerNumber; w++ {
 		workerWait.Add(1)
-		go worker(w, keys, &workerWait, s3Client)
+		go pruneWorker(w, keys, &workerWait, s3Client)
 	}
 
 	// wait for workers to finish
 	workerWait.Wait()
 }
 
-func worker(id int, jobs chan string, workerWait *sync.WaitGroup, s3Client *storage.S3Client) {
+func pruneWorker(id int, jobs chan string, workerWait *sync.WaitGroup, s3Client *storage.S3Client) {
 	for j := range jobs {
 		deleteIfExists(j, s3Client)
 	}
@@ -103,7 +122,7 @@ func download(since int) {
 		}
 	}
 
-	s3Client := storage.NewS3Client("us-east-1")
+	s3Client := storage.NewS3Client(awsRegion)
 
 	url := fmt.Sprintf("https://replicate.npmjs.com/_changes?include_docs=true&feed=continuous&since=%v&heartbeat=10000", since)
 
