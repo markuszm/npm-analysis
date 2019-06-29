@@ -1,16 +1,26 @@
-## An Empirical Study of the npm Ecosystem
+## Empirical Study of the npm Ecosystem
 
-The metadata and package analysis results are all stored in different databases.
+This repo contains the tooling used for the empirical study on the npm Ecosystem. 
+It consists of scraping tools to retrieve npm packages and metadata, processors for different analyses of metadata and source code, and graph generation to visualize analysis results.
+
+Most of the tooling is written in Go except figures which we created using JupyterLab and its python libraries.
+
+A major part of the results of this study were used in the paper, see https://arxiv.org/abs/1902.09217 to read it.
+
+## Data details
 
 Metadata of latest versions downloaded at:
 Fr 13 Apr 2018 13∶38∶18 CEST
 
 Number of packages at that time: 676539
 
-Run `docker-compose -f evolution-stack.yml up -d` to start database instances and put the volume data into the `db-data` folder
-Database data must be inside `db-data` - use data dump `db-data.tar.gz`
+The metadata and package analysis results are all stored in different databases. A dump of the databases can be found here: <TODO: add link to dump>
+Unpack the tar file and use it as volumes for the docker-compose file.
 
-Dependency graph is stored in neo4j
+## Running databases
+Run `docker-compose -f evolution-stack.yml up -d` to start the database instances and put the volume data into the `db-data` folder
+
+The dependency graph is stored in neo4j.
 Visit `http://localhost:7474/browser/` to open Neo4j Browser. Here you can explore the graph via Cypher queries.
 Password for login is `npm`.
 See `database/graph/insert.go` to view the used schema.
@@ -24,6 +34,8 @@ mongoDB is used to store the evolution metadata.
 Login is `npm:npm123`.
 Access via mongo shell: `mongo -u npm -p "npm123" admin`.
 Metadata for all packages is stored in database `npm` in the collection `packages`
+
+## Tools
 
 Run go tools using Docker with `runWithDocker.sh <exec name> <args>` 
 For available tools see `cmd` folder
@@ -47,7 +59,7 @@ The folder `jupyterlab` contains the jupyter notebooks with which we generated t
 
 Callgraph Creation 
 
-Use package-callgraph.tar.gz (from data dumps)
+Use package-callgraph.tar.gz (from data dumps). See here for a dump: <TODO: add link to dump>
 Unpack and run `docker-compose -f package-callgraph.yml up -d` to spin up the neo4j database with the package callgraph
 
 Now you can run queries inside web interface under `localhost:7678`. The password for the login is npm.
