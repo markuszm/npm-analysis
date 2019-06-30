@@ -50,7 +50,7 @@ func init() {
 	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggMaintainerRanking, "ranking", "", "input file containing ranked list of maintainers as json")
 	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggMaintainerReachResults, "reachResults", "", "input file containing complete reach results")
 	maintainerReachAggCmd.Flags().BoolVar(&maintainerReachAggOptimal, "optimal", false, "whether it should find optimal distribution")
-	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggResultPath, "resultPath", "/home/markus/npm-analysis/maintainerReachAgg", "path for single maintainer result")
+	maintainerReachAggCmd.Flags().StringVar(&maintainerReachAggResultPath, "resultPath", "./output/maintainerReachAgg", "path for single maintainer result")
 	maintainerReachAggCmd.Flags().IntVar(&maintainerReachMonth, "month", 4, "month for date to calculate")
 	maintainerReachAggCmd.Flags().IntVar(&maintainerReachYear, "year", 2018, "year for date to calculate")
 	maintainerReachAggCmd.Flags().IntVar(&maintainerReachLimit, "limit", 20, "optimal ranking limit")

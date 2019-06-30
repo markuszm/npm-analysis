@@ -53,7 +53,7 @@ func init() {
 	maintainerReachCmd.Flags().BoolVar(&maintainerReachCreatePlot, "createPlot", false, "whether it should create plots for each maintainer")
 	maintainerReachCmd.Flags().BoolVar(&maintainerReachGenerateData, "generateData", false, "whether it should generate intermediate map for performance")
 	maintainerReachCmd.Flags().StringVar(&maintainerReachMaintainer, "maintainer", "", "specifiy maintainer to get detailed results for the one")
-	maintainerReachCmd.Flags().StringVar(&maintainerReachResultPath, "resultPath", "/home/markus/npm-analysis/", "path for single maintainer result")
+	maintainerReachCmd.Flags().StringVar(&maintainerReachResultPath, "resultPath", "./output/maintainerReach/", "path for single maintainer result")
 
 }
 

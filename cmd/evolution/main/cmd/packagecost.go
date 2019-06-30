@@ -63,7 +63,7 @@ func init() {
 	packageCostCmd.Flags().IntVar(&packageCostLimit, "limit", 500, "limit how long trusted packages aggregation should calculate")
 	packageCostCmd.Flags().StringVar(&packageCostPackageFileInput, "packageInput", "", "input file containing packages")
 	packageCostCmd.Flags().StringVar(&packageCostReachRankingInput, "rankingInput", "", "input file containing ranking of packages by reach")
-	packageCostCmd.Flags().StringVar(&packageCostOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
+	packageCostCmd.Flags().StringVar(&packageCostOutputFolder, "output", "./output/packageCost", "output folder for results")
 	packageCostCmd.Flags().BoolVar(&packageCostIsTrustedPackages, "trusted", false, "whether to calculate trusted aggregation")
 
 }

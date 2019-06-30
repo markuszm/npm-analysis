@@ -88,7 +88,7 @@ func init() {
 	rootCmd.AddCommand(maintainerCountCmd)
 
 	maintainerCountCmd.Flags().BoolVar(&maintainerCountInsertDB, "insertdb", false, "specify whether maintainer count should be inserted into db")
-	maintainerCountCmd.Flags().StringVar(&maintainerCountOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
+	maintainerCountCmd.Flags().StringVar(&maintainerCountOutputFolder, "output", "./output/maintainerCount/", "output folder for results")
 
 }
 

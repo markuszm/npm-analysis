@@ -59,7 +59,7 @@ func init() {
 	packageReachCmd.Flags().BoolVar(&packageReachIsRanking, "ranking", false, "ranks packages by reach")
 	packageReachCmd.Flags().StringVar(&packageReachPackageFileInput, "packageInput", "", "input file containing packages")
 	packageReachCmd.Flags().StringVar(&packageReachPackageInput, "package", "", "specifiy package to get detailed results for the one")
-	packageReachCmd.Flags().StringVar(&packageReachResultPath, "resultPath", "/home/markus/npm-analysis/", "path for single package result")
+	packageReachCmd.Flags().StringVar(&packageReachResultPath, "resultPath", "./output/packageReach", "path for single package result")
 }
 
 func calculatePackageReach(pkg string) {

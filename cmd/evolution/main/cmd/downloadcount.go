@@ -91,7 +91,7 @@ func init() {
 	downloadCountCmd.Flags().BoolVar(&downloadCountIsAverage, "average", true, "whether to calculate average or just first day of month")
 
 	// TODO: at the moment result path is not used
-	downloadCountCmd.Flags().StringVar(&downloadCountResultPath, "resultPath", "/home/markus/npm-analysis/popularity", "result path for monthly popularity")
+	downloadCountCmd.Flags().StringVar(&downloadCountResultPath, "resultPath", "./output/popularity", "result path for monthly popularity")
 }
 
 func downloadCountWorker(id int, jobs chan database.Document, workerWait *sync.WaitGroup) {

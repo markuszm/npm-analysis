@@ -159,6 +159,6 @@ func init() {
 	packageCostCmd.Flags().StringVarP(&packageCostMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
 	packageCostCmd.Flags().StringVarP(&packageCostPackageName, "package", "p", "", "package name")
 	packageCostCmd.Flags().StringVarP(&packageCostFile, "file", "f", "", "file name to load package names from")
-	packageCostCmd.Flags().StringVarP(&packageCostOutput, "output", "o", "/home/markus/npm-analysis", "output folder")
+	packageCostCmd.Flags().StringVarP(&packageCostOutput, "output", "o", "./output/packageCost", "output folder")
 	packageCostCmd.Flags().IntVarP(&packageCostWorkerNumber, "worker", "w", 20, "number of workers")
 }

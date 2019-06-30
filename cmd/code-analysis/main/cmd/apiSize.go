@@ -153,7 +153,7 @@ func init() {
 
 	apiSizeCmd.Flags().StringVarP(&apiSizeNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7689", "Neo4j bolt url")
 	apiSizeCmd.Flags().StringVarP(&apiSizeMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
-	apiSizeCmd.Flags().StringVarP(&apiSizeOutput, "output", "o", "/home/markus/npm-analysis/apiSize.json", "output file")
+	apiSizeCmd.Flags().StringVarP(&apiSizeOutput, "output", "o", "./output/apiSize.json", "output file")
 	apiSizeCmd.Flags().StringVarP(&apiSizeInputFile, "input", "i", "", "input file containing list with package names")
 	apiSizeCmd.Flags().IntVarP(&apiSizeWorkers, "worker", "w", 20, "number of workers")
 	apiSizeCmd.Flags().BoolVar(&apiSizeHeuristic, "heuristic", true, "use heuristic for packages that have no actual exports")

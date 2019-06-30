@@ -27,8 +27,8 @@ var notFoundPackages strings.Builder
 func init() {
 	rootCmd.AddCommand(packageDownloadCmd)
 
-	packageDownloadCmd.Flags().StringVar(&packageDownloadPath, "path", "/media/markus/NPM/NPM", "destination path to download packages")
-	packageDownloadCmd.Flags().StringVar(&packageDownloadPathToNpmJson, "source", "/home/markus/npm-analysis/npm_download_shasum.json", "path to JSON containing tar url and checksum for all packages (downloaded from registry)")
+	packageDownloadCmd.Flags().StringVar(&packageDownloadPath, "path", "./packageDump", "destination path to download packages")
+	packageDownloadCmd.Flags().StringVar(&packageDownloadPathToNpmJson, "source", "./npm_download_shasum.json", "path to JSON containing tar url and checksum for all packages (downloaded from registry)")
 	packageDownloadCmd.Flags().IntVar(&packageDownloadWorkerNumber, "workers", 10, "number of workers")
 }
 

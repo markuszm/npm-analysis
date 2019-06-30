@@ -34,8 +34,8 @@ func init() {
 
 	cveReachCmd.Flags().StringVar(&cveReachDBUrl, "db", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "db url to evolution data")
 	cveReachCmd.Flags().StringVar(&cveReachMongoUrl, "mongo", "mongodb://npm:npm123@localhost:27017", "mongodb url to evolution data")
-	cveReachCmd.Flags().StringVar(&cveReachCVEPath, "cve", "/home/markus/node-vulns/vulns", "path to vulns")
-	cveReachCmd.Flags().StringVar(&cveReachResultPath, "output", "/home/markus/node-vulns", "output path")
+	cveReachCmd.Flags().StringVar(&cveReachCVEPath, "cve", "./vulns", "path to vulns")
+	cveReachCmd.Flags().StringVar(&cveReachResultPath, "output", "./output/node-vulns", "output path")
 }
 
 func processVulns() {

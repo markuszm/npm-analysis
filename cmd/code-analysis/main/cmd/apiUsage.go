@@ -100,7 +100,7 @@ func init() {
 
 	apiUsageCmd.Flags().StringVarP(&apiUsageNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7689", "Neo4j bolt url")
 	apiUsageCmd.Flags().StringVarP(&apiUsageMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
-	apiUsageCmd.Flags().StringVarP(&apiUsageOutput, "output", "o", "/home/markus/npm-analysis/apiUsage.json", "output file")
+	apiUsageCmd.Flags().StringVarP(&apiUsageOutput, "output", "o", "./output/apiUsage.json", "output file")
 	apiUsageCmd.Flags().StringVarP(&apiUsageInputFile, "input", "i", "", "input file containing list with full function names")
 }
 

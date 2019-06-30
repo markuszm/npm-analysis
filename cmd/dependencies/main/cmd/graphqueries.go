@@ -15,7 +15,7 @@ var graphQueriesOutputFile string
 func init() {
 	rootCmd.AddCommand(graphQueriesCmd)
 
-	graphQueriesCmd.Flags().StringVar(&graphQueriesOutputFile, "output", "/home/markus/npm-analysis/packages_with_dependents", "result file")
+	graphQueriesCmd.Flags().StringVar(&graphQueriesOutputFile, "output", "./output/packages_with_dependents", "result file")
 	graphQueriesCmd.Flags().StringVar(&graphQueriesNeo4jUrl, "neo4j", "bolt://neo4j:npm@localhost:7687", "full connection url to neo4j server")
 }
 

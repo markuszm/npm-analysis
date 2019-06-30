@@ -20,7 +20,7 @@ import (
 	"sync"
 )
 
-var parserPathToNpmJson = "/home/markus/npm-analysis/npm-all.json"
+var parserPathToNpmJson = "./output/npm-all.json"
 
 var parserErrorPath string
 
@@ -47,7 +47,7 @@ func init() {
 	parserCmd.Flags().BoolVar(&parserIsCreate, "create", false, "create db scheme")
 	parserCmd.Flags().BoolVar(&parserIsDebug, "debug", false, "type mapping debug")
 	parserCmd.Flags().StringVar(&parserInsertType, "insert", "package", "what value to insert")
-	parserCmd.Flags().StringVar(&parserErrorPath, "error", "/home/markus/npm-analysis/errors.txt", "path to error file")
+	parserCmd.Flags().StringVar(&parserErrorPath, "error", "./output/errors.txt", "path to error file")
 	parserCmd.Flags().StringVar(&parserMysqlUser, "mysqlUser", "root", "mysql user")
 	parserCmd.Flags().StringVar(&parserMysqlPassword, "mysqlPassword", "npm-analysis", "mysql password")
 	parserCmd.Flags().IntVar(&parserWorkerNumber, "workers", 100, "number of workers")

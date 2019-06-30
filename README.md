@@ -21,6 +21,10 @@ Number of packages at that time: 676539
 The metadata and package analysis results are all stored in different databases. A dump of the databases can be found here: https://drive.google.com/open?id=1XKlainUy8qXk199DFslu_V5em_UglXmI
 Unpack the tar file and use it as volumes for the docker-compose file.
 
+For some analyses like the code analysis we downloaded all npm packages. This package dump is 230 GB large. Due to this size, we cannot provide a dump to download. 
+Therefore, we need to download the packages yourself using the command `download` under `cmd/dependencies` and use the JSON file from `npm_download.zip` for the `source` parameter. 
+This JSON file contains the download urls of all packages in April 2018. Please note that parallel downloads might not work anymore due to the npm registry now using DDoS protections. In that case, you need to set the worker number to 1. 
+
 ## Running databases
 Run `docker-compose -f evolution-stack.yml up -d` to start the database instances and put the volume data into the `db-data` folder
 

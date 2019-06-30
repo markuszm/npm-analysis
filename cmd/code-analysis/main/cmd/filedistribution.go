@@ -43,6 +43,6 @@ var fileDistributionCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(fileDistributionCmd)
 
-	fileDistributionCmd.Flags().StringVarP(&fileDistributionInput, "input", "i", "/home/markus/npm-analysis/filedistribution.json", "path to file containing analysis results")
-	fileDistributionCmd.Flags().StringVarP(&fileDistributionOutput, "output", "o", "/home/markus/npm-analysis/filedistribution", "output path")
+	fileDistributionCmd.Flags().StringVarP(&fileDistributionInput, "input", "i", "./output/filedistribution.json", "path to file containing analysis results")
+	fileDistributionCmd.Flags().StringVarP(&fileDistributionOutput, "output", "o", "./output/filedistribution", "output path")
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/markuszm/npm-analysis/codeanalysis"
 	"github.com/markuszm/npm-analysis/codeanalysis/codeanalysispipeline"
 	"github.com/spf13/cobra"
@@ -119,9 +120,9 @@ func init() {
 	analysisCmd.Flags().BoolVar(&parallel, "parallel", false, "Execute pipeline in parallel?")
 	analysisCmd.Flags().IntVarP(&maxWorkers, "scale", "s", 100, "number of workers (only if parallel)")
 
-	analysisCmd.Flags().StringVarP(&packagesPath, "packages", "p", "/media/markus/NPM/NPM", "folder path to packages")
-	analysisCmd.Flags().StringVarP(&tmpPath, "tmp", "t", "/home/markus/tmp", "Temp path to store extracted packages")
-	analysisCmd.Flags().StringVarP(&resultPath, "output", "o", "/home/markus/npm-analysis/code-analysis.json", "File path to store results in")
+	analysisCmd.Flags().StringVarP(&packagesPath, "packages", "p", "./packageDump", "folder path to packages")
+	analysisCmd.Flags().StringVarP(&tmpPath, "tmp", "t", "/tmp", "Temp path to store extracted packages")
+	analysisCmd.Flags().StringVarP(&resultPath, "output", "o", "./output/code-analysis.json", "File path to store results in")
 
 	analysisCmd.Flags().StringVarP(&collectorFlag, "collector", "c", "db", "how to collect package names (db or file)")
 	analysisCmd.Flags().StringVarP(&namesFilePath, "namesFile", "n", "./codeanalysispipeline/testfiles/test-packages.txt", "filepath containing package names")

@@ -36,6 +36,6 @@ var usedDependenciesCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(usedDependenciesCmd)
 
-	usedDependenciesCmd.Flags().StringVarP(&usedDependenciesInput, "input", "i", "/home/markus/npm-analysis/usedDependencies.json", "path to file containing analysis results")
-	usedDependenciesCmd.Flags().StringVarP(&usedDependenciesOutput, "output", "o", "/home/markus/npm-analysis/usedDependencies", "output path")
+	usedDependenciesCmd.Flags().StringVarP(&usedDependenciesInput, "input", "i", "./input/usedDependencies.json", "path to file containing analysis results")
+	usedDependenciesCmd.Flags().StringVarP(&usedDependenciesOutput, "output", "o", "./output/usedDependencies", "output path")
 }

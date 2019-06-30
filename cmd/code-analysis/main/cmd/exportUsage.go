@@ -204,7 +204,7 @@ func init() {
 
 	exportUsageCmd.Flags().StringVarP(&exportUsageNeo4jUrl, "neo4j", "n", "bolt://neo4j:npm@localhost:7689", "Neo4j bolt url")
 	exportUsageCmd.Flags().StringVarP(&exportUsageMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
-	exportUsageCmd.Flags().StringVarP(&exportUsageOutput, "output", "o", "/home/markus/npm-analysis/exportUsage.json", "output file")
+	exportUsageCmd.Flags().StringVarP(&exportUsageOutput, "output", "o", "./output/exportUsage.json", "output file")
 	exportUsageCmd.Flags().StringVarP(&exportUsageInputFile, "input", "i", "", "input file containing list with package names")
 	exportUsageCmd.Flags().IntVarP(&exportUsageWorkers, "worker", "w", 20, "number of workers")
 	exportUsageCmd.Flags().BoolVar(&exportUsageHeuristic, "heuristic", true, "use heuristic for packages that have no actual exports")

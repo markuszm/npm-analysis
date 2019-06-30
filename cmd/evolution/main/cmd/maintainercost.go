@@ -84,7 +84,7 @@ func init() {
 	maintainerCostCmd.Flags().IntVar(&maintainerCostLimit, "limit", 500, "limit how long trusted maintainers aggregation should calculate")
 	maintainerCostCmd.Flags().IntVar(&maintainerCostWorkerNumber, "workers", 50, "number of workers")
 	maintainerCostCmd.Flags().StringVar(&maintainerCostPackageFileInput, "packageInput", "", "input file containing packages")
-	maintainerCostCmd.Flags().StringVar(&maintainerCostOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
+	maintainerCostCmd.Flags().StringVar(&maintainerCostOutputFolder, "output", "./output/maintainerCost/", "output folder for results")
 }
 
 func maintainerCostCalculate() {

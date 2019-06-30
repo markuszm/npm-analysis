@@ -92,7 +92,7 @@ type CveCorrelationResult struct {
 func init() {
 	rootCmd.AddCommand(cveCorrelationCmd)
 
-	cveCorrelationCmd.Flags().StringVar(&cveCorrelationCVEInput, "cveInput", "/home/markus/node-vulns/cvePackages.json", "input file containing packages that are vulnerable")
-	cveCorrelationCmd.Flags().StringVar(&cveCorrelationOutputFolder, "output", "/home/markus/npm-analysis/", "output folder for results")
+	cveCorrelationCmd.Flags().StringVar(&cveCorrelationCVEInput, "cveInput", "./cvePackages.json", "input file containing packages that are vulnerable")
+	cveCorrelationCmd.Flags().StringVar(&cveCorrelationOutputFolder, "output", "./output/cveCorrelation", "output folder for results")
 
 }

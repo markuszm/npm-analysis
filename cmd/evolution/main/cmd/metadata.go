@@ -163,7 +163,7 @@ func metadataProcessDocument(doc database.Document) int {
 
 	err = json.Unmarshal([]byte(val), &metadata)
 	if err != nil {
-		ioutil.WriteFile("/home/markus/npm-analysis/error.json", []byte(val), os.ModePerm)
+		ioutil.WriteFile("./output/error.json", []byte(val), os.ModePerm)
 		log.Fatalf("ERROR: Unmarshalling: %v", err)
 	}
 

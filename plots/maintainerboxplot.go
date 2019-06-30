@@ -54,7 +54,7 @@ func CreateBoxPlot(values map[time.Time][]int) {
 	p.Add(plots...)
 	p.X.Label.Text = "Time"
 	p.X.Tick.Marker = YearTicks{startYear: 2010}
-	if err := p.Save(15*vg.Inch, 15*vg.Inch, "/home/markus/npm-analysis/boxplot.png"); err != nil {
+	if err := p.Save(15*vg.Inch, 15*vg.Inch, "./output/boxplot.png"); err != nil {
 		log.Fatalf("ERROR: Could not save plot with %v", err)
 	}
 }

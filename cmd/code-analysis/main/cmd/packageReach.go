@@ -213,7 +213,7 @@ func init() {
 	packageReachCmd.Flags().StringVarP(&packageReachMysqlUrl, "mysql", "m", "root:npm-analysis@/npm?charset=utf8mb4&collation=utf8mb4_bin", "mysql url")
 	packageReachCmd.Flags().StringVarP(&packageReachPackageName, "package", "p", "", "package name")
 	packageReachCmd.Flags().StringVarP(&packageReachFile, "file", "f", "", "file name to load package names from")
-	packageReachCmd.Flags().StringVarP(&packageReachOutput, "output", "o", "/home/markus/npm-analysis", "output folder")
+	packageReachCmd.Flags().StringVarP(&packageReachOutput, "output", "o", "./output/packageReach", "output folder")
 	packageReachCmd.Flags().IntVarP(&packageReachWorkerNumber, "worker", "w", 20, "number of workers")
 	packageReachCmd.Flags().BoolVarP(&packageReachLayered, "layers", "l", false, "whether to calculate layered result")
 	packageReachCmd.Flags().BoolVarP(&packageReachDev, "dev", "d", false, "whether to include dev dependents")
