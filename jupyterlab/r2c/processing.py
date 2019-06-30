@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy import create_engine
 
 
-DB_URL = 'postgresql://postgres:callgraph@sola-da.c8f7jez2lgco.us-west-1.rds.amazonaws.com:5432/sola'
+DB_URL = 'dbUrl'
 
 def processCommitsLatestVersion(repo, countFunc, normalizeFunc, progressString, filterType=""):
     engine = create_engine(DB_URL)
