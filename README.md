@@ -1,15 +1,13 @@
 # Empirical Study of the npm Ecosystem
 
-This repo contains the tooling used for the empirical study on the npm Ecosystem. 
+This repo contains the tooling used for our empirical study of the npm ecosystem. 
 It consists of scraping tools to retrieve npm packages and metadata, processors for different analyses of metadata and source code, and graph generation to visualize analysis results.
 
 Most of the tooling is written in Go except figures which we created using JupyterLab and its python libraries.
 
-A major part of the results of this study were used in the paper, see https://arxiv.org/abs/1902.09217 to read it.
+A major part of the results of this study are presented in the USENIX Security 2019 paper [Small World with High Risks: A Study of Security Threats in the npm Ecosystem](https://arxiv.org/abs/1902.09217) (Markus Zimmermann, Cristian-Alexandru Staicu, Cam Tenny, Michael Pradel). This work has been a collaboration between the [Software Lab at TU Darmstadt](http://software-lab.org/) and [Return To Corporation (R2C)](https://returntocorp.com/).
 
-We collaborated for parts of this work with [Return To Corporation (R2C)](https://returntocorp.com/).
-
-If you have questions regarding the usage of these tools either create a GitHub issue or write me an E-Mail.
+If you have questions regarding the usage of these tools either create a GitHub issue or write me anh E-Mail.
 
 ## Data details
 
