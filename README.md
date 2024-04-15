@@ -16,7 +16,7 @@ Fr 13 Apr 2018 13∶38∶18 CEST
 
 Number of packages at that time: 676539
 
-The metadata and package analysis results are all stored in different databases. A dump of the databases can be found here: https://drive.google.com/open?id=1XKlainUy8qXk199DFslu_V5em_UglXmI
+The metadata and package analysis results are all stored in different databases. A dump of the databases was previously uploaded to a Google Drive. If you are still interested in the dump, create a GitHub issue and I will do an re-upload.
 Unpack the tar file and use it as volumes for the docker-compose file.
 
 For some analyses like the code analysis we downloaded all npm packages. This package dump is 230 GB large. Due to this size, we cannot provide a dump to download. 
@@ -98,7 +98,7 @@ bin-check,4.1.0
 
 Callgraph Creation 
 
-Use package-callgraph.tar.gz (from data dumps). See here for a dump: https://drive.google.com/open?id=1syXJruTBECWTkAJVCktjbmUx_569IwhE
+Use package-callgraph.tar.gz (from data dumps). The dump was previously uploaded to a Google Drive. If you are still interested in the dump, create a GitHub issue and I will do an re-upload.
 Unpack and run `docker-compose -f package-callgraph.yml up -d` to spin up the neo4j database with the package callgraph
 
 Now you can run queries inside web interface under `localhost:7678`. The password for the login is npm.
